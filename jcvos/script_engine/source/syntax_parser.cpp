@@ -411,15 +411,14 @@ bool CSyntaxParser::MatchScript(IAtomOperate * & op)
 				op->Release();
 				break;	}
 
+			//case ID_KEY_IF: {
+			//	MatchIfSt(prog);
+			//				}
+
 			default:	{
 				stdext::auto_interface<CComboStatement>	combo;
-				//OP_LIST op_lit;
 				MatchComboSt(combo);
 				prog->Merge(combo);
-				// 合并 combo 到 script
-				//prog->PushBackAo( static_cast<IAtomOperate*>(combo));
-				//prog->AddOpList(op_list);
-
 				break;	}
 			}
 		}
@@ -594,6 +593,13 @@ bool CSyntaxParser::MatchSingleSt(CComboStatement * combo, IAtomOperate * & op)
 	bool match = false;
 	switch (m_lookahead.m_id)
 	{
+	case ID_FILE_NAME:	{		// 文件名作为作值(assignee)，将结果保存到文件
+		op = static_cast<IAtomOperate*>(new CSaveToFileOp(m_lookahead.m_str));
+		combo->AddLoopOp(op);
+		op->SetSource(0, combo->LastChain( op ) );
+		NextToken(m_lookahead);
+		break;			}	
+
 	case ID_KEY_FILTER:	{
 		stdext::auto_interface<CFilterSt>	ft;
 		MatchFilterSt(combo, ft);
@@ -1179,6 +1185,29 @@ bool CSyntaxParser::MatchFactor(CComboStatement * combo, IAtomOperate * & op)
 	}
 	return true;
 }
+
+//void CSyntaxParser::MatchIfSt( CSequenceOp * prog)
+//{
+//	NextToken(m_lookahead);		// skip keyword if
+//
+//	stdext::auto_interface<CStIf> ifop = new CStIf;
+//	stdext::auto_interface<IAtomOperate> boolexp;
+//	MatchBoolExpression(prog, boolexp);
+//	ifop->SetSource(0, boolexp);
+//	Match(ID_KEY_THEN, _T("missing then"));
+//	Match(ID_NEW_LINE, _T(""));
+//
+//	MatchScript( ifop->GetSubSequence(true) );
+//
+//	if (ID_KEY_ELSE == m_lookahead.m_id)
+//	{
+//		NextToken(m_lookahead);
+//		Match(ID_NEW_LINE, _T(""));
+//		MatchScript( ifop->GetSubSequence(false) );
+//	}
+//	Match(ID_KEY_END, _T(""));
+//	Match(ID_NEW_LINE, _T(""));
+//}
 
 
 void CSyntaxParser::SetBoolOption(IFeature * proxy, const CJCStringT & param_name)
