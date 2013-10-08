@@ -1,0 +1,51 @@
+
+
+# name, abbrev, bool|float|int|string, default, description
+
+# normal test case
+device, d, string, all, "Device name to display its information"
+block_size, b, int, 256, "Block size for one write command in sectors"
+
+blocks, , int, 1024, "omit abbreviation"
+noabbr, , int, 1024, "omit abbreviation, twice"
+
+"long name", l, 1024, "space in parameter name"
+"omit default and desc", ,  
+
+option, o, bool, true, "Option for test"
+option2, x, bool, true, "Test for multi abbreviation"
+fdata, f, float, 10.0, "Float value for test"
+
+# bad test case
+option, p, int, 1024, "Bad case: Double defination"
+bad2, d, int, 1024, "Bad case: Double abbreviation"
+bad5, -, uint, 1024, "Bad case: illeagle abbreviation"
+bad6, hhh, , 1024, "Bad case: too many abbreviation"
+bad3, a, xxx, 1024, "Bad case: Unknow type"
+bad4, c, , 1024, "Bad case: missing type"
+bad5, e, bool, 1024, "Bad case: missing close quotator
+
+[end]
+
+# Begin test for command line
+# Normal case 
+rw tt -b256 --blocks=1024
+di -dD
+# command only
+test
+# Continues space 
+  rw   tt  -b256   --blocks=1024
+# Quotation and space
+device_info  -d"abc xxx yyy"   --blocks=1024
+
+# Limiting test case
+
+
+   
+
+# White box test case
+
+# Bad test case
+
+# Missing close quotator
+test -d"missing close quotator

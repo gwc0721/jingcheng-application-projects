@@ -1,0 +1,56 @@
+﻿本文当描述了SmiVendorTest语法定义。
+1，语法设计理念
+	考虑到用于手动命令输入，方法（命令/过程）的参数用参数名称定义，尽可能使用缺省参数值。
+	建立以表为基础的数据结构体系。尽可能支持表计算。
+	用表项的自动循环代替传统循环，以缩小代码量。
+	尽量使用符号代替关键字/命令。
+
+2，以实现语法
+  [program]
+  [combo_statement] => 	#[anything]				// comment
+						[help_statement]		// 严格上说，help语句后，不能接其他语句
+						// 以下消除左递归
+						//[single_statement] 
+						//[combo_statement] | [single_statement]  
+						// 消除左递归
+						[expression] [S1]
+						[single_statement] [S1]
+  [S1] =>				| [single_statement] [S1]
+						E
+						
+  [command] =>			: [id]
+						[id]:[id]
+						
+  [help_statement]	=> 	?						// list out all modules (or all features)
+						? [command]
+						? :						// list out features for default plugin
+						? :[id]					// show help message of feature
+						? [id]					// list out all features for plugin
+						? [id]:[id]				// show help message of feature 
+				
+  [single_statement] => [id]:[id] [param_set]		// moudle:feature
+						:[id] [param_set]			//default:feature
+						//[variable]
+						
+  [param_set] => 		// 消除左递归
+						// [param_set] [parameter]
+						[parameter] [P1]
+  [P1] =>				[parameter] [P1]
+						E
+						
+  [parameter] => 		--[id]
+						--[id]=[expression]
+						-[ch]
+						-[ch][expression]
+						[expression]
+						--[id]@					// 取对循环变量
+						--@[table]				// 取表格中的列名为参数名
+						
+  [expression] =>		(string)				// 常数
+						(numeral)				// 常数
+						$[variable]				// 变量
+						$(combo_statement)
+						@[variable]				// 表格
+						@(combo_statement)
+						
+3，待实现语法

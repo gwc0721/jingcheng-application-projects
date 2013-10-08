@@ -1,0 +1,11 @@
+size of class
+<TS=725666220> <FUN=[ClassSize]> sizeof(CJCInterfaceBase) = 16
+<TS=725671526> <FUN=[ClassSize]> sizeof(CTypedValueBase) = 16
+<TS=725671870> <FUN=[ClassSize]> sizeof(jcparam::CTypedValue<int>) = 56
+<TS=725672022> <FUN=[ClassSize]> sizeof(jcparam::CTypedValue<CJCStringT>) = 84
+<TS=725672264> <FUN=[ClassSize]> sizeof(CTypedColumn<int>) = 72
+<TS=725673127> <FUN=[ClassSize]> sizeof(CColumnVal) = 104
+<TS=725673356> <FUN=[ClassSize]> sizeof(CConstantOp<int>) = 56
+<TS=725673514> <FUN=[ClassSize]> sizeof(CConstantOp<INT64>) = 64
+<TS=725674007> <FUN=[ClassSize]> sizeof(CRopEQ) = 1
+<TS=725674163> <FUN=[ClassSize]> sizeof(CRelOpEQ) = 92

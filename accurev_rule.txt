@@ -1,0 +1,36 @@
+﻿AccuRev使用约定：
+1，Stream的层次
+	1) Top Level  		-- 根，一般不用于存储代码。主要用于区分不同的项目。例如programing、electronic等
+	2) Release Level	-- 在这一层中以Snapshot为主，这一层中的版本应处于稳定运行状态。有对应的二进制文件可被直接应用。
+	3) Developing Level	-- 这一层的代码为开发中的版本。这一层中的版本通常要求保证可以运行，但允许有bug或者待实现的功能。至少，这一层中的版本必须编译通过。
+	4) Local Level		-- 这一层的版本用于本地开发时的临时保存。通常不同的工作站上建立相应的stream
+	5) Workspace
+	
+2, Workspace中的目录分配
+	
+	1) 全局目录结构
+	workspace --
+		+-- application		应用程序目录，一些针对应用程序的开发中模块也放在这个目录下
+		+-- jcvos			jcvos各个库
+			+-- comm		共用头文件等，工程和库
+			+-- jclogger	Logger库，
+			+-- stdext		标准库的扩展。考虑将comm和jclogger合并进来，并且改名jcstd。由于vc中已存在stdext
+			+-- jcparam		参数库。IValue支持，CCommandLine
+			+-- jcdb		对于数据库的支持，以吸收各数据库之间的差异，提供一个通用接口。
+		+-- module			还未建立，用于存放各种模块和库。
+		+-- extlib			第三方开发的库，包括公开和未公开源代码。
+			+-- vld			内存泄漏检测
+		+-- tool			编译、测试等工具
+		
+	2) 工程目录结构
+		一个具体的工程（库或者应用程序）包含如下目录。
+		+-- mylib		工程根的目录下存放工程文件和makefile，以及库总体的头文件；
+			+-- include	需要被外部调用的头文件。
+			+-- source	源文件以及内部使用的头文件；
+			+-- test	针对苦的测试工具，自动测试程序等
+				+-- testcase	测试条件
+				
+		通常每个工程拥有一个没内部使用的公共头文件。这个头文件只被该库的所有源文件包含，而不公开。通常用于Log的配置，库的输出配置等。
+		
+	3) workspace下的所有文件名、目录都使用相对目录。对于模块之间的依赖关系，特别是jcvos个库之间的依赖。源文件中的所有包含依赖库的头文件时，使用相对路径，如#include "../../mylib.h"，而不是#include <mylib.h>。这样对于间接依赖，不需要再工程文件中指明路径。
+	

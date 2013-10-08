@@ -1,0 +1,28 @@
+﻿本文当描述了一些典型的用法，包括已经实现的和准备实现的用法。
+1，数据测试
+	说明：数据测试功能用于确认在某些操作（备份/恢复，f/w更新）前后device中数据的完整性。为避免保留大量数据的空间消耗，采用伪随机数的方法进行测试。
+	方法及命令：
+		#（1）以LBA作为种子，对device整卡写入随机数。		
+		# 生成LBA列表。考虑到sequential write的速度优势，-s指定一次写入的块大小，通常为整数个page size（以sector为单位）。
+		:mkvector -t$MAX_LBAS -s64 | :assign lbalist #
+		# 写随机数到device。test:randomptn生成大小为n的块，填充以LBA为种子的伪随机数。设定数据块的地址为LBA。-n指定大小（sector）。-a指定LBA
+		#device:writesec将数据块写入device。缺省-a是采用数据块制定的LBA。
+		test:randomptn -a@lbalist -n64 | device:writesec
+		#（2）进行相关的操作测试。
+		#（3）以同样的种子对device中的随机数作比较。
+		#device:readsec从device读取数据，并设置数据块的地址为LBA
+		#test:verifyrand以数据块的LBA为种子产生伪随机数序列和输入数据比较。
+		device:readsec -a@lbalist -n64 | test:verifyrand
+		#注：test:verifyrand会打印出所有不同的字节。因此可以在步骤（1）后手动修改部分字节。然后判定输出结果。
+	Known issue及改进：
+		（1）USB设备时取得的MAX_LBAS时会小于实际的MAX_LBAS
+		（2）当MAX_LBAS不能被块大小整除时，最后得块会被忽略。这一部分无法验证。
+		（3）改进：test:verifyrand输出表格
+		（4）改进：test:randomptn和test:verifyrand可以对LBA进行运算后作为种子，以产生更多的pattern。
+		（5）改进:用以下命令替代，以实现：
+		test:randomptn -a@(:mkvector -t$MAX_LBAS -s$PAGE_SIZE) -n$PAGE_SIZE | device:writesec
+		device:readsec -a@(:mkvector -t$MAX_LBAS -s$PAGE_SIZE) -n$PAGE_SIZE | test:verify $(test:randomptn --@)
+		-a@()可以动态产生LBA list以节省临时空间；
+		$()动态产生伪随机数产生代码以实现代码重用；
+		@后不跟变量名称表示使用循环变量；
+		--后直接跟@表示以循环变量的列名称作为参数名称。
