@@ -119,7 +119,7 @@ bool CLT2244::Initialize(void)
 
 	memset(buf, 0, SECTOR_SIZE);
 	ReadSFR(buf, 1);
-	bool slc_mode = ((buf[0x12E] & 20) != 0);
+	bool slc_mode = ((buf[0x12E] & 0x20) != 0);
 
 	// Read Info block
 	if (m_info_block_valid)

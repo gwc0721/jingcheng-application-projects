@@ -2,6 +2,9 @@
 #include "../include/smi_data_type.h"
 
 LOCAL_LOGGER_ENABLE(_T("smi_data_type"), LOGGER_LEVEL_ERROR);
+
+LOG_CLASS_SIZE(CBinaryBuffer);
+
 ///////////////////////////////////////////////////////////////////////////////
 //----  CAttributeItem  ----------------------------------------------------------
 #define __COL_CLASS_NAME	CAttributeItem
