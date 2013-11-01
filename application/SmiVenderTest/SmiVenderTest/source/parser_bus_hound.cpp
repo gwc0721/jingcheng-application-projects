@@ -90,10 +90,10 @@ static	qi::rule<const char*> rule_phase_id =
 
 static qi::symbols<char, CPluginDefault::ParserBH::PHASE_TYPE>	rule_phase_type;
 
-class InitRule
+class InitRulePhaseType
 {
 public:
-	InitRule(void)
+	InitRulePhaseType(void)
 	{
 		rule_phase_type.add
 			("CMD", CPluginDefault::ParserBH::PT_CMD)
@@ -107,17 +107,13 @@ public:
 	}
 };
 
-static InitRule _init_rule;
+static InitRulePhaseType _init_rule;
 
 bool CPluginDefault::ParserBH::ReadPhase(bus_hound_phase * & cur_phase)
 {
 	JCASSERT(NULL == cur_phase);
 
 	using qi::hex;
-	//using qi::int_;
-	//using qi::lit;
-	//using qi::_val;
-	//using qi::_1;
 
 	while (1)
 	{
@@ -302,12 +298,14 @@ bool CPluginDefault::ParserBH::InvokeOnce(void)
 					break;
 
 				case PT_OUT:
-				case PT_IN:
-					//JCASSERT(NULL == working_trace->m_data);
+				case PT_IN:	{
+					JCASSERT(NULL == working_trace->m_data);
+					BYTE * buf = working_trace->CreateBuffer(phase->m_data_len);
 					//working_trace->m_data = new BYTE[phase->m_data_len];
 					//working_trace->m_data_len = phase->m_data_len;
-					//memcpy_s(working_trace->m_data, working_trace->m_data_len, phase->m_data, phase->m_data_len);
-					break;
+					memcpy_s(buf, phase->m_data_len, phase->m_data, phase->m_data_len);
+					working_trace->m_data->Unlock();
+					break;	}
 
 				case PT_OK:
 				case PT_SRB:
