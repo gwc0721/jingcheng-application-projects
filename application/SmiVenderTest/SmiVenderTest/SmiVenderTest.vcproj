@@ -62,6 +62,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="version.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="C:\library\vld_10;C:\library\boost_1_46_1\stage\lib"
 				GenerateDebugInformation="true"
@@ -117,7 +118,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="D:\libs\vld;D:\libs\boost;..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\SmiDevice"
+				AdditionalIncludeDirectories="C:\library\vld_10;C:\library\boost_1_46_1;..\..\..\jcvos\stdext;..\..\..\jcvos\script_engine;..\..\..\jcvos\jcparam;..\SmiDevice;..\FerriSimulator"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -136,6 +137,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="version.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="C:\library\vld_10;C:\library\boost_1_46_1\stage\lib"
 				GenerateDebugInformation="false"
