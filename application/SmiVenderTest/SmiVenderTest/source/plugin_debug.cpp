@@ -14,6 +14,7 @@ FEATURE_LIST CPluginBase2<CPluginDebug>::m_feature_list(
 	FEATURE_LIST::RULE()
 	(new CTypedFtInfo< CPluginDebug::CachePage::_BASE >( _T("") ) ) 
 	(new CTypedFtInfo< CPluginDebug::LbaToHadd::_BASE >( _T("convert lba to h address") ) )
+	(new CTypedFtInfo< CPluginDebug::DelayPattern::_BASE >( _T("") ) ) 
 	//(new CTypedFtInfo< CPluginDebug::Connect::_BASE>(_T("connect to simulator device") ) )
 	);
 
@@ -78,10 +79,8 @@ struct sort_cache
 
 void CPluginDebug::CachePage::Init(void)
 {
-	if (!m_smi_dev)
-	{
-		CSvtApplication::GetApp()->GetDevice(m_smi_dev);
-	}
+	LOG_STACK_TRACE();
+	if (!m_smi_dev)	CSvtApplication::GetApp()->GetDevice(m_smi_dev);
 
 	// search and store cache blocks
 	CCardInfo card_info;
@@ -99,7 +98,15 @@ void CPluginDebug::CachePage::Init(void)
 	for (JCSIZE bb = 0; bb < m_fblock_num; ++bb)
 	{
 		if (NULL == cache_block) cache_block = new CFBlockInfo;
+		// try page 0
 		ReadSpare(bb, 0, cache_block);
+		LOG_DEBUG(_T("f-block %04X, f-page 0, id %02X"), bb, cache_block->m_id);
+		if (0xFF == cache_block->m_id)
+		{	// try page 1
+			ReadSpare(bb, 1, cache_block);
+			LOG_DEBUG(_T("f-block %04X, f-page 1, id %02X"), bb, cache_block->m_id);
+		}
+
 		if (0x40 == (cache_block->m_id & 0xF0) )
 		{
 			m_cache_list.push_back(cache_block);
@@ -110,12 +117,14 @@ void CPluginDebug::CachePage::Init(void)
 	m_cache_list.sort( struct sort_cache() );
 
 	// for debug
+#ifdef _DEBUG
 	BLOCK_INFO_LIST::iterator it, endit = m_cache_list.end();
 	for (it = m_cache_list.begin(); it != endit; ++it)
 	{
 		JCASSERT(*it);
 		LOG_DEBUG(_T("fb=%04X, sn=%02X"), (*it)->m_f_add.m_block, (*it)->m_spare.m_serial_no );
 	}
+#endif
 
 	delete [] cache_block;
 
@@ -205,3 +214,75 @@ bool CPluginDebug::LbaToHadd::Invoke(void)
 }
 
 
+
+///////////////////////////////////////////////////////////////////////////////
+// -- delay pattern
+
+LPCTSTR CPluginDebug::DelayPattern::_BASE::m_feature_name = _T("delayptn");
+CParamDefTab CPluginDebug::DelayPattern::_BASE::m_param_def_tab(
+	CParamDefTab::RULE()
+	(new CTypedParamDef<UINT>(_T("latency"),	_T('l'), offsetof(CPluginDebug::DelayPattern, m_latency),	_T("cache block number") ) )
+	(new CTypedParamDef<UINT>(_T("offset"),		_T('o'), offsetof(CPluginDebug::DelayPattern, m_offset),	_T("start h-block") ) )
+	);
+
+CPluginDebug::DelayPattern::DelayPattern(void)
+{
+	m_latency = 90;
+	m_offset = 0;
+}
+
+
+CPluginDebug::DelayPattern::~DelayPattern(void)
+{
+}
+
+
+void CPluginDebug::DelayPattern::GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const
+{
+
+}
+
+void CPluginDebug::DelayPattern::Init(void)
+{
+	m_block = 0, m_page = 1;
+	m_first_page = true;
+}
+
+bool CPluginDebug::DelayPattern::InvokeOnce(void)
+{
+	if (m_output)	m_output->Release(), m_output = NULL;
+	if (m_page > m_latency)	return false;
+
+	CAtaTraceRow * trace = new CAtaTraceRow;
+	trace->m_cmd_code = CMD_WRITE_DMA;
+	trace->m_sectors = 1;
+
+	if (m_first_page)
+	{
+		trace->m_lba = H2LBA(m_block + m_offset, 0) +1;
+		m_first_page = false;
+	}
+	else
+	{
+		trace->m_lba = H2LBA(m_block + m_offset, m_page) +1;
+		m_block ++;
+		if ( (m_block &0xFF) == 0 )		m_first_page = true;
+	}
+
+	m_output = static_cast<jcparam::IValue*>(trace);
+
+
+	if (m_block >= 512)
+	{
+		m_block = 0;
+		m_page +=2;
+	}
+	return true;
+}
+
+JCSIZE CPluginDebug::DelayPattern::H2LBA(JCSIZE block, JCSIZE page)
+{
+	// 64 sectors per page, 512 pages per block
+	JCSIZE lba = block * 512 * 64 + page * 64;
+	return lba;
+}

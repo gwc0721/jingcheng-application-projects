@@ -1,11 +1,11 @@
-#pragma once
+﻿#pragma once
 
 
 #include <SmiDevice.h>
 #include "feature_base.h"
 
 #include <list>
-
+#include "ata_trace.h"
 
 class CPluginDebug 
 	: virtual public jcscript::IPlugin
@@ -21,6 +21,7 @@ public:
 public:
 	class CachePage;
 	class LbaToHadd;
+	class DelayPattern;
 };
 
 
@@ -28,7 +29,6 @@ public:
 // -- cache page
 
 class CPluginDebug::CachePage
-	//: public CFeatureBase<CPluginDebug::CachePage, CPluginDebug>
 	: virtual public jcscript::ILoopOperate
 	, public CLoopFeatureBase<CFBlockInfo>
 	, public CFeatureBase<CPluginDebug::CachePage, CPluginDebug>
@@ -42,8 +42,6 @@ public:
 	virtual ~CachePage(void);
 
 public:
-	//virtual bool GetResult(jcparam::IValue * & val);
-	//virtual bool Invoke(void);
 	virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const;
 	virtual void Init(void);
 	virtual bool InvokeOnce(void);
@@ -113,3 +111,34 @@ protected:
 };
 
 
+///////////////////////////////////////////////////////////////////////////////
+// -- delay pattern
+class CPluginDebug::DelayPattern
+	: virtual public jcscript::ILoopOperate
+	, public CLoopFeatureBase<CAtaTrace>
+	, public CFeatureBase<CPluginDebug::DelayPattern, CPluginDebug>
+	, public CJCInterfaceBase
+{
+	// f-block id
+public:
+	typedef CFeatureBase<CPluginDebug::DelayPattern, CPluginDebug>	_BASE;
+public:
+	DelayPattern(void);
+	virtual ~DelayPattern(void);
+
+public:
+	virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const;
+	virtual void Init(void);
+	virtual bool InvokeOnce(void);
+
+protected:
+	JCSIZE H2LBA(JCSIZE block, JCSIZE page); 
+
+public:
+	UINT	m_latency;
+	JCSIZE	m_offset;
+	bool	m_first_page;
+
+protected:
+	JCSIZE m_block, m_page;
+};
