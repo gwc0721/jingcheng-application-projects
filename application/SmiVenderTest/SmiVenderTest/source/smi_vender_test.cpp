@@ -41,9 +41,9 @@ bool RegistInternalPlugin(void)
 
 	CPluginSimulator::Regist(manager);
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
 	CPluginDebug::Regist(manager);
-#endif
+//#endif
 	return true;
 }
 
@@ -87,14 +87,11 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	timestamptest();
 
-	LOG_DEBUG(_T("T1"));
-	LOG_DEBUG(_T("T2"));
-
 	int return_code = 0;
 	setvbuf(stdout, NULL, _IONBF, 0);
-	stdext::jc_printf(_T("SMI Vender Test\n"));
-	stdext::jc_printf(_T("Ver. 1.2\n"));
-	stdext::jc_printf(_T("Jingcheng Yuan\n"));
+	//stdext::jc_printf(_T("Ferri Debuger\n"));
+	//stdext::jc_printf(_T("Ver. 2.0\n"));
+	//stdext::jc_printf(_T("Jingcheng Yuan\n"));
 
 	try
 	{

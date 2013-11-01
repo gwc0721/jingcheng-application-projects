@@ -11,6 +11,8 @@ LOCAL_LOGGER_ENABLE(_T("CSvtApp"), LOGGER_LEVEL_DEBUGINFO);
 
 #include "application.h"
 
+#define COMPILE_LOG		_T("compile.log")
+
 ///////////////////////////////////////////////////////////////////////////////
 //-- application
 #ifdef _DEBUG
@@ -24,6 +26,7 @@ CSvtApplication * CSvtApplication::m_app = NULL;
 CSvtApplication::CSvtApplication(void)
 	: m_plugin_manager(NULL)
 	, m_cur_script(NULL)
+	, m_main_ver(0), m_sub_ver(0)
 {
 	JCASSERT(m_app == NULL);
 	m_app = this;
@@ -51,6 +54,8 @@ static void PassArgument(LPCTSTR name, jcparam::CArguSet & from, jcparam::CArguS
 
 int CSvtApplication::Initialize(LPCTSTR cmd)
 {
+	GetVersionInfo();
+
 	ProcessCommandLine(cmd);
 	bool has_help = false;
 	m_arg_set.GetValT(_T("help"), has_help);
@@ -74,10 +79,10 @@ int CSvtApplication::Initialize(LPCTSTR cmd)
 	if (outvar) outvar->Release();
 #ifdef _DEBUG
 	// 输出编译的中间结果
-	m_compile_log = NULL;
-	_tfopen_s(&m_compile_log, _T("compile.log"), _T("w+"));
-	if (NULL == m_compile_log) 
-		THROW_ERROR(ERR_APP, _T("Open file compile.log failed"));
+	FILE * compile_log = NULL;
+	_tfopen_s(&compile_log, COMPILE_LOG, _T("w+"));
+	if (NULL == compile_log) THROW_ERROR(ERR_APP, _T("Open file %s failed"), COMPILE_LOG);
+	fclose(compile_log);
 #endif
 	return 1;
 }
@@ -102,7 +107,7 @@ int CSvtApplication::Cleanup(void)
 	}
 #ifdef _DEBUG
 	// 输出编译的中间结果
-	fclose(m_compile_log);
+	//fclose(m_compile_log);
 #endif
 	return 0;
 }
@@ -152,12 +157,15 @@ bool CSvtApplication::RunScript(LPCTSTR file_name)
 		syntax_parser.MatchScript(m_cur_script);
 #ifdef _DEBUG
 		// 输出编译的中间结果
-		stdext::jc_fprintf(m_compile_log, _T("compiling script file %s.\n"), file_name);
-		m_cur_script->DebugOutput(INDENTATION + 15, m_compile_log);
-		stdext::jc_fprintf(m_compile_log, _T("\n"));
-		fflush(m_compile_log);
+		FILE * compile_log = NULL;
+		_tfopen_s(&compile_log, COMPILE_LOG, _T("a+"));
+		JCASSERT(compile_log);
+		stdext::jc_fprintf(compile_log, _T("compiling script file %s.\n"), file_name);
+		m_cur_script->DebugOutput(INDENTATION + 15, compile_log);
+		stdext::jc_fprintf(compile_log, _T("\n"));
+		fclose(compile_log);
 #endif	
-		if ( !syntax_parser.GetError() )
+		if ( (!m_arg_set.Exist(_T("compile"))) && (!syntax_parser.GetError()) )
 		{
 			LOG_DEBUG(_T("Start invoking script") );
 			m_cur_script->Invoke();
@@ -187,10 +195,12 @@ bool CSvtApplication::ParseCommand(LPCTSTR first, LPCTSTR last)
 		syntax_parser.MatchScript(m_cur_script);
 #ifdef _DEBUG
 		// 输出编译的中间结果
-		stdext::jc_fprintf(m_compile_log, _T("compiling command \"%s\""), first);
-		m_cur_script->DebugOutput(INDENTATION + 15, m_compile_log);
-		stdext::jc_fprintf(m_compile_log, _T("\n"));
-		fflush(m_compile_log);
+		FILE * compile_log = NULL;
+		_tfopen_s(&compile_log, COMPILE_LOG, _T("a+"));
+		stdext::jc_fprintf(compile_log, _T("compiling command \"%s\""), first);
+		m_cur_script->DebugOutput(INDENTATION + 15, compile_log);
+		stdext::jc_fprintf(compile_log, _T("\n"));
+		fclose(compile_log);
 #endif
 		if ( !syntax_parser.GetError() )
 		{
@@ -335,34 +345,21 @@ void CSvtApplication::GetDevice(ISmiDevice * & dev)
 
 //#define DUMMY_DEVICE
 
-bool CSvtApplication::DummyDevice(void)
-{
-	LOG_STACK_TRACE();
-// TODO :
-	//if (m_dev)
-	//{
-	//	m_device_name.clear();
-	//	m_dev->Release();
-	//	m_dev = NULL;
-	//}
-
-	//IStorageDevice * storage = NULL;
-	//CTestStorageDevice::OpenDevice(_T(""), storage);
-	//m_dev = CTestSmiDevice::CreateDevice(storage);
-	//storage->Release();
-	//m_device_name = _T("DummyDevice");
-	//_tprintf(_T("Using dummy device\r\n"));
-	return true;
-}
+//bool CSvtApplication::DummyDevice(void)
+//{
+//	LOG_STACK_TRACE();
+//	return true;
+//}
 
 
 const jcparam::CParameterDefinition CSvtApplication::m_cmd_line_parser( jcparam::CParameterDefinition::RULE()
-	(_T("list"), _T('l'), jcparam::VT_STRING, _T("Give a scan list, like C~Z0~9. Pass this argument to scandev.") )
-	(_T("driver"), _T('d'), jcparam::VT_STRING, _T("Force using specified driver. Pass this argument to scandev.") )
-	(_T("controller"), _T('c'), jcparam::VT_STRING, _T("Force using specified controller. Pass this argument to scandev.") )
-	(_T("invoke"), _T('i'), jcparam::VT_STRING, _T("Invoke following command after start up.") )
-	(_T("script"), _T('s'), jcparam::VT_STRING, _T("Run commands in the specifide script file.") )
-	(_T("help"), _T('h'), jcparam::VT_BOOL, _T("Show this help message.") )
+	(_T("list"),		_T('l'), jcparam::VT_STRING, _T("Give a scan list, like C~Z0~9. Pass this argument to scandev.") )
+	(_T("driver"),		_T('d'), jcparam::VT_STRING, _T("Force using specified driver. Pass this argument to scandev.") )
+	(_T("controller"),	_T('c'), jcparam::VT_STRING, _T("Force using specified controller. Pass this argument to scandev.") )
+	(_T("invoke"),		_T('i'), jcparam::VT_STRING, _T("Invoke following command after start up.") )
+	(_T("script"),		_T('s'), jcparam::VT_STRING, _T("Run commands in the specifide script file.") )
+	(_T("help"),		_T('h'), jcparam::VT_BOOL, _T("Show this help message.") )
+	(_T("compile"),		_T('b'), jcparam::VT_BOOL, _T("Compile only.") )
 	//(_T("#testa"), _T('a'), jcparam::VT_BOOL, _T("Test for hided option name") )
 	//(_T("testb"), 0, jcparam::VT_BOOL, _T("Test for hided abbrev") )
 	);
@@ -581,4 +578,44 @@ bool CSvtApplication::ScanDevice(jcparam::CArguSet & argu, jcparam::IValue *, jc
 	if ( ! found) _tprintf(_T("Cannot find SMI device!\r\n"));
 
 	return true;
+}
+
+void CSvtApplication::GetVersionInfo(void)
+{
+	TCHAR app_path[MAX_PATH];
+
+	GetModuleFileName(NULL, app_path, MAX_PATH);
+	UINT ver_info_size = GetFileVersionInfoSize(app_path, 0);
+
+	stdext::auto_array<BYTE> ver_buf(ver_info_size);
+
+	BOOL br = GetFileVersionInfo(app_path, 0, ver_info_size, ver_buf);
+	if ( 0 == br) THROW_WIN32_ERROR(_T("Failure on getting file version."));
+
+	// English (USA)
+	static const TCHAR _KEY[] = _T("\\StringFileInfo\\040904B0\\%s");
+	TCHAR sub_key[128];
+
+
+	LPVOID key_val = NULL;
+	JCSIZE length = 0;
+
+	stdext::jc_sprintf(sub_key, _KEY, _T("FileVersion"));
+	br = VerQueryValue(ver_buf, sub_key, &key_val, &length);
+	if ( 0==br) THROW_WIN32_ERROR(_T("Failure on getting file version."));
+	LOG_RELEASE(_T("File ver: %s"), reinterpret_cast<TCHAR *>(key_val) );
+
+	stdext::jc_sprintf(sub_key, _KEY, _T("ProductVersion"));
+	br = VerQueryValue(ver_buf, sub_key, &key_val, &length);
+	if ( 0==br) THROW_WIN32_ERROR(_T("Failure on getting file version."));
+	LOG_RELEASE(_T("Prod ver: %s"), reinterpret_cast<TCHAR *>(key_val) );
+	_stscanf_s(reinterpret_cast<TCHAR *>(key_val), _T("%d, %d"), &m_main_ver, &m_sub_ver);
+
+	stdext::jc_sprintf(sub_key, _KEY, _T("ProductName"));
+	br = VerQueryValue(ver_buf, sub_key, &key_val, &length);
+	if ( 0==br) THROW_WIN32_ERROR(_T("Failure on getting file version."));
+
+	stdext::jc_printf( reinterpret_cast<TCHAR *>(key_val) );
+	stdext::jc_printf( _T("\nVer. %d.%d\n"), m_main_ver, m_sub_ver);
+	stdext::jc_printf( _T("Jingcheng Yuan\n\n") );
 }

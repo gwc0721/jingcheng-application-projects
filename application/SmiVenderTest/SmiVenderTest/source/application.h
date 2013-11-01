@@ -55,12 +55,16 @@ protected:
 	bool RunScript(LPCTSTR file_name);
 	void ShowHelpMessage() const;
 	virtual void OnError(JCSIZE line, JCSIZE column, LPCTSTR msg);
+	void GetVersionInfo(void);
+
+	UINT m_main_ver, m_sub_ver;
+
 
 public:
 	void ReportProgress(LPCTSTR msg, int percent);
 
 protected:
-	bool DummyDevice(void);
+	//bool DummyDevice(void);
 	bool ScanDevice(jcparam::CArguSet & argu, jcparam::IValue *, jcparam::IValue * &);
 
 //-- jcscript::IPlugin实现
@@ -75,6 +79,7 @@ protected:
 protected:
 	bool OutputVariable(FILE * file, jcparam::IValue * var_val, LPCTSTR type);
 
+
 //-- 命令行
 protected:
 	// 命令行参数
@@ -82,7 +87,7 @@ protected:
 
 #ifdef _DEBUG
 	// 输出编译的中间结果
-	FILE* m_compile_log;
+	//FILE* m_compile_log;
 	static const TCHAR INDENTATION[];
 #endif
 
