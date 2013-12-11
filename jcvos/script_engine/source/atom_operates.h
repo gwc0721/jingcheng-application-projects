@@ -7,6 +7,7 @@
 
 // 定义一个基本执行单位，包括从何处取参数1和2，执行什么过程(IProxy)，经结果保存在何处。
 // 如果执行的过程为NULL，则直接将参数1保存到结果
+//
 
 namespace jcscript
 {
@@ -14,44 +15,15 @@ namespace jcscript
 	void DeleteOpList(OP_LIST & aolist);
 	void InvokeOpList(OP_LIST & op_list);
 
-	class CComboStatement;
-
-	///////////////////////////////////////////////////////////////////////////////
-	//-- CScriptOp
-	class CScriptOp
-		: virtual public IAtomOperate
-		, public CJCInterfaceBase
-	{
-	protected:
-		CScriptOp(void);
-		virtual ~CScriptOp(void);
-	public:
-		static void Create(CScriptOp * & program);
-
-	public:
-		virtual bool GetResult(jcparam::IValue * & val);
-		virtual bool Invoke(void);
-		virtual void SetSource(UINT src_id, IAtomOperate * op) { JCASSERT(0); };
-
-	public:
-		void PushBackAo(IAtomOperate * op);
-		void Merge(CComboStatement * combo);
-		
-	protected:
-		OP_LIST	m_op_list;
-
-	#ifdef _DEBUG
-	public:
-		virtual void DebugOutput(LPCTSTR indentation, FILE * outfile);
-	#endif
-	};
+#define IChainOperate	IAtomOperate
 
 	///////////////////////////////////////////////////////////////////////////////
 	//-- CAssignOp
 	// 用于从source中取出结果，赋值到制定op的var中
 	class CAssignOp 
 		: virtual public IAtomOperate
-		, public CJCInterfaceBase
+		, public COpSourceSupport<IAtomOperate, 1, CAssignOp>
+		JCIFBASE
 	{
 	public:
 		CAssignOp(IAtomOperate * dst_op, const CJCStringT & dst_name);
@@ -59,21 +31,16 @@ namespace jcscript
 
 		virtual bool GetResult(jcparam::IValue * & val);
 		virtual bool Invoke(void);
-		virtual void SetSource(UINT src_id, IAtomOperate * op);
 
 	public:
-		IAtomOperate * GetSource(void) const {return m_src_op;};
+		virtual void DebugInfo(FILE * outfile);
 
 	protected:
-		IAtomOperate * m_src_op;
-
 		IAtomOperate * m_dst_op;
 		CJCStringT	m_dst_name;
 
-	#ifdef _DEBUG
 	public:
-		virtual void DebugOutput(LPCTSTR indentation, FILE * outfile);
-	#endif
+		static const TCHAR m_name[];
 	};
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -81,7 +48,8 @@ namespace jcscript
 	// 用于从source中取出结果，设置函数的参数
 	class CPushParamOp
 		: virtual public IAtomOperate
-		, public CJCInterfaceBase
+		, public COpSourceSupport<IAtomOperate, 1, CPushParamOp>
+		JCIFBASE
 	{
 	public:
 		CPushParamOp(IFeature * dst_op, const CJCStringT & dst_name);
@@ -89,19 +57,19 @@ namespace jcscript
 	public:
 		virtual bool GetResult(jcparam::IValue * & val);
 		virtual bool Invoke(void);
-		virtual void SetSource(UINT src_id, IAtomOperate * op);
+		virtual UINT GetProperty(void) const {return 0;};
+
 	public:
 		void SetParamName(const CJCStringT & param_name)
 		{m_param_name = param_name;};
+		virtual void DebugInfo(FILE * outfile);
 
 	protected:
-		IAtomOperate * m_src_op;
 		IFeature * m_function;
 		CJCStringT	m_param_name;
 
-	#ifdef _DEBUG
-		virtual void DebugOutput(LPCTSTR indentation, FILE * outfile);
-	#endif
+	public:
+		static const TCHAR m_name[];
 	};
 
 
@@ -109,8 +77,9 @@ namespace jcscript
 	//-- CLoopVarOp
 	// 用于combo执行循环时，处理循环变量
 	class CLoopVarOp
-		: virtual public ILoopOperate
-		, public CJCInterfaceBase
+		: virtual public IAtomOperate
+		, virtual public IOutPort
+		JCIFBASE
 	{
 	public:
 		CLoopVarOp(void);
@@ -124,6 +93,13 @@ namespace jcscript
 		virtual void Init(void);
 		virtual bool InvokeOnce(void);
 
+		virtual UINT GetProperty(void) const {return OPP_LOOP_SOURCE;}
+		virtual UINT GetDependency(void) {return m_dependency;} ;
+
+		virtual bool PopupResult(jcparam::ITableRow * & val);
+		virtual bool PushResult(jcparam::ITableRow * val) {JCASSERT(0); return false;};
+		virtual bool IsEmpty(void) {return (m_row_val != NULL); };
+
 	protected:
 		jcparam::ITable		* m_table;	
 		jcparam::IValue		* m_row_val;	// 每次循环后更新
@@ -131,6 +107,8 @@ namespace jcscript
 
 		JCSIZE	m_table_size;
 		JCSIZE	m_cur_index;		// 循环计数器
+
+		UINT	m_dependency;
 
 	#ifdef _DEBUG
 	public:
@@ -143,7 +121,7 @@ namespace jcscript
 	// 在ComoboSt的循环中，将最后语句输出的表格连接在一起。
 	class CCollectOp
 		: virtual public IAtomOperate
-		, public CJCInterfaceBase \
+		JCIFBASE
 	{
 	public:
 		CCollectOp(void);
@@ -167,13 +145,11 @@ namespace jcscript
 
 	///////////////////////////////////////////////////////////////////////////////
 	//-- CLoopOp
+/*
 	class CLoopOp
 		: virtual public IAtomOperate
-		, public CJCInterfaceBase
+		JCIFBASE
 	{
-	public:
-		friend class CComboStatement;
-
 	public:
 		CLoopOp(void);
 		virtual ~CLoopOp(void);
@@ -186,7 +162,7 @@ namespace jcscript
 
 	public:
 		// 在循环体中添加一个操作符
-		void AddLoopOp(IAtomOperate * ao/*, bool is_func*/);
+		void AddLoopOp(IAtomOperate * ao);
 
 		// 设置循环变量的操作符，每个复合语句只能设置一个循环变量。不支持嵌套循环。
 		// 当复合语句已经设置循环变量时，返回false
@@ -206,7 +182,6 @@ namespace jcscript
 		JCSIZE m_line;
 	#endif	
 	};
-
 	///////////////////////////////////////////////////////////////////////////////
 	//-- CComboStatement
 	// 实现一个复合语句
@@ -294,16 +269,18 @@ namespace jcscript
 		JCSIZE m_line;
 	#endif
 	};
-
+*/
 	class CHelpProxy
 		: virtual public IAtomOperate
-		, public CJCInterfaceBase
+		, public COpSourceSupport0<CHelpProxy>
+		JCIFBASE
 	{
 	protected:
 		CHelpProxy(IHelpMessage * help);
 		virtual ~CHelpProxy(void);
 
 	public:
+		friend class COpSourceSupport0<CHelpProxy>;
 		static void Create(IHelpMessage * help, CHelpProxy * & proxy);
 
 	public:
@@ -311,49 +288,13 @@ namespace jcscript
 		virtual bool Invoke();
 		virtual void SetSource(UINT src_id, IAtomOperate * op);
 
+
 	protected:
 		IHelpMessage * m_help;
-
-	#ifdef _DEBUG
-		virtual void DebugOutput(LPCTSTR indentation, FILE * outfile) {};
-	#endif
+		static const TCHAR name[];
 	};
 
 	///////////////////////////////////////////////////////////////////////////////
-	//-- CVariableOp
-	// 用于从一个变量中取出其成员。即var1.var2.var3
-	// 目前以嵌套方式实现成员变量
-	class CVariableOp	
-		: virtual public IAtomOperate
-		, public COpSourceSupport<IAtomOperate, 1>
-		, public CJCInterfaceBase 
-	{
-	public:
-		// CVariableOp作为计算变量成员使用。
-		CVariableOp(CVariableOp * parent, const CJCStringT & var_name);
-
-		// CVariableOp作为IValue的封装使用
-		CVariableOp(jcparam::IValue * val);
-		virtual ~CVariableOp(void);
-
-	public:
-		virtual bool GetResult(jcparam::IValue * & val);
-		virtual bool Invoke(void);
-		//virtual void SetSource(UINT src_id, IAtomOperate * op);
-
-		void SetVariableName(const CJCStringT & name);
-
-	protected:
-		// m_paraent是m_source的拷贝，用于表示需要被Invoke。 m_parent不需要引用计数
-		CVariableOp * m_parent;		
-		//IAtomOperate * m_source;
-		CJCStringT m_var_name;
-		jcparam::IValue * m_val;
-
-	#ifdef _DEBUG
-		virtual void DebugOutput(LPCTSTR indentation, FILE * outfile);
-	#endif
-	};
 
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -361,7 +302,8 @@ namespace jcscript
 	// 将变量保存到文件
 	class CSaveToFileOp
 		: virtual public IAtomOperate
-		, public CJCInterfaceBase 
+		, public COpSourceSupport<IAtomOperate, 1, CSaveToFileOp>
+		JCIFBASE 
 	{
 	public:
 		CSaveToFileOp(const CJCStringT &filename);
@@ -369,68 +311,55 @@ namespace jcscript
 	public:
 		virtual bool GetResult(jcparam::IValue * & val) {JCASSERT(0); return false;} ;
 		virtual bool Invoke(void);
-		virtual void SetSource(UINT src_id, IAtomOperate * op);
+		virtual void DebugInfo(FILE * outfile);
+
+	public:
+		static const TCHAR m_name[];
 
 	protected:
-		IAtomOperate * m_src_op;
 		CJCStringT m_file_name;
 		FILE * m_file;
-
-	#ifdef _DEBUG
-		virtual void DebugOutput(LPCTSTR indentation, FILE * outfile);
-	#endif		
 	};
 
 	///////////////////////////////////////////////////////////////////////////////
 	//-- CExitOp
 	class CExitOp
 		: virtual public IAtomOperate
-		, public COpSourceSupport0
-		, public CJCInterfaceBase 
+		, public COpSourceSupport0<CExitOp>
+		JCIFBASE 
 	{
 	public:
 		virtual bool GetResult(jcparam::IValue * & val) {JCASSERT(0); return false;} ;
 		virtual bool Invoke(void);
-		//virtual void SetSource(UINT src_id, IAtomOperate * op) {JCASSERT(0)};
-
-	#ifdef _DEBUG
-		virtual void DebugOutput(LPCTSTR indentation, FILE * outfile);
-	#endif		
-
+	public:
+		static const TCHAR name[];
 	};
 
 ///////////////////////////////////////////////////////////////////////////////
 // filter statement
 	class CFilterSt
 		: virtual public IAtomOperate
-		, public COpSourceSupport<IAtomOperate, 2>
-		, public CDebugInfo0
-		, public CJCInterfaceBase
+		, public COpSourceSupport<IAtomOperate, 2, CFilterSt>
+		JCIFBASE
 	{
 	public:
-		CFilterSt(void);
+		CFilterSt(IOutPort * out_port);
 		~CFilterSt(void);
 
 		enum SRC_ID {	SRC_TAB = 0, SRC_EXP = 1 };
 
 	public:
-		virtual bool GetResult(jcparam::IValue * & val);
+		virtual bool GetResult(jcparam::IValue * & val) {JCASSERT(0); return false;};
 		virtual bool Invoke(void);
 
-	// debug information
 	public:
-		virtual LPCTSTR name() const {return _T("filter");}
-		virtual IAtomOperate * source(UINT src) 
-		{
-			JCASSERT(src < 2);
-			return m_src[src];
-		}
+		static const TCHAR m_name[];
 
 	protected:
 		// src0: the source of bool expression.
 		// src1: the source of table
 		bool m_init;
-		jcparam::ITableRow * m_row;
+		IOutPort	* m_outport;
 	};
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -438,7 +367,7 @@ namespace jcscript
 	// 用于处理文件名
 	class CValueFileName
 		: virtual public jcparam::IValue
-		, public CJCInterfaceBase
+		JCIFBASE
 	{
 	public:
 		CValueFileName(const CJCStringT & fn) : m_file_name(fn) {}
@@ -452,4 +381,58 @@ namespace jcscript
 		CJCStringT m_file_name;
 	};
 
+///////////////////////////////////////////////////////////////////////////////
+//-- 
+	class CInPort
+		: virtual public ILoop
+		, public COpSourceSupport<IOutPort, 1, CInPort>
+		JCIFBASE
+	{
+	public:
+		CInPort(void);
+		~CInPort(void);
+
+	public:
+		virtual bool GetResult(jcparam::IValue * & val);
+		virtual bool Invoke(void);
+		virtual UINT GetProperty(void) const {return OPP_LOOP_SOURCE;};
+		virtual UINT GetDependency(void) {return m_dependency +1;}
+		virtual bool IsRunning(void) {return !m_src[0]->IsEmpty();} 
+
+	public:
+		static const TCHAR m_name[];
+
+	protected:
+		jcparam::ITableRow * m_row;
+
+	};
+
+
+///////////////////////////////////////////////////////////////////////////////
+// -- feature wrapper
+	class CFeatureWrapper
+		: virtual public ILoop
+		, public COpSourceSupport<IAtomOperate, 1, CFeatureWrapper>
+		JCIFBASE
+	{
+	public:
+		CFeatureWrapper(IFeature * feature);
+		virtual ~CFeatureWrapper(void);
+
+	public:
+		virtual bool GetResult(jcparam::IValue * & val);
+		virtual bool Invoke(void);
+		virtual UINT GetProperty(void) const {return m_feature->GetProperty();}
+		virtual void DebugInfo(FILE * outfile);
+		virtual bool IsRunning(void) {return m_feature->IsRunning(); };
+
+	public:
+		void SetOutPort(IOutPort * outport);
+
+	public:
+		static const TCHAR m_name[];
+	protected:
+		IFeature	* m_feature;
+		IOutPort	* m_outport;
+	};
 };

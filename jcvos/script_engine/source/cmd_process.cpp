@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "atom_operates.h"
 
-LOCAL_LOGGER_ENABLE(_T("CHelpProxy"), LOGGER_LEVEL_DEBUGINFO);
+LOCAL_LOGGER_ENABLE(_T("CHelpProxy"), LOGGER_LEVEL_WARNING);
 
 using namespace jcscript;
 
@@ -43,7 +43,7 @@ CHelpProxy::~CHelpProxy(void)
 //	if (m_plugin) m_plugin->AddRef();
 //}
 
-bool CHelpProxy::Invoke(/*jcparam::IValue * varin, jcparam::IValue * & varout*/)
+bool CHelpProxy::Invoke()
 {
 	LOG_STACK_TRACE();
 	if (m_help)

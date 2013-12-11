@@ -15,9 +15,10 @@ using namespace jcscript;
 //-- CAssignOp
 LOG_CLASS_SIZE(CAssignOp)
 
+const TCHAR CAssignOp::m_name[] = _T("assign");
+
 CAssignOp::CAssignOp(IAtomOperate * dst_op, const CJCStringT & dst_name)
-	: m_src_op(NULL)
-	, m_dst_op(dst_op)
+	: m_dst_op(dst_op)
 	, m_dst_name(dst_name)
 {
 	LOG_STACK_TRACE();
@@ -30,13 +31,11 @@ CAssignOp::~CAssignOp(void)
 {
 	LOG_STACK_TRACE();
 	if (m_dst_op) m_dst_op->Release();
-	if (m_src_op) m_src_op->Release();
 }
 
 bool CAssignOp::GetResult(jcparam::IValue * & val)
 {
 	// 应当不会被调用
-	LOG_STACK_TRACE();
 	JCASSERT(0);
 	return false;
 }
@@ -44,11 +43,11 @@ bool CAssignOp::GetResult(jcparam::IValue * & val)
 bool CAssignOp::Invoke(void)
 {
 	LOG_STACK_TRACE();
-	JCASSERT(m_src_op);
+	JCASSERT(m_src[0]);
 	JCASSERT(m_dst_op);
 
 	jcparam::IValue *val = NULL;
-	m_src_op->GetResult(val);
+	m_src[0]->GetResult(val);
 
 	if (val)
 	{
@@ -70,194 +69,68 @@ bool CAssignOp::Invoke(void)
 	return true;
 }
 
-void CAssignOp::SetSource(UINT src_id, IAtomOperate * op)
+void CAssignOp::DebugInfo(FILE * outfile)
 {
-	LOG_STACK_TRACE();
-	JCASSERT(op);
-	JCASSERT(NULL == m_src_op);
-	
-	m_src_op = op;
-	op->AddRef();
-}
-
-#ifdef _DEBUG
-void CAssignOp::DebugOutput(LPCTSTR indentation, FILE * outfile)
-{
-	stdext::jc_fprintf(outfile, indentation);
-	stdext::jc_fprintf(outfile, _T("assign, [%08X], <%08X>, dst=<%08X>, var=%s\n"),
-		(UINT)(static_cast<IAtomOperate*>(this)),
-		(UINT)(m_src_op), 
+	stdext::jc_fprintf(outfile, _T("dst=<%08X>, var=%s"),
 		(UINT)(m_dst_op), m_dst_name.c_str());
 }
-#endif
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- CPushParamOp
 LOG_CLASS_SIZE(CPushParamOp)
+const TCHAR CPushParamOp::m_name[] = _T("push_param");
 
 CPushParamOp::CPushParamOp(IFeature * dst_op, const CJCStringT & dst_name)
-	: m_src_op(NULL)
-	, m_function(dst_op)
+	: m_function(dst_op)
 	, m_param_name(dst_name)
 {
 	LOG_STACK_TRACE();
 	JCASSERT(m_function);
 	m_function->AddRef();
-	//strcpy_s(_class_name, "PushOp");
 }
 
 CPushParamOp::~CPushParamOp(void)
 {
 	LOG_STACK_TRACE();
 	if (m_function) m_function->Release();
-	if (m_src_op) m_src_op->Release();
 }
 
 bool CPushParamOp::GetResult(jcparam::IValue * & val)
 {
 	// 应当不会被调用
-	LOG_STACK_TRACE();
 	JCASSERT(0);
 	return false;
 }
 
 bool CPushParamOp::Invoke(void)
 {
-	LOG_STACK_TRACE_O(_T(""));
-	JCASSERT(m_src_op);
+	JCASSERT(m_src[0]);
 	JCASSERT(m_function);
 
-	LOG_NOTICE(_T("{%08X} push_param  <%08X> -> <%08X>:%s"), 
-		static_cast<IAtomOperate*>(this),
-		(UINT)(m_src_op), (UINT)(m_function), m_param_name.c_str() );
+	LOG_SCRIPT(_T("<%08X> -> <%08X>:%s"), 
+		(UINT)(m_src[0]), (UINT)(m_function), m_param_name.c_str() );
 
 	jcparam::IValue *val = NULL;
-	m_src_op->GetResult(val);
+	m_src[0]->GetResult(val);
 
 	m_function->PushParameter(m_param_name, val);
 	val->Release();
 	return true;
 }
 
-void CPushParamOp::SetSource(UINT src_id, IAtomOperate * op)
+void CPushParamOp::DebugInfo(FILE * outfile)
 {
-	LOG_STACK_TRACE();
-	JCASSERT(op);
-	JCASSERT(NULL == m_src_op);
-	
-	m_src_op = op;
-	op->AddRef();
+	stdext::jc_fprintf(outfile, _T("func=<%08X>, param=%s"),
+		(UINT)(m_function), m_param_name.c_str());
 }
-
-#ifdef _DEBUG
-void CPushParamOp::DebugOutput(LPCTSTR indentation, FILE * outfile)
-{
-	stdext::jc_fprintf(outfile, indentation);
-	stdext::jc_fprintf(outfile, _T("push_param, [%08X], <%08X>, func=<%08X>, param=%s\n"),
-		(UINT)(static_cast<IAtomOperate*>(this)),
-		(UINT)(m_src_op), 
-		(UINT)(static_cast<IAtomOperate*>(m_function)), m_param_name.c_str());
-}
-#endif
-
-///////////////////////////////////////////////////////////////////////////////
-//-- CVariableOp
-LOG_CLASS_SIZE(CVariableOp)
-
-CVariableOp::CVariableOp(CVariableOp * parent, const CJCStringT & var_name)
-	: /*m_source(NULL)
-	, */m_parent(NULL)
-	, m_val(NULL)
-	, m_var_name(var_name)
-{
-	LOG_STACK_TRACE();
-	m_parent = parent;
-	if (m_parent) 
-	{
-		m_src[0] = static_cast<IAtomOperate*>(m_parent);
-		m_src[0]->AddRef();
-	}
-}
-
-CVariableOp::CVariableOp(jcparam::IValue * val)
-	: /*m_source(NULL)
-	, */m_parent(NULL)
-	, m_val(val)
-{
-	if (m_val) m_val->AddRef();
-}
-
-CVariableOp::~CVariableOp(void)
-{
-	LOG_STACK_TRACE();
-	//if (m_source) m_source->Release();
-	if (m_val) m_val->Release();
-}
-
-
-bool CVariableOp::GetResult(jcparam::IValue * & val)
-{
-	LOG_STACK_TRACE();
-	JCASSERT(NULL == val);
-
-	val = m_val;
-	if (val) val->AddRef();
-	return true;
-}
-
-bool CVariableOp::Invoke(void)
-{
-	LOG_STACK_TRACE();
-
-	if (m_parent) m_parent->Invoke();
-	if (m_src[0])
-	{
-		JCASSERT(NULL == m_val);
-		jcparam::IValue * val = NULL;
-		m_src[0]->GetResult(val);		// 如果m_parent被设，m_src[0]一定等于m_parent。
-		val->GetSubValue(m_var_name.c_str(), m_val);
-		val->Release();
-	}
-	return true;
-}
-
-//void CVariableOp::SetSource(UINT src_id, IAtomOperate * op)
-//{
-//	LOG_STACK_TRACE();
-//	JCASSERT(op);
-//	JCASSERT(NULL == m_source);
-//
-//	m_source = op;
-//	m_source->AddRef();
-//}
-
-void CVariableOp::SetVariableName(const CJCStringT & name)
-{
-	LOG_STACK_TRACE();
-	m_var_name = name;
-}
-
-#ifdef _DEBUG
-void CVariableOp::DebugOutput(LPCTSTR indentation, FILE * outfile)
-{
-	stdext::jc_fprintf(outfile, indentation);
-	stdext::jc_fprintf(outfile, _T("variable, [%08X], <%08X>, sub=%s\n"),
-		(UINT)(static_cast<IAtomOperate*>(this)),
-		(UINT)(m_src[0]), 
-		m_var_name.c_str());
-
-	if (m_parent) m_parent->DebugOutput(indentation-1, outfile);
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- CSaveToFileOp
 LOG_CLASS_SIZE(CSaveToFileOp)
+const TCHAR CSaveToFileOp::m_name[] = _T("save_file");
 
 CSaveToFileOp::CSaveToFileOp(const CJCStringT & filename)
 	: m_file_name(filename)
-	, m_src_op(NULL)
 	, m_file(NULL)
 {
 }
@@ -265,18 +138,17 @@ CSaveToFileOp::CSaveToFileOp(const CJCStringT & filename)
 CSaveToFileOp::~CSaveToFileOp(void)
 {
 	if (m_file)		fclose(m_file);
-	if (m_src_op)	m_src_op->Release();
 }
 
 bool CSaveToFileOp::Invoke(void)
 {
+	LOG_SCRIPT(_T(""));
 	// 支持逐次运行
-	LOG_STACK_TRACE();
-	JCASSERT(m_src_op);
+	JCASSERT(m_src[0]);
 
 	// 行写入
 	stdext::auto_interface<jcparam::IValue> val;
-	m_src_op->GetResult(val);
+	m_src[0]->GetResult(val);
 	if ( !val) 
 	{	// warnint
 		return true;
@@ -300,29 +172,15 @@ bool CSaveToFileOp::Invoke(void)
 	return true;
 }
 
-void CSaveToFileOp::SetSource(UINT src_id, IAtomOperate * op)
+void CSaveToFileOp::DebugInfo(FILE * outfile)
 {
-	LOG_STACK_TRACE();
-	JCASSERT(op);
-	m_src_op = op;
-	m_src_op->AddRef();
+	stdext::jc_fprintf(outfile, _T("fn=%s"), m_file_name.c_str());
 }
-
-#ifdef _DEBUG
-void CSaveToFileOp::DebugOutput(LPCTSTR indentation, FILE * outfile)
-{
-	stdext::jc_fprintf(outfile, indentation);
-	stdext::jc_fprintf(outfile, _T("save_file, [%08X], <%08X>, fn=%s\n"),
-		(UINT)(static_cast<IAtomOperate*>(this)),
-		(UINT)(m_src_op), 
-		m_file_name.c_str());
-}
-#endif
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- CExitOp
 LOG_CLASS_SIZE(CExitOp)
+
 bool CExitOp::Invoke(void)
 {
 	_tprintf( _T("Bye bye!\r\n") );
@@ -330,60 +188,124 @@ bool CExitOp::Invoke(void)
 	return false;
 }
 
-#ifdef _DEBUG
-void CExitOp::DebugOutput(LPCTSTR indentation, FILE * outfile)
-{
-	stdext::jc_fprintf(outfile, indentation);
-	stdext::jc_fprintf(outfile, _T("exit, [%08X], <%08X>\n"),
-		(UINT)(static_cast<IAtomOperate*>(this)), (UINT)(0) );
-}
-#endif	
+const TCHAR CExitOp::name[] = _T("exit");
 
 ///////////////////////////////////////////////////////////////////////////////
-// filter statement
-LOG_CLASS_SIZE(CFilterSt);
+//-- feature wrapper
+LOG_CLASS_SIZE(CFeatureWrapper)
+const TCHAR CFeatureWrapper::m_name[] = _T("feature");
 
-CFilterSt::CFilterSt(void)
-	: m_row(NULL)
-	, m_init(false)
+CFeatureWrapper::CFeatureWrapper(IFeature * feature)
+	: m_feature(feature)
+	, m_outport(NULL)
 {
+	JCASSERT(m_feature);
+	m_feature->AddRef();
+}
+
+CFeatureWrapper::~CFeatureWrapper(void)
+{
+	JCASSERT(m_feature);
+	m_feature->Release();
+}
+
+bool CFeatureWrapper::GetResult(jcparam::IValue * & val)
+{
+	return false;
+}
+
+bool CFeatureWrapper::Invoke(void)
+{
+	LOG_SCRIPT(_T("<%08X>"), (UINT)(m_feature) )
+	stdext::auto_interface<jcparam::IValue> val;
+	if (m_src[0])	m_src[0]->GetResult(val);
+	return m_feature->Invoke(val, m_outport);
+}
+
+void CFeatureWrapper::SetOutPort(IOutPort * outport)
+{
+	JCASSERT(NULL == m_outport);
+	m_outport = outport;
+}
+
+void CFeatureWrapper::DebugInfo(FILE * outfile)
+{
+	stdext::jc_fprintf(outfile, _T(": %s, <%08X>"), m_feature->GetFeatureName(), (UINT)(m_feature) );
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//-- filter statement
+LOG_CLASS_SIZE(CFilterSt);
+const TCHAR CFilterSt::m_name[] = _T("filter");
+
+CFilterSt::CFilterSt(IOutPort * out_port)
+	: m_init(false)
+	, m_outport(out_port)
+{
+	// m_outport指向filter的上层，一般为single_st。不能引用计数，否则会引起release的死锁。
+	JCASSERT(m_outport);
 }
 		
 CFilterSt::~CFilterSt(void)
 {
-	if (m_row) m_row->Release();
-}
-
-bool CFilterSt::GetResult(jcparam::IValue * & val) 
-{
-	JCASSERT(NULL == val);
-	val = m_row;
-	if (val) val->AddRef();
-	return true;
 }
 
 bool CFilterSt::Invoke(void)
 {
+	JCASSERT(m_outport);
 	// src0: the source of bool expression.
 	// src1: the source of table
-	if (! m_init)
-	{
-		JCASSERT(m_src[SRC_TAB]);
-		JCASSERT(m_src[SRC_EXP]);
-		m_init = true;
-	}
-
-	if (m_row)	m_row->Release(), m_row = NULL;
 
 	stdext::auto_interface<jcparam::IValue> val;
 	stdext::auto_interface<jcparam::IValue> _row;
-	if ( m_src[SRC_EXP]->GetResult(val) )
+	bool br = m_src[SRC_EXP]->GetResult(val);
+	if ( br )
 	{
 		m_src[SRC_TAB]->GetResult(_row);
-		m_row = _row.d_cast<jcparam::ITableRow*>();
-		if ( !m_row ) THROW_ERROR(ERR_USER, _T("The input of filter should be a row"));
-		m_row->AddRef();
+		jcparam::ITableRow * row = _row.d_cast<jcparam::ITableRow*>();
+		if ( !row ) THROW_ERROR(ERR_USER, _T("The input of filter should be a row"));
+		m_outport->PushResult(row);
 	}
+	LOG_SCRIPT(_T(": %s"), br?_T("true"):_T("false"));
 	return true;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+//-- CInPort
+LOG_CLASS_SIZE(CInPort);
+
+const TCHAR CInPort::m_name[] = _T("inport");
+
+CInPort::CInPort(void)
+	: m_row(NULL)
+{
+}
+
+CInPort::~CInPort(void)
+{
+	if (m_row) m_row->Release();
+}
+
+bool CInPort::GetResult(jcparam::IValue * & val)
+{
+	JCASSERT(NULL == val);
+	LOG_SCRIPT(_T(""));
+	if (m_row)
+	{
+		val = static_cast<jcparam::IValue*>(m_row);
+		val->AddRef();
+		return true;
+	}
+	else	return false;
+
+}
+
+bool CInPort::Invoke(void)
+{
+	LOG_SCRIPT(_T(""));
+	if (m_row)	m_row->Release(), m_row=NULL;
+	bool br = m_src[0]->PopupResult(m_row);
+	return br;
+}
+
+const TCHAR CHelpProxy::name[] = _T("help");

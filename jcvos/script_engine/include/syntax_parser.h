@@ -15,11 +15,15 @@ namespace jcscript
 	};	
 
 	// 声明IAtomOperate的类(按字母顺序)	
-	class CComboStatement;
+	class CComboSt;
 	class CVariableOp;	
 
 	class CSyntaxParser;
 	class CFilterSt;
+	class CSequenceOp;
+#define IChainOperate IAtomOperate
+	//class IChainOperate;
+	class CSingleSt;
 
 	// 词法分析
 	enum TOKEN_ID
@@ -56,6 +60,7 @@ namespace jcscript
 		ID_PARAM_NAME,		// 参数名称
 		ID_PARAM_TABLE,		// --@ 以表中的列名作为参数名称
 		ID_EQUAL,			// 等号
+		ID_PREDEF_VAR,		// 预定义变量
 		ID_QUOTATION1,		// 双引号
 		ID_QUOTATION2,		// 单引号
 		ID_STRING,			// 除去引号后的内容
@@ -105,7 +110,6 @@ namespace jcscript
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- CSyntaxParser
@@ -121,45 +125,68 @@ public:
 	void Parse(LPCTSTR &str, LPCTSTR last);
 	void Source(FILE * file);
 	bool GetError(void)	{return m_syntax_error;};
+	bool MatchScript(IAtomOperate * & program);
 
 public:
-	bool MatchAssign(CComboStatement * combo, IAtomOperate * & op);
-	bool MatchBoolExpression(CComboStatement * combo, IAtomOperate * & op);
+	// Single Statatment级别
+	// [INOUT] chain: 输入，前一个single st，作为当前single st的输入，
+	//				输出，assign语句本身，或者NULL
+	//		所有sigle st级别(filter st, assign, ...)的match函数支持类似参数
+	bool MatchAssign(CSequenceOp * combo, IChainOperate * & chain);
+
+	bool MatchBoolExpression(CSequenceOp * combo, IAtomOperate * & op);
 	//void MatchBE1(CComboStatement * combo, IAtomOperate * & op);
 
-	bool MatchCmdSet(CComboStatement * combo, IFeature * proxy, int index);
-	bool MatchComboSt(CComboStatement * & combo);
-	void MatchConstant(IAtomOperate * & val);
+	bool MatchCmdSet(CSingleSt * st, IFeature * proxy, int index);
+	bool MatchComboSt(CComboSt * combo);		
+	void MatchConstant(IAtomOperate * & val);	// 终结符
 	// 解析一个表达式，结果在op中返回。如果op立刻可以被求结果
 	//（常数，常熟组成的表达式等）则返回true，通过调用op的Invloke
 	// 成员函数得到计算结果。
-	bool MatchExpression(CComboStatement * combo, IAtomOperate * & op);
+	bool MatchExpression(CSequenceOp * combo, IAtomOperate * & op);
 	//bool MatchExp1();
 
-	bool MatchFactor(CComboStatement * combo, IAtomOperate * & op);
-	void MatchFeature(CComboStatement * combo, IPlugin * plugin, IFeature * & f);
-	//bool MatchFileName(IAtomOperate * & op);
-	void MatchFilterSt(CComboStatement * combo, CFilterSt * & ft);
+	bool MatchFactor(CSequenceOp * combo, IAtomOperate * & op);
+
+	// Single Statatment级别
+	// [INOUT] chain: 输入，前一个single st，作为当前single st的输入，
+	//				输出，assign语句本身，或者NULL
+	//		所有sigle st级别(filter st, assign, ...)的match函数支持类似参数
+	void MatchFeature(CSingleSt * single_st, IPlugin * plugin);
+
+	void MatchFilterSt(CSingleSt * combo);
+
 	void MatchHelp(IAtomOperate * & op);
-	void MatchParamSet(CComboStatement * comb, IFeature * proxy);
-	bool MatchParamVal2(IAtomOperate * & op, bool & constant, bool & file);
+	void MatchParamSet(CSingleSt * st, IFeature * proxy);
+	bool MatchParamVal2(CSequenceOp * comb, IAtomOperate * & exp);
 	// 关系运算符
-	bool MatchRelationExp(CComboStatement * comb, IAtomOperate * & op);
-	bool MatchRelationFactor(CComboStatement * comb, IAtomOperate * & exp);
+	bool MatchRelationExp(CSequenceOp * comb, IAtomOperate * & op);
+	bool MatchRelationFactor(CSequenceOp * comb, IAtomOperate * & exp);
 
 
-	void MatchS1(CComboStatement * combo);
-	bool MatchScript(IAtomOperate * & program);
-	//void OnSelect(CComboStatement * combo);
-	bool MatchSingleSt(CComboStatement * combo, IAtomOperate * & proxy);
-	// 处理@符号
+	void MatchS1(CSequenceOp * combo, IChainOperate * &chain);
+	// 编译一个叫本(子程序)，将子程序添加到program中
+	bool MatchScript1(CSequenceOp * program);
+
+	// [INOUT] chain: 输入，前一个single st，作为当前single st的输入，
+	//				输出，当前产生的single st。作为下一个single st的输入用
+	//		所有sigle st级别(filter st, assign, ...)的match函数支持类似参数
+	bool MatchSingleSt(CSequenceOp * combo, IChainOperate * & chain);
+
+	// 处理参数中的@符号
 	//	[IN] combo：当前Combo
 	//	[OUT] op :由@后语句组成的新combo
-	bool MatchTable(CComboStatement * combo, CComboStatement * & op);
-	bool MatchTerm(CComboStatement * combo, IAtomOperate * & op);
-	bool MatchVariable(IAtomOperate * & op);
-	bool MatchV1(CVariableOp * parent_op, IAtomOperate * & op);
-	void MatchV3(IAtomOperate * & op);
+	bool MatchTableParam(CSequenceOp * combo, IChainOperate * & chain);
+
+	// 处理Combo头上的@符号
+	bool MatchTableSt(CSequenceOp * combo, IChainOperate * & chain);
+
+	bool MatchTerm(CSequenceOp * combo, IAtomOperate * & op);
+
+	bool MatchVariable(CSequenceOp * combo, IAtomOperate * & op);
+	//bool MatchV1(CSequenceOp * combo, CVariableOp * parent_op, IAtomOperate * & op);
+
+	void MatchV3(CSequenceOp * combo, IAtomOperate * & op);
 
 public:
 	void NewLine(void);
@@ -170,8 +197,7 @@ protected:
 	void ReadSource(void);
 	bool Match(TOKEN_ID id, LPCTSTR err_msg);
 	void PushOperate(IAtomOperate * op);
-	bool MatchPV2PushParam(CComboStatement * combo, IFeature * func, 
-		const CJCStringT & param_name);
+	bool MatchPV2PushParam(CSingleSt * st, IFeature * func, const CJCStringT & param_name);
 	void SetBoolOption(IFeature * proxy, const CJCStringT & param_name);
 	bool CheckAbbrev(IFeature * proxy, TCHAR abbr, CJCStringT & param_name);
 
@@ -194,6 +220,8 @@ protected:
 	// 变量管理对象，目前仅支持全局变量管理。下一步可支持局部变量。
 	// m_var_set不需要调用Invoke()，仅调用GetResult()就能够得到全局变量的根。
 	IAtomOperate * m_var_set;
+
+	//IAtomOperate * m_chain;
 
 	// 源文件处理
 	FILE * m_file;

@@ -2,10 +2,18 @@
 
 #include "../include/iplugin.h"
 
+#define LOG_SCRIPT(fmt, ...)		{\
+	TCHAR str[128];	\
+	stdext::jc_sprintf(str, fmt, __VA_ARGS__); \
+	LOG_NOTICE( _T("+ %s [%08X] %s"), \
+	m_name, (UINT)(static_cast<IAtomOperate*>(this)), str);	\
+	}
+
+
 namespace jcscript
 {
 	template <typename TS, typename TD>		// 元类型，结果类型
-	void Convert(void * s, void * d)
+	void Convert(const void * s, void * d)
 	{
 		TS* _s = (TS*)(s);
 		TD* _d = (TD*)(d);
@@ -13,23 +21,35 @@ namespace jcscript
 	}
 
 	// 
-	typedef void (*CONVERT_FUN)(void*, void*);
+	typedef void (*CONVERT_FUN)(const void*, void*);
 	typedef void (*SOURCE_FUN)(jcparam::ITableRow *, int, void *);
-	typedef void (*ATHOP_FUN)(void * l, void * r, void * res);
-	typedef bool (*RELOP_FUN)(void * l, void * r);
+	typedef void (*ATHOP_FUN)(const void * l, const void * r, void * res);
+	typedef bool (*RELOP_FUN)(const void * l, const void * r);
 
 	class IOperator : virtual public IAtomOperate
 	{
 	public:
-		virtual void * GetValue(void) = 0;
+		virtual const void * GetValue(void) = 0;
 		virtual jcparam::VALUE_TYPE GetValueType(void) = 0;
 	};
 
-	template <class SRC_TYPE, UINT src_num>
-	class COpSourceSupport : virtual public IAtomOperate
+///////////////////////////////////////////////////////////////////////////////
+// -- base
+	class no_name
 	{
 	public:
-		COpSourceSupport(void) {memset(m_src, 0, sizeof(SRC_TYPE*) * src_num); }
+		static const TCHAR m_name[];
+	};
+
+	template <class SRC_TYPE, UINT src_num, class NAME = no_name >
+	class COpSourceSupport 
+		: virtual public IAtomOperate
+	{
+	public:
+		COpSourceSupport(void) : m_dependency(0)
+		{
+			memset(m_src, 0, sizeof(SRC_TYPE*) * src_num); 
+		}
 		virtual ~COpSourceSupport(void) { for (UINT ii = 0; ii < src_num; ++ii) if (m_src[ii]) m_src[ii]->Release(); }
 
 	public:
@@ -39,47 +59,52 @@ namespace jcscript
 			JCASSERT(NULL == m_src[src_id]);
 			m_src[src_id] = dynamic_cast<SRC_TYPE*>(op);
 			JCASSERT(m_src[src_id]);
-			/*if (m_src[src_id]) */m_src[src_id]->AddRef();
-		}
-	protected:
-		SRC_TYPE * m_src[src_num];
-	};
+			m_src[src_id]->AddRef();
 
-	class COpSourceSupport0 : virtual public IAtomOperate
-	{
-	public:
-		virtual void SetSource(UINT src_id,  IAtomOperate * op)	{ JCASSERT(0); }
+			m_dependency = max(m_dependency, m_src[src_id]->GetDependency());
+		}
+		virtual UINT GetProperty(void) const {return 0;} ;
+		virtual UINT GetDependency(void) {return m_dependency;};
+		virtual void DebugOutput(LPCTSTR indentation, FILE * outfile)
+		{
+			stdext::jc_fprintf(outfile, _T("%s%s (%d) [%08X], "), 
+				indentation, NAME::m_name, 
+				GetDependency(), (UINT)(static_cast<IAtomOperate*>(this)) );
+			for (int ii=0; ii < src_num; ++ii)	stdext::jc_fprintf(outfile, _T("<%08X>, "), (UINT)(static_cast<IAtomOperate*>(m_src[ii])));
+			DebugInfo(outfile);
+			stdext::jc_fprintf(outfile, _T("\n") );
+		}
+		virtual void DebugInfo(FILE * outfile) {}
+
+	protected:
+		UINT m_dependency;
+		SRC_TYPE * m_src[src_num];
 	};
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- debug information support for IAtomOperate
-	class CDebugInfo0
-		: virtual public IAtomOperate
+	template <class BASE>
+	class COpSourceSupport0 : virtual public IAtomOperate
 	{
 	public:
+		virtual void SetSource(UINT src_id,  IAtomOperate * op)	{ JCASSERT(0); }
+		virtual UINT GetProperty(void) const {return 0;};
+		virtual UINT GetDependency(void) {return 0;};
 		virtual void DebugOutput(LPCTSTR indentation, FILE * outfile)
 		{
-			// format: name, [this ptr], <source 1 ptr>, <source 2 ptr>, other information
-			stdext::jc_fprintf(outfile, indentation);
-			stdext::jc_fprintf(outfile, _T("%s, [%08X], <%08X>, <%08X>,"),
-				name(), (UINT)(static_cast<IAtomOperate*>(this)),
-				(UINT)( source(0) ), (UINT)( source(1) ) );
+			stdext::jc_fprintf(outfile, _T("%s%s (%d) [%08X], "), indentation, BASE::name, GetDependency(), (UINT)(static_cast<IAtomOperate*>(this)) );
 			DebugInfo(outfile);
 			stdext::jc_fprintf(outfile, _T("\n") );
 		}
-
-		virtual IAtomOperate * source(UINT src) {return NULL;}
-		virtual LPCTSTR name() const {return _T(""); };
-		virtual void DebugInfo(FILE * outfile) {};
+		virtual void DebugInfo(FILE * outfile) {}
 	};
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- column value
 	class CColumnVal
 		: virtual public IOperator
-		, public COpSourceSupport<IAtomOperate, 1>
-		, public CDebugInfo0
-		, public CJCInterfaceBase
+		, public COpSourceSupport<IAtomOperate, 1, CColumnVal>
+		JCIFBASE
 	{
 	public:
 		CColumnVal(const CJCStringT & col_name);
@@ -91,16 +116,13 @@ namespace jcscript
 
 	public:
 		// 返回计算结果
-		virtual void * GetValue(void)		{	return (void*)(m_res);	}
+		virtual const void * GetValue(void)		{	return (void*)(m_res);	}
 		virtual jcparam::VALUE_TYPE GetValueType(void) {return m_res_type;}
+		virtual void DebugInfo(FILE * outfile);
 
 	// debug info
-	virtual IAtomOperate * source(UINT src) {return m_src[0];}
-	virtual LPCTSTR name() const {return _T("column_val"); };
-	virtual void DebugInfo(FILE * outfile) 
-	{
-		stdext::jc_fprintf(outfile, _T("col=%s"), m_col_name.c_str()); 
-	};
+	public:
+		static const TCHAR m_name[];
 
 	protected:
 		CJCStringT m_col_name;
@@ -111,12 +133,51 @@ namespace jcscript
 	};
 
 ///////////////////////////////////////////////////////////////////////////////
+// -- Variable
+	//-- CVariableOp
+	// 用于从一个变量中取出其成员。即var1.var2.var3
+	// 目前以嵌套方式实现成员变量
+	class CVariableOp	
+		: virtual public IOperator
+		, public COpSourceSupport<IAtomOperate, 1, CVariableOp>
+		JCIFBASE 
+	{
+	public:
+		// CVariableOp作为计算变量成员使用。
+		CVariableOp(const CJCStringT & var_name);
+
+		// CVariableOp作为IValue的封装使用
+		CVariableOp(jcparam::IValue * val);
+		virtual ~CVariableOp(void);
+
+	public:
+		virtual bool GetResult(jcparam::IValue * & val);
+		virtual bool Invoke(void);
+		virtual void DebugInfo(FILE * outfile);
+
+		virtual const void * GetValue(void);
+		virtual jcparam::VALUE_TYPE GetValueType(void);
+
+	public:
+		static const TCHAR m_name[];
+
+	protected:
+		// m_paraent是m_source的拷贝，用于表示需要被Invoke。 m_parent不需要引用计数
+		//CVariableOp * m_parent;		
+		CJCStringT m_var_name;
+		jcparam::IValue * m_val;
+		jcparam::CTypedValueBase *	m_typed_val;
+	};
+
+
+
+///////////////////////////////////////////////////////////////////////////////
 // -- constant
 	template <typename DTYPE>
 	class CConstantOp	
 		: virtual public IOperator
-		, public CDebugInfo0
-		, public CJCInterfaceBase 
+		, public COpSourceSupport0<CConstantOp<DTYPE> >
+JCIFBASE 
 	{
 	protected:
 		CConstantOp(const DTYPE & val) : m_val(val) {};
@@ -124,6 +185,7 @@ namespace jcscript
 
 	public:
 		friend class CSyntaxParser;
+		friend class COpSourceSupport0<CConstantOp<DTYPE> >;
 
 	public:
 		virtual bool GetResult(jcparam::IValue * & val)
@@ -136,21 +198,29 @@ namespace jcscript
 		// 直接实现SetSource要比继承COpSouceSupport0节省4字节
 		virtual void SetSource(UINT src_id, IAtomOperate * op) { JCASSERT(0); }
 
-		virtual void * GetValue(void)	{ return (void*)(&m_val); }
+		virtual const void * GetValue(void)	{ return (void*)(&m_val); }
 		virtual jcparam::VALUE_TYPE GetValueType(void) { return jcparam::type_id<DTYPE>::id(); }
+		virtual UINT GetProperty(void) const {return 0;} ;
+		virtual UINT GetDependency(void) {return 0;} ;
+		virtual void DebugInfo(FILE * outfile)
+		{
+			CJCStringT str;
+			jcparam::CConvertor<DTYPE>::T2S(m_val, str);
+			stdext::jc_fprintf(outfile, _T("%s"), str.c_str());
+		}
 
 	protected:
 		DTYPE m_val;
-
-	// debug information support
-	protected:
-		virtual LPCTSTR name() const {return _T("constant");}
-		virtual void DebugInfo(FILE * outfile) const { }
+		static const TCHAR name[];
 	};
+
+template <typename DTYPE>
+const TCHAR CConstantOp<DTYPE>::name[] = _T("constant");
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// -- base support
+// -- CAthOpBase 算术运算符 
 	// 表达式操作符的基础类。支持运行时类型转换。
 	//  运行时类型转换：主要针对表格处理的优化。在表格中，每一行中，相同列的类型是相同的。
 	//		在第一次运行时，判断操作数的类型并且推导类型转换规则。其Source必须是IOperator接口
@@ -163,10 +233,8 @@ namespace jcscript
 	template <class ATH_OP>
 	class CAthOpBase
 		: virtual public IOperator
-		, public ATH_OP
-		, public COpSourceSupport<IOperator, 2>
-		, public CDebugInfo0
-		, public CJCInterfaceBase
+		, public COpSourceSupport<IOperator, 2, ATH_OP>
+		JCIFBASE
 	{
 	public:
 		CAthOpBase(void);
@@ -177,20 +245,17 @@ namespace jcscript
 
 	public:
 		// 返回计算结果
-		virtual void * GetValue(void)		{	return m_res;	}
+		virtual const void * GetValue(void)		{	return m_res;	}
 		virtual jcparam::VALUE_TYPE GetValueType(void) {return m_res_type;}
 
 	// debug info
-	virtual IAtomOperate * source(UINT src) { return m_src[src];}
-	virtual LPCTSTR name() const {return _T("ath_op"); };
-
 	protected:
 		jcparam::VALUE_TYPE m_res_type;		// 用于决定src的目的类型。
 
 		//jcparam::VALUE_TYPE	m_res_type;
 		// 数据缓存，[0]:L, [1]:R, [2]:res
-		BYTE m_sl[sizeof(double)];
-		BYTE m_sr[sizeof(double)];
+		//BYTE m_sl[sizeof(double)];
+		//BYTE m_sr[sizeof(double)];
 		BYTE m_res[sizeof(double)];
 
 	protected:
@@ -203,27 +268,33 @@ namespace jcscript
 // -- ath operator
 	//-- +
 	template <typename T>
-	void AthAdd(void * l, void* r, void * res)
+	void AthAdd(const void * l, const void* r, void * res)
 	{	T* _l = (T*)l, * _r = (T*)r; 	*((T*)res) = *_l + *_r; 	}
-	struct CAthAdd {	static const ATHOP_FUN AthOp[jcparam::VT_MAXNUM - 1];	};
+	struct CAthAdd 
+	{	
+		static const ATHOP_FUN AthOp[jcparam::VT_MAXNUM - 1];	
+		static const TCHAR m_name[];
+	};
 	typedef CAthOpBase<CAthAdd>	CAthOpAdd;
 
 	//-- -
 	template <typename T>
-	void AthSub(void * l, void* r, void * res)
+	void AthSub(const void * l, const void* r, void * res)
 	{	T* _l = (T*)l, * _r = (T*)r; 	*((T*)res) = *_l - *_r; 	}
-	struct CAthSub {	static const ATHOP_FUN AthOp[jcparam::VT_MAXNUM - 1];	};
+	struct CAthSub 
+	{	
+		static const ATHOP_FUN AthOp[jcparam::VT_MAXNUM - 1];	
+		static const TCHAR m_name[];
+	};
 	typedef CAthOpBase<CAthSub>	CAthOpSub;
 
 ///////////////////////////////////////////////////////////////////////////////
-// -- bool operator
+// -- CBoolOpBase 逻辑运算符
 	template <class BOOL_OP>
 	class CBoolOpBase
 		: virtual public IOperator
-		, public BOOL_OP
-		, public COpSourceSupport<IOperator, 2>
-		, public CDebugInfo0
-		, public CJCInterfaceBase
+		, public COpSourceSupport<IOperator, 2, BOOL_OP>
+		JCIFBASE
 	{
 	public:
 		CBoolOpBase(void);
@@ -234,31 +305,36 @@ namespace jcscript
 
 	public:
 		// 返回计算结果
-		virtual void * GetValue(void)		{	return &m_res;	}
+		virtual const void * GetValue(void)		{	return &m_res;	}
 		virtual jcparam::VALUE_TYPE GetValueType(void) {return jcparam::VT_BOOL;}
 
 		// debug info
-		virtual IAtomOperate * source(UINT src) { return m_src[src];}
-		virtual LPCTSTR name() const {return _T("bool_op"); };
 
 	protected:
 		bool m_res;
 	};
 
-	struct CBoolAnd {bool op(bool r, bool l)	{return r && l;} };
+	struct CBoolAnd 
+	{
+		static bool op(bool r, bool l)	{return r && l;} 
+		static const TCHAR m_name[];
+	};
 	typedef CBoolOpBase<CBoolAnd> CBoolOpAnd;
 
-	struct CBoolOr  {bool op(bool r, bool l)	{return r || l;} };
+	struct CBoolOr  
+	{
+		static bool op(bool r, bool l)	{return r || l;} 
+		static const TCHAR m_name[];
+	};
 	typedef CBoolOpBase<CBoolOr>	CBoolOpOr;
 
 	class CBoolOpNot
 		: virtual public IOperator
-		, public COpSourceSupport<IOperator, 1>
-		, public CDebugInfo0
-		, public CJCInterfaceBase
+		, public COpSourceSupport<IOperator, 1, CBoolOpNot>
+		JCIFBASE
 	{
 	public:
-		CBoolOpNot(void) {};
+		CBoolOpNot(void) { };
 		virtual ~CBoolOpNot(void){};
 	public:
 		virtual bool GetResult(jcparam::IValue * & val)
@@ -276,25 +352,24 @@ namespace jcscript
 
 	public:
 		// 返回计算结果
-		virtual void * GetValue(void)		{	return &m_res;	}
+		virtual const void * GetValue(void)		{	return &m_res;	}
 		virtual jcparam::VALUE_TYPE GetValueType(void) {return jcparam::VT_BOOL;}
 
 		// debug info
-		virtual IAtomOperate * source(UINT src) { return m_src[0];}
-		virtual LPCTSTR name() const {return _T("not"); };
+	public:
+		static const TCHAR m_name[];
 
 	protected:
 		bool m_res;
 	};
+
 ///////////////////////////////////////////////////////////////////////////////
-// -- relation operator
+// -- CRelOpBase 关系运算符
 	template <class REL_OP>
 	class CRelOpBase
 		: virtual public IOperator
-		, public REL_OP
-		, public COpSourceSupport<IOperator, 2>
-		, public CDebugInfo0
-		, public CJCInterfaceBase
+		, public COpSourceSupport<IOperator, 2, REL_OP>
+JCIFBASE
 	{
 	public:
 		CRelOpBase(void);
@@ -306,19 +381,15 @@ namespace jcscript
 
 	public:
 		// 返回计算结果
-		virtual void * GetValue(void)		{	return &m_res;	}
+		virtual const void * GetValue(void)		{	return &m_res;	}
 		virtual jcparam::VALUE_TYPE GetValueType(void) {return jcparam::VT_BOOL;}
 
 	// debug info
-	virtual IAtomOperate * source(UINT src) { return m_src[src];}
-	virtual LPCTSTR name() const {return _T("rop"); };
-
 	protected:
-		//IOperator * m_src[2];
 		jcparam::VALUE_TYPE m_res_type;		// 用于决定src的目的类型。
 
-		BYTE m_sl[sizeof(double)];
-		BYTE m_sr[sizeof(double)];
+		//BYTE m_sl[sizeof(double)];
+		//BYTE m_sr[sizeof(double)];
 		bool m_res;
 
 	protected:
@@ -332,28 +403,67 @@ namespace jcscript
 // -- relation operator
 	//-- ==
 	template <typename T>
-	bool CmpEQ(void * l, void* r)
+	bool CmpEQ(const void * l, const void* r)
 	{	T* _l = (T*)l, * _r = (T*)r; 		return ( (*_l) == (*_r) ); 	}
 
-	struct CRopEQ {	static const RELOP_FUN RelOp[jcparam::VT_MAXNUM - 1];	};
+	struct CRopEQ 
+	{	
+		static const RELOP_FUN RelOp[jcparam::VT_MAXNUM - 1];	
+		static const TCHAR m_name[];
+	};
 
 	typedef CRelOpBase<CRopEQ>	CRelOpEQ;
 
 	//-- <=
 	template <typename T>
-	bool CmpLT(void * l, void* r)
+	bool CmpLT(const void * l, const void* r)
 	{	T* _l = (T*)l, * _r = (T*)r; 		return ( (*_l) <= (*_r) ); 	}
 
-	struct CRopLT {	static const RELOP_FUN RelOp[jcparam::VT_MAXNUM - 1];	};
+	struct CRopLT 
+	{
+		static const RELOP_FUN RelOp[jcparam::VT_MAXNUM - 1];	
+		static const TCHAR m_name[];
+	};
 
 	typedef CRelOpBase<CRopLT>	CRelOpLT;
 
 	//-- >=
 	template <typename T>
-	bool CmpLE(void * l, void* r)
+	bool CmpLE(const void * l, const void* r)
 	{	T* _l = (T*)l, * _r = (T*)r; 		return ( (*_l) < (*_r) ); 	}
 
-	struct CRopLE {	static const RELOP_FUN RelOp[jcparam::VT_MAXNUM - 1];	};
+	struct CRopLE 
+	{	
+		static const RELOP_FUN RelOp[jcparam::VT_MAXNUM - 1];	
+		static const TCHAR m_name[];
+	};
 
 	typedef CRelOpBase<CRopLE>	CRelOpLE;
+
+///////////////////////////////////////////////////////////////////////////////
+// -- pre define variables
+
+	// index, 用于记录当前single st执行的次数
+	class CPdvIndex
+		: virtual public IOperator
+		, public COpSourceSupport<IAtomOperate, 1, CPdvIndex>
+		JCIFBASE
+	{
+	public:
+		CPdvIndex(void) : m_index(0) {};
+		virtual ~CPdvIndex(void) {};
+
+	public:
+		virtual bool GetResult(jcparam::IValue * & val) {JCASSERT(0); return false;}
+		virtual bool Invoke(void)	{m_index ++; return true;}
+		virtual const void * GetValue(void)		{	return (void*)(&m_index);	}
+		virtual jcparam::VALUE_TYPE GetValueType(void) {return jcparam::VT_UINT;}
+
+	public:
+		static const TCHAR m_name[];
+
+	protected:
+		UINT	m_index;
+	};
+
 };

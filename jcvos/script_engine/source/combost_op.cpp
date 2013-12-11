@@ -25,6 +25,7 @@ CLoopVarOp::CLoopVarOp(void)
 	, m_source(NULL)
 	, m_table_size(0)
 	, m_cur_index(0)
+	, m_dependency(0)
 {
 	LOG_STACK_TRACE();
 }
@@ -48,6 +49,16 @@ bool CLoopVarOp::GetResult(jcparam::IValue * & val)
 	return true;
 }
 
+bool CLoopVarOp::PopupResult(jcparam::ITableRow * & val)
+{
+	JCASSERT(NULL == val);
+	if (!m_row_val) return false;
+
+	val = dynamic_cast<jcparam::ITableRow*>(m_row_val);
+	if (val) m_row_val = NULL;
+	return true;
+}
+
 bool CLoopVarOp::Invoke(void)
 {
 	LOG_STACK_TRACE();
@@ -65,6 +76,8 @@ void CLoopVarOp::SetSource(UINT src_id, IAtomOperate * op)
 
 	m_source = op;
 	op->AddRef();
+
+	m_dependency = m_source->GetDependency() + 1;
 }
 
 void CLoopVarOp::GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const
@@ -107,7 +120,7 @@ void CLoopVarOp::DebugOutput(LPCTSTR indentation, FILE * outfile)
 {
 	stdext::jc_fprintf(outfile, indentation);
 	stdext::jc_fprintf(outfile, _T("loop_var, [%08X], <%08X>\n"), 
-		(UINT)(static_cast<IAtomOperate*>(this)),
+		(UINT)((this)),
 		(UINT)(m_source));
 }
 #endif
@@ -195,6 +208,7 @@ void CCollectOp::DebugOutput(LPCTSTR indentation, FILE * outfile)
 #endif
 
 
+/*
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- CComboStatement
@@ -213,7 +227,7 @@ CComboStatement::CComboStatement(void)
 	m_loop(NULL)
 	, m_last_chain(NULL)
 {
-	m_loop = new CLoopOp;
+	//m_loop = new CLoopOp;
 }
 
 CComboStatement::~CComboStatement(void) 
@@ -226,7 +240,7 @@ CComboStatement::~CComboStatement(void)
 void CComboStatement::Create(CComboStatement * & proxy)
 {
 	JCASSERT(NULL == proxy);
-	proxy = new CComboStatement;
+	//proxy = new CComboStatement;
 }
 
 void CComboStatement::AddLoopOp(IAtomOperate * op)
@@ -352,7 +366,7 @@ void CComboStatement::CompileClose(void)
 		if (m_assignee)
 		{	// 自动添加collect op用于叠加处理循环的结果
 			IAtomOperate * op = static_cast<IAtomOperate*>(new CCollectOp);
-			m_loop->AddLoopOp(op/*, true*/);
+			m_loop->AddLoopOp(op);
 			op->SetSource(0, m_last_chain);
 			m_last_chain = op;
 			m_assignee->SetSource(0, op);
@@ -390,9 +404,13 @@ void CComboStatement::DebugOutput(LPCTSTR indentation, FILE * outfile)
 }
 
 #endif
+*/
 
 ///////////////////////////////////////////////////////////////////////////////
 //--CLoopOp
+/*
+LOG_CLASS_SIZE(CLoopOp);
+
 CLoopOp::CLoopOp(void)
 	: m_loop_var(NULL)
 {
@@ -435,7 +453,7 @@ void CLoopOp::AddLoopOp(IAtomOperate * op)
 	op->AddRef();
 }
 
-void CLoopOp::SetLoopVar(ILoopOperate * expr_op/*, bool is_func*/)
+void CLoopOp::SetLoopVar(ILoopOperate * expr_op)
 {
 	LOG_STACK_TRACE();
 	JCASSERT(expr_op);
@@ -455,7 +473,7 @@ void CLoopOp::DebugOutput(LPCTSTR indentation, FILE * outfile)
 	{
 		stdext::jc_fprintf(outfile, indentation);
 		stdext::jc_fprintf(outfile, _T("loop_var\n") );
-		m_loop_var->DebugOutput(indentation-1, outfile);
+		//m_loop_var->DebugOutput(indentation-1, outfile);
 
 		stdext::jc_fprintf(outfile, indentation);
 		stdext::jc_fprintf(outfile, _T("loop_body\n") );
@@ -473,6 +491,9 @@ void CLoopOp::DebugOutput(LPCTSTR indentation, FILE * outfile)
 }
 
 #endif
+*/
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //--
 

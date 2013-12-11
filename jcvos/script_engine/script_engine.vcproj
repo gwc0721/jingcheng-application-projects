@@ -167,6 +167,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source\if_then_else.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\source\script_op.cpp"
 				>
 			</File>
@@ -186,6 +190,10 @@
 			</File>
 			<File
 				RelativePath=".\source\expression_op.h"
+				>
+			</File>
+			<File
+				RelativePath=".\source\flow_ctrl_op.h"
 				>
 			</File>
 			<File

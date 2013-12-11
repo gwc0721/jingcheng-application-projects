@@ -10,9 +10,14 @@
 //	NOTICE:		script运行trace
 //  TRACE:		调用堆栈
 
-LOCAL_LOGGER_ENABLE(_T("expression_op"), LOGGER_LEVEL_NOTICE);
+LOCAL_LOGGER_ENABLE(_T("expression_op"), LOGGER_LEVEL_WARNING);
 
 using namespace jcscript;
+
+LOG_CLASS_SIZE(CONVERT_FUN)
+LOG_CLASS_SIZE(SOURCE_FUN)
+LOG_CLASS_SIZE(ATHOP_FUN)
+LOG_CLASS_SIZE(RELOP_FUN)
 
 ///////////////////////////////////////////////////////////////////////////////
 void ToIValue(jcparam::VALUE_TYPE type, void * data, jcparam::IValue * & val)
@@ -95,6 +100,7 @@ static const CONVERT_FUN CONV_FUN_TAB[jcparam::VT_MAXNUM-1][jcparam::VT_MAXNUM-1
 	//	Convert<bool, double>, NULL},
 };
 
+const TCHAR no_name::m_name[] = _T("no name");
 
 CONVERT_FUN GetConvFunc(jcparam::VALUE_TYPE t1, jcparam::VALUE_TYPE t2)
 {
@@ -127,6 +133,9 @@ bool CAthOpBase<ATH_OP>::GetResult(jcparam::IValue * & val)
 template <class ATH_OP>
 bool CAthOpBase<ATH_OP>::Invoke(void)
 {
+	BYTE sl[sizeof(double)];
+	BYTE sr[sizeof(double)];
+
 	if ( ! m_op )
 	{	// 初始化，设定转换与比较函数
 
@@ -142,18 +151,17 @@ bool CAthOpBase<ATH_OP>::Invoke(void)
 		/*if (tl != m_res_type) */m_conv_r = GetConvFunc(tr, m_res_type);
 
 		// 
-		m_op = AthOp[m_res_type];
+		m_op = ATH_OP::AthOp[m_res_type];
 		JCASSERT(m_op);
 
 		LOG_NOTICE(_T("{%08X} ath %s: type_l=%d, type_r=%d, type_res"), 
 			static_cast<IAtomOperate*>(this), _T("+"), tl, tr, m_res_type);
 	}
-	m_conv_l(m_src[0]->GetValue(), m_sl);
-	m_conv_r(m_src[1]->GetValue(), m_sr);
-	m_op(m_sl, m_sr, m_res);
+	m_conv_l(m_src[0]->GetValue(), sl);
+	m_conv_r(m_src[1]->GetValue(), sr);
+	m_op(sl, sr, m_res);
 
-	LOG_NOTICE(_T("{%08X} ath %s: "), 
-		static_cast<IAtomOperate*>(this), _T("+") );
+	LOG_NOTICE(_T("{%08X} ath %s: "), static_cast<IAtomOperate*>(this), _T("+") );
 	return true;
 }
 
@@ -165,20 +173,24 @@ const ATHOP_FUN CAthAdd::AthOp[] = {
 	AthAdd<bool>, AthAdd<char>, AthAdd<BYTE>, AthAdd<short>, AthAdd<WORD>,
 	AthAdd<int>, AthAdd<DWORD>, AthAdd<INT64>, AthAdd<UINT64>, AthAdd<float>, AthAdd<double>, NULL, 
 };
+const TCHAR CAthAdd::m_name[] = _T("+");
 template class CAthOpBase<CAthAdd>;
+LOG_CLASS_SIZE_T1(CAthOpBase, CAthAdd)
 
 
 const ATHOP_FUN CAthSub::AthOp[] = {
 	AthSub<bool>, AthSub<char>, AthSub<BYTE>, AthSub<short>, AthSub<WORD>,
 	AthSub<int>, AthSub<DWORD>, AthSub<INT64>, AthSub<UINT64>, AthSub<float>, AthSub<double>, NULL, 
 };
+const TCHAR CAthSub::m_name[] = _T("-");
 template class CAthOpBase<CAthSub>;
+LOG_CLASS_SIZE_T1(CAthOpBase, CAthSub)
 
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- Column Value
-
 LOG_CLASS_SIZE(CColumnVal);
+const TCHAR CColumnVal::m_name[] = _T("column_val");
 
 CColumnVal::CColumnVal(const CJCStringT & col_name)
 	: m_col_name(col_name)
@@ -198,7 +210,6 @@ bool CColumnVal::GetResult(jcparam::IValue * & val)
 
 bool CColumnVal::Invoke(void)
 {
-	LOG_STACK_TRACE();
 	JCASSERT(m_src[0]);
 
 	stdext::auto_interface<jcparam::IValue> val;
@@ -215,18 +226,26 @@ bool CColumnVal::Invoke(void)
 		m_res_type = info->m_type;
 		m_col_id = info->m_id;
 		// 选择转换函数
-		LOG_NOTICE(_T("{%08X} col_val: col=%d, type=%d"), 
-			static_cast<IAtomOperate*>(this), m_col_id, m_res_type);
+		LOG_SCRIPT(_T(": init col=%d, type=%d"), m_col_id, m_res_type);
 	}
 	row->GetColVal(m_col_id, m_res);
 
-	LOG_NOTICE(_T("{%08X} col_val: val=%X"), 
-		static_cast<IAtomOperate*>(this), *((UINT*)(m_res)) );
+	LOG_SCRIPT(_T(": val=%X"), *((UINT*)(m_res)) );
 	return true;
 }
 
+void CColumnVal::DebugInfo(FILE * outfile)
+{
+	stdext::jc_fprintf(outfile, _T("col=%s"), m_col_name.c_str() );
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//-- constant
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //-- bool operator
+
 template <class BOOL_OP>
 CBoolOpBase<BOOL_OP>::CBoolOpBase(void)
 {
@@ -245,17 +264,26 @@ bool CBoolOpBase<BOOL_OP>::Invoke(void)
 {
 	bool *_r = (bool*)(m_src[0]->GetValue());
 	bool *_l = (bool*)(m_src[1]->GetValue());
-	m_res = op(* _r, * _l);
+	m_res = BOOL_OP::op(* _r, * _l);
 	return m_res;
 }
 
+const TCHAR CBoolAnd::m_name[] = _T("and");
+const TCHAR CBoolOr::m_name[] = _T("or");
+const TCHAR CBoolOpNot::m_name[] = _T("not");
+
 template class CBoolOpBase<CBoolAnd>;
+LOG_CLASS_SIZE_T1(CBoolOpBase, CBoolAnd);
+
 template class CBoolOpBase<CBoolOr>;
+LOG_CLASS_SIZE_T1(CBoolOpBase, CBoolOr);
+
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- Constant
-LOG_CLASS_SIZE_T(CConstantOp<int>, 1)
-LOG_CLASS_SIZE_T(CConstantOp<INT64>, 2)
+LOG_CLASS_SIZE_T1(CConstantOp, int)
+LOG_CLASS_SIZE_T1(CConstantOp, INT64)
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -277,6 +305,8 @@ bool CRelOpBase<REL_OP>::GetResult(jcparam::IValue * & val)
 template <class REL_OP>
 bool CRelOpBase<REL_OP>::Invoke(void)
 {
+	BYTE sl[sizeof(double)];
+	BYTE sr[sizeof(double)];
 	if ( ! m_op )
 	{	// 初始化，设定转换与比较函数
 
@@ -291,42 +321,127 @@ bool CRelOpBase<REL_OP>::Invoke(void)
 		/*if (tl != m_res_type) */m_conv_l = GetConvFunc(tl, m_res_type);
 		/*if (tr != m_res_type) */m_conv_r = GetConvFunc(tr, m_res_type);
 
-		m_op = RelOp[m_res_type];
+		m_op = REL_OP::RelOp[m_res_type];
 		JCASSERT(m_op);
 	}
-	m_conv_l(m_src[0]->GetValue(), m_sl);
-	m_conv_r(m_src[1]->GetValue(), m_sr);
-	m_res = m_op(m_sl, m_sr);
+	m_conv_l(m_src[0]->GetValue(), sl);
+	m_conv_r(m_src[1]->GetValue(), sr);
+	m_res = m_op(sl, sr);
 	return m_res;
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- relation operator
-LOG_CLASS_SIZE(CRopEQ);
-LOG_CLASS_SIZE(CRelOpEQ);
 
 const RELOP_FUN CRopEQ::RelOp[] = {
 	CmpEQ<bool>, CmpEQ<char>, CmpEQ<BYTE>, CmpEQ<short>, CmpEQ<WORD>,
 	CmpEQ<int>, CmpEQ<DWORD>, CmpEQ<INT64>, CmpEQ<UINT64>, CmpEQ<float>, CmpEQ<double>, NULL, 
 };
+const TCHAR CRopEQ::m_name[] = _T("==");
 
 template class CRelOpBase<CRopEQ>;
 
-LOG_CLASS_SIZE(CRelOpLT);
 
 const RELOP_FUN CRopLT::RelOp[] = {
 	CmpLT<bool>, CmpLT<char>, CmpLT<BYTE>, CmpLT<short>, CmpLT<WORD>,
 	CmpLT<int>, CmpLT<DWORD>, CmpLT<INT64>, CmpLT<UINT64>, CmpLT<float>, CmpLT<double>, NULL, 
 };
+const TCHAR CRopLT::m_name[] = _T("<");
 
 template class CRelOpBase<CRopLT>;
 
-LOG_CLASS_SIZE(CRelOpLE);
 
 const RELOP_FUN CRopLE::RelOp[] = {
 	CmpLE<bool>, CmpLE<char>, CmpLE<BYTE>, CmpLE<short>, CmpLE<WORD>,
 	CmpLE<int>, CmpLE<DWORD>, CmpLE<INT64>, CmpLE<UINT64>, CmpLE<float>, CmpLE<double>, NULL, 
 };
+const TCHAR CRopLE::m_name[] = _T("<=");
 
 template class CRelOpBase<CRopLE>;
+
+//LOG_CLASS_SIZE(CRopEQ);
+
+LOG_CLASS_SIZE(CRelOpEQ);
+LOG_CLASS_SIZE(CRelOpLT);
+LOG_CLASS_SIZE(CRelOpLE);
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+//-- CVariableOp
+LOG_CLASS_SIZE(CVariableOp)
+
+const TCHAR CVariableOp::m_name[] = _T("variable");
+
+CVariableOp::CVariableOp(const CJCStringT & var_name)
+	: m_val(NULL)
+	, m_var_name(var_name)
+{
+	LOG_STACK_TRACE();
+}
+
+CVariableOp::CVariableOp(jcparam::IValue * val)
+	: m_val(val)
+{
+	if (m_val) m_val->AddRef();
+}
+
+CVariableOp::~CVariableOp(void)
+{
+	LOG_STACK_TRACE();
+	if (m_val) m_val->Release();
+}
+
+bool CVariableOp::GetResult(jcparam::IValue * & val)
+{
+	LOG_STACK_TRACE();
+	JCASSERT(NULL == val);
+
+	val = m_val;
+	if (val) val->AddRef();
+	return true;
+}
+
+bool CVariableOp::Invoke(void)
+{
+	LOG_STACK_TRACE();
+
+	JCASSERT(m_src[0]);
+	JCASSERT(NULL == m_val);
+	jcparam::IValue * val = NULL;
+	m_src[0]->GetResult(val);		// 如果m_parent被设，m_src[0]一定等于m_parent。
+	val->GetSubValue(m_var_name.c_str(), m_val);
+	val->Release();
+	m_typed_val = dynamic_cast<jcparam::CTypedValueBase*>(m_val);
+	return true;
+}
+
+const void * CVariableOp::GetValue(void)
+{
+	JCASSERT(m_val);
+	if (!m_typed_val)	
+		THROW_ERROR(ERR_USER, _T("variable %s is not a simple type"), m_var_name.c_str());
+	return m_typed_val->GetData();
+}
+
+jcparam::VALUE_TYPE CVariableOp::GetValueType(void)
+{
+	JCASSERT(m_val);
+
+	if (!m_typed_val)	
+		THROW_ERROR(ERR_USER, _T("variable %s is not a simple type"), m_var_name.c_str());
+
+	return m_typed_val->GetType();
+
+}
+
+void CVariableOp::DebugInfo(FILE * outfile)
+{
+	stdext::jc_fprintf(outfile, _T("sub=%s"), m_var_name.c_str());
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// -- pre define variables
+const TCHAR CPdvIndex::m_name[] = _T("%INDEX");

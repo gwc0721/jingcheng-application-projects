@@ -4,6 +4,7 @@
 #include "../include/syntax_parser.h"
 #include "atom_operates.h"
 #include "expression_op.h"
+#include "flow_ctrl_op.h"
 
 // LOG 输出定义：
 //  WARNING:	编译错误
@@ -12,7 +13,18 @@
 
 LOCAL_LOGGER_ENABLE(_T("Syntax_parser"), LOGGER_LEVEL_WARNING);
 
+#define LOG_COMPILE(...)		{	\
+	TCHAR _str[256] = {0};	\
+	_tcscat_s(_str, 255, _T("\t"));		\
+	int ir = stdext::jc_sprintf(_str, 200, __VA_ARGS__);		\
+	/*memcpy_s(_str + ir, 55*sizeof(TCHAR), m_first, 55*sizeof(TCHAR));*/	\
+	/*_str[ir + 56] = 0;	*/	\
+	LOG_NOTICE(_str);		\
+}
+
+
 #define ERROR_MSG_BUFFER	(512)
+
 
 using namespace jcscript;
 
@@ -42,14 +54,15 @@ public:
 			(_T("\\["),					ID_SQUARE_BRACKET_1)
 			(_T("\\]"),					ID_SQUARE_BRACKET_2)
 			(_T("\\#[^\\n]*"),			ID_COMMENT)			// 注释
-			(_T("\\|"),					ID_CONNECT)			// 命令连接
+			(_T("\\|[\\n]?"),			ID_CONNECT)			// 命令连接
 			(_T("\\$"),					ID_VARIABLE)		// 变量
-			(_T("\\@"),					ID_TABLE)		// 变量
+			(_T("\\@"),					ID_TABLE)			// 变量
 			(_T("\\="),					ID_EQUAL)			// 等号
-			(_T("\\/[^\\/]+\\/"),				ID_FILE_NAME)		// 双引号
+			(_T("\\%[_a-zA-Z][_a-zA-Z0-9]*"),	ID_PREDEF_VAR)		// 预定义变量
+			(_T("\\/[^\\/]+\\/"),		ID_FILE_NAME)		// 双引号
 			(_T("\\\"[^\\\"]+\\\""),	ID_QUOTATION1)		// 双引号
 			//(_T("\\'[^\\']+\\'"),		ID_QUOTATION2)		// 单引号
-			(_T("\\-\\-[_a-zA-Z][_a-zA-Z0-9]*"),		ID_PARAM_NAME)		// 参数名称
+			(_T("\\-\\-[_a-zA-Z][_a-zA-Z0-9]*"),ID_PARAM_NAME)		// 参数名称
 			(_T("\\-\\-\\@"),			ID_PARAM_TABLE)
 			(_T("\\-[a-zA-Z]\\s+"),		ID_ABBREV_BOOL)		// 缩写参数
 			(_T("\\-[a-zA-Z]"),			ID_ABBREV)			// 缩写参数
@@ -114,6 +127,11 @@ public:
 			m_property->m_parser->NewLine();
 			break;
 
+		case ID_CONNECT:
+			if (t_begin[1] == _T('\n'))	m_property->m_parser->NewLine();
+			break;
+
+
 		case ID_FILE_NAME:
 			m_property->m_str = CJCStringT(t_begin + 1, 0, t_len -2 );
 			break;
@@ -145,8 +163,12 @@ public:
 			m_property->m_val = t_begin[1];
 			break;
 
-		case ID_PARAM_NAME:
-			m_property->m_str = CJCStringT(t_begin+2, 0, t_len-2);		//	除去缩写前的--
+		case ID_PARAM_NAME:		//	除去参数名称前的--
+			m_property->m_str = CJCStringT(t_begin+2, 0, t_len-2);		
+			break;
+
+		case ID_PREDEF_VAR:		//	除去预定义变两前的%
+			m_property->m_str = CJCStringT(t_begin+1, 0, t_len-1);		
 			break;
 
 		case ID_RELOP_EE:
@@ -247,16 +269,17 @@ void CSyntaxParser::Source(FILE * file)
 {
 	LOG_STACK_TRACE();
 	JCASSERT(file);
+
 	m_one_line = false;
-
 	m_file = file;
-
-	m_line_num = 1;
-	m_line_begin = m_first;
 
 	m_src_buf = new TCHAR[SRC_BUF_SIZE];
 	m_first = m_src_buf;
 	m_last = m_src_buf;
+
+	m_line_begin = m_first;
+	m_line_num = 1;
+
 	NextToken(m_lookahead);
 }
 
@@ -294,16 +317,15 @@ void CSyntaxParser::Parse(LPCTSTR &first, LPCTSTR last)
 // for ASCII file
 void CSyntaxParser::ReadSource(void)
 {
-#define READ_ASCII_SIZE		(SRC_READ_SIZE /2)
+	#define READ_ASCII_SIZE		(SRC_READ_SIZE)
 
 	JCSIZE len = m_last - m_first;
 	TCHAR * last;
 
-
 	if (m_file && !feof(m_file) )
 	{
 		// move tail to begin
-		memcpy_s(m_src_buf, (m_first - m_src_buf), m_first, len); 
+		memcpy_s(m_src_buf, (m_first - m_src_buf) * sizeof(TCHAR), m_first, len * sizeof(TCHAR) ); 
 		m_first = m_src_buf; 
 		last = m_src_buf + len;
 
@@ -313,6 +335,7 @@ void CSyntaxParser::ReadSource(void)
 		JCSIZE buf_remain = SRC_BUF_SIZE - len;
 		JCSIZE conv_size = stdext::Utf8ToUnicode(last, buf_remain, file_buf, read_size);
 		m_last = last + conv_size;
+		last[conv_size] = 0;
 		delete [] file_buf;
 	}
 }
@@ -342,6 +365,11 @@ void CSyntaxParser::Token(CTokenProperty & prop)
 
 void CSyntaxParser::NextToken(CTokenProperty & prop)
 {
+	// for compile log
+	TCHAR strline[64] = {0};
+	memcpy_s(strline, 63*sizeof(TCHAR), m_first, 63*sizeof(TCHAR));
+	LOG_NOTICE(_T("[token] %s ..."), strline);
+
 	prop.m_id = ID_SYMBO_ERROR;
 	Token(prop);
 	LOG_TRACE(_T("[TRACE] id=%d, val=%d, str=%s"), prop.m_id, (UINT)(prop.m_val), prop.m_str.c_str())
@@ -366,15 +394,25 @@ bool CSyntaxParser::Match(TOKEN_ID id, LPCTSTR err_msg)
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////
-
-bool CSyntaxParser::MatchScript(IAtomOperate * & op)
+bool CSyntaxParser::MatchScript(IAtomOperate * & program)
 {
 	LOG_STACK_TRACE();
-	JCASSERT(NULL == op);
+	JCASSERT(NULL == program);
+	CSequenceOp * seq = static_cast<CSequenceOp*>(new CScriptOp(NULL) );
+	program = static_cast<IAtomOperate*>(seq);
 
-	stdext::auto_interface<CScriptOp>	prog;
-	CScriptOp::Create(prog);
+	bool br = MatchScript1(seq);
+	return br;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+bool CSyntaxParser::MatchScript1(CSequenceOp * prog)
+{
+	LOG_STACK_TRACE();
+	JCASSERT(prog);
+
+	LOG_COMPILE(_T("- script  ") );
 
 	bool loop = true;
 	while (loop)
@@ -399,15 +437,15 @@ bool CSyntaxParser::MatchScript(IAtomOperate * & op)
 				break;
 
 			case ID_KEY_HELP:	{
-				stdext::auto_interface<IAtomOperate> op;
-				Match(ID_KEY_HELP, _T("") ); MatchHelp(op);
-				prog->PushBackAo(op);
+				//stdext::auto_interface<IAtomOperate> op;
+				//Match(ID_KEY_HELP, _T("") ); MatchHelp(op);
+				//prog->PushBackAo(op);
 				break;	}
 
 			case ID_KEY_EXIT: {
 				Match(ID_KEY_EXIT, _T("") );
 				CExitOp * op = new CExitOp;
-				prog->PushBackAo(static_cast<IAtomOperate*>(op) );
+				prog->AddOp( static_cast<IAtomOperate *>(op) );
 				op->Release();
 				break;	}
 
@@ -416,9 +454,10 @@ bool CSyntaxParser::MatchScript(IAtomOperate * & op)
 			//				}
 
 			default:	{
-				stdext::auto_interface<CComboStatement>	combo;
-				MatchComboSt(combo);
-				prog->Merge(combo);
+				LOG_COMPILE(_T("- combo  "));
+				stdext::auto_interface<CComboSt>	combo(new CComboSt(prog) );
+				MatchComboSt( combo );
+				if ( !combo->IsEmpty() )	prog->AddOp( static_cast<IAtomOperate *>(combo) );
 				break;	}
 			}
 		}
@@ -429,7 +468,6 @@ bool CSyntaxParser::MatchScript(IAtomOperate * & op)
 				Token(m_lookahead);
 		}
 	}
-	prog.detach(op);
 	return true;
 }
 
@@ -458,80 +496,64 @@ bool CSyntaxParser::MatchScript(IAtomOperate * & op)
 //	4, case (1)(2) 现有Combo的LastChain指向新Combo的最后一个
 
 
-bool CSyntaxParser::MatchComboSt(CComboStatement * & combo)
+bool CSyntaxParser::MatchComboSt(CComboSt * combo)
 {
 	LOG_STACK_TRACE();
-	JCASSERT(NULL == combo);
-	CComboStatement::Create(combo);
-#ifdef _DEBUG
+	JCASSERT(combo);
+
 	// 用于编译信息输出
 	combo->m_line = m_line_num;
-#endif
-
-	stdext::auto_interface<IAtomOperate> op;
-	bool constant = false, file=false;
-
+	stdext::auto_interface<IChainOperate> chain;
 	switch (m_lookahead.m_id)
 	{
 	case ID_KEY_FILTER:
 	case ID_WORD:
 	case ID_COLON:
-		MatchSingleSt(combo, op);
-		LOG_DEBUG(_T("matched single_st"));
-		combo->AddLoopOp(op);
-		op->SetSource(0, combo->LastChain( op ) );
-		MatchS1(combo);
+		LOG_COMPILE(_T("- single_st"));
+		MatchSingleSt(combo, chain);
+		MatchS1(combo, chain);
 		break;
 
 	case ID_TABLE: {
-		stdext::auto_interface<CComboStatement> new_combo;
-		MatchTable(combo, new_combo);
-		// 一定是Combo的第一个语句，不需要设source.
-		stdext::auto_interface<IAtomOperate> last;
-		bool br = combo->Merge(new_combo, last);
-		if (!br) SYNTAX_ERROR(_T("table variable has been already set") );
-		combo->LastChain(last);
-		MatchS1(combo);
+		LOG_COMPILE(_T("- table  "));
+		bool br = MatchTableSt(combo, chain);
+		MatchS1(combo, chain);
 		break;	   }
+	
+	//case ID_VARIABLE: {
+	//	LOG_COMPILE(_T("- variable  "));
+	//	break;		  }
 
-	default:
-		if ( MatchParamVal2(op, constant, file) )
-		{
-			LOG_DEBUG(_T("matched variable"));
-			combo->AddPreproOp(op);
-			combo->LastChain(op);
-			MatchS1(combo);
-			return true;
-		}
-		else 
-		{
-			LOG_DEBUG(_T("do not match anything"));
-			return false;
-		}
+	default:	{
+		bool match = MatchParamVal2(combo, chain);
+		if (!match) SYNTAX_ERROR(_T("unknow start of line") );
+		MatchS1(combo, chain);
+		return match;
+				}
 	}
 	return true;
 }
 
-void CSyntaxParser::MatchS1(CComboStatement * combo)
+void CSyntaxParser::MatchS1(CSequenceOp * combo, IChainOperate * &chain)
 {
 	LOG_STACK_TRACE();
 	JCASSERT(combo);
 
 	bool assign_set = false;
+
 	while (1)
 	{
 		// 右递归简化为循环
 		if (ID_CONNECT == m_lookahead.m_id)
 		{
-			stdext::auto_interface<IAtomOperate> proxy;
+			LOG_COMPILE(_T("- connection"));
 			NextToken(m_lookahead);		// Match(ID_CONNECT);
-			if ( !MatchSingleSt(combo, proxy) )
-				SYNTAX_ERROR(_T("Missing single statment") );
+			if ( !MatchSingleSt(combo, chain) ) 		SYNTAX_ERROR(_T("Missing single statment") );
 		}
 		else if (ID_ASSIGN == m_lookahead.m_id)
 		{
-			stdext::auto_interface<IAtomOperate> op;
-			MatchAssign(combo, op);
+			LOG_COMPILE(_T("- assignee"));
+			MatchAssign(combo, chain);
 			assign_set = true;
 			break;
 		}
@@ -540,36 +562,50 @@ void CSyntaxParser::MatchS1(CComboStatement * combo)
 
 	if (!assign_set)
 	{
-		CAssignOp * op = new CAssignOp(m_var_set, _T("res"));
-		combo->SetAssignOp(op);
-		op->Release();
+		//CAssignOp * op = new CAssignOp(m_var_set, _T("res"));
+		//combo->SetAssignOp(op);
+		//op->Release();
 	}
 
 	// 编译后处理
-	combo->CompileClose();
+	//combo->CompileClose();
 }
 
-bool CSyntaxParser::MatchAssign(CComboStatement * combo, IAtomOperate * & op)
+bool CSyntaxParser::MatchAssign(CSequenceOp * combo, IChainOperate * &chain)
 {
 	LOG_STACK_TRACE();
-	JCASSERT(NULL == op);
 	JCASSERT(combo);
 
+	if (NULL == chain) SYNTAX_ERROR(_T("missing source for assignment"));
+
 	Match(ID_ASSIGN, _T("Missing =>") );
+
+	stdext::auto_interface<IAtomOperate> op;
+
 	switch (m_lookahead.m_id)
 	{
 	case ID_WORD:	{
+		LOG_COMPILE(_T("- assign to var %s"), m_lookahead.m_str.c_str());
 		op = static_cast<IAtomOperate*>(new CAssignOp(m_var_set, m_lookahead.m_str));
-		combo->SetAssignOp(op);
-		op->Release();
-		op = NULL;
 		NextToken(m_lookahead);
+		op->SetSource(0, chain);
+		combo->AddOp(op);
+		chain->Release(), chain = NULL;
+		op.detach(chain);
 		break;		}
 
 	case ID_FILE_NAME:	{		// 文件名作为作值(assignee)，将结果保存到文件
+		stdext::auto_interface<CSingleSt> single_st(new CSingleSt(combo) );
+		single_st->SetSource(0, chain);
+
 		op = static_cast<IAtomOperate*>(new CSaveToFileOp(m_lookahead.m_str));
-		combo->AddLoopOp(op);
-		op->SetSource(0, combo->LastChain( op ) );
+		op->SetSource(0, single_st->GetInPort() );
+		single_st->AddOp( op );
+
+		combo->AddOp( static_cast<IAtomOperate*>(single_st) );
+		chain->Release(), chain = NULL;
+		single_st.detach(chain);
+
 		NextToken(m_lookahead);
 		break;			}
 
@@ -580,85 +616,115 @@ bool CSyntaxParser::MatchAssign(CComboStatement * combo, IAtomOperate * & op)
 	return true;
 }
 
-bool CSyntaxParser::MatchSingleSt(CComboStatement * combo, IAtomOperate * & op)
+bool CSyntaxParser::MatchSingleSt(CSequenceOp * combo, IChainOperate * & chain)
 {
 	LOG_STACK_TRACE();
-	JCASSERT(NULL == op);
-
-	stdext::auto_interface<IPlugin>	plugin;
-	stdext::auto_interface<IFeature> feature;
+	JCASSERT(combo);
 
 	m_default_param_index = 0;
 
-	bool match = false;
+	stdext::auto_interface<CSingleSt> single_st(new CSingleSt(combo) );
+	if (chain) single_st->SetSource(0, chain);
+
+	bool match = true;
 	switch (m_lookahead.m_id)
 	{
 	case ID_FILE_NAME:	{		// 文件名作为作值(assignee)，将结果保存到文件
+		LOG_COMPILE(_T("- file  "));
+
+		if (NULL == chain)	SYNTAX_ERROR(_T("missing source for file output"));
+
+		stdext::auto_interface<IAtomOperate> op;
 		op = static_cast<IAtomOperate*>(new CSaveToFileOp(m_lookahead.m_str));
-		combo->AddLoopOp(op);
-		op->SetSource(0, combo->LastChain( op ) );
+		op->SetSource(0, single_st->GetInPort());
+		single_st->AddOp(op);
+
 		NextToken(m_lookahead);
 		break;			}	
 
 	case ID_KEY_FILTER:	{
-		stdext::auto_interface<CFilterSt>	ft;
-		MatchFilterSt(combo, ft);
-		ft.detach<IAtomOperate>(op);
-		match = true;
+		LOG_COMPILE(_T("- filter  "));
+		MatchFilterSt(single_st);
 		break;		}
 
-	case ID_WORD:				{
-		// WORD : WORD
+	case ID_WORD:	{		// WORD : WORD
+		LOG_COMPILE(_T("- plugin: %s  "), m_lookahead.m_str.c_str() );
 		stdext::auto_interface<IPlugin>	plugin;
-		stdext::auto_interface<IFeature> feature;
 		m_plugin_container->GetPlugin(m_lookahead.m_str, plugin);
 		if ( ! plugin ) SYNTAX_ERROR(_T("Unknow plugin %s "), m_lookahead.m_str.c_str() );
 		NextToken(m_lookahead);
 		Match(ID_COLON, _T("expected :") );
-		MatchFeature(combo, plugin, feature);
-		feature.detach<IAtomOperate>(op);
-		match = true;
+		MatchFeature(single_st, plugin);
 		break;					}
 	
 	case ID_COLON:				{
 		stdext::auto_interface<IPlugin>	plugin;
-		stdext::auto_interface<IFeature> feature;
 		m_plugin_container->GetPlugin(_T(""), plugin);
 		JCASSERT( plugin.valid() );
 		NextToken(m_lookahead);
-		MatchFeature(combo, plugin, feature);
-		feature.detach<IAtomOperate>(op);
-		match = true;
+		MatchFeature(single_st, plugin);
 		break;					}
 
 	default:
 		match = false;
 		SYNTAX_ERROR(_T("Missing module name or :"));
+		return false;
 	}
+	
+	combo->AddOp(single_st);
+	if (chain) chain->Release(), chain = NULL;
+	single_st.detach(chain);
 	return match;
 }
 
-void CSyntaxParser::MatchFeature(CComboStatement * combo, IPlugin * plugin, IFeature * &feature)
+void CSyntaxParser::MatchFeature(CSingleSt * single_st, IPlugin * plugin)
 {
 	LOG_STACK_TRACE();
-	JCASSERT(combo);
+	JCASSERT(single_st);
 	JCASSERT(plugin);
-	JCASSERT(NULL == feature);
 
+	LOG_COMPILE(_T("- feature: %s  "), m_lookahead.m_str.c_str() );
+
+	// compile feature name
+	stdext::auto_interface<IFeature>	feature;
 	if (ID_WORD != m_lookahead.m_id) SYNTAX_ERROR(_T("Missing feature name") );
 	plugin->GetFeature(m_lookahead.m_str, feature);
 	if ( !feature )	SYNTAX_ERROR(_T("%s is not a feature of plugin %s"), 
 		m_lookahead.m_str.c_str(), plugin->name() ); 
-	
 	NextToken(m_lookahead);
-	MatchCmdSet(combo, feature, 0);	
-	MatchParamSet(combo, feature);
+
+	stdext::auto_interface<CFeatureWrapper>	wrapper( new CFeatureWrapper(feature) );
 	
-	combo->AddLoopOp(static_cast<IAtomOperate*>(feature) );
-	feature->SetSource(0, combo->LastChain( feature ) );
+	wrapper->SetOutPort( static_cast<IOutPort*>(single_st) );
+
+	MatchCmdSet( single_st, feature, 0);	
+	MatchParamSet( single_st, feature );
+
+	CInPort * inport = single_st->GetInPort();
+	if (inport)		wrapper->SetSource(0, inport);
+	single_st->AddOp( static_cast<IAtomOperate*>(wrapper) );
 }
 
-bool CSyntaxParser::MatchCmdSet(CComboStatement * combo, IFeature * func, int index)
+void CSyntaxParser::MatchFilterSt(CSingleSt * single_st)
+{
+	LOG_STACK_TRACE();
+	JCASSERT(single_st);
+
+	NextToken(m_lookahead);
+	stdext::auto_interface<CFilterSt> ft(new CFilterSt(dynamic_cast<IOutPort*>(single_st) ) );
+	// 表格source在添加到loop中时，自动设置
+	IAtomOperate * chain = static_cast<IAtomOperate*>( single_st->GetInPort() );
+	if (NULL == chain)	SYNTAX_ERROR(_T("missing source for filter"));
+
+	ft->SetSource(CFilterSt::SRC_TAB,  chain);
+	stdext::auto_interface<IAtomOperate> op;
+	MatchBoolExpression(static_cast<CSequenceOp*>(single_st), op);
+
+	ft->SetSource(CFilterSt::SRC_EXP, op);
+	single_st->AddOp(static_cast<IAtomOperate*>(ft) );
+}
+
+bool CSyntaxParser::MatchCmdSet(CSingleSt * single_st, IFeature * feature, int index)
 {
 	LOG_STACK_TRACE();
 
@@ -669,13 +735,14 @@ bool CSyntaxParser::MatchCmdSet(CComboStatement * combo, IFeature * func, int in
 		TCHAR param_name[DEFAULT_PARAM_NAME_LEN];
 		stdext::jc_sprintf(param_name, _T("#%02X"), index);
 
-		if ( !MatchPV2PushParam(combo, func, param_name) ) return true;
+		LOG_COMPILE(_T("- cmd: %s  "), param_name );
+		if ( !MatchPV2PushParam(single_st, feature, param_name) ) return true;
 		++ index;
 	}
 	return true;
 }
 
-void CSyntaxParser::MatchParamSet(CComboStatement * combo, IFeature * proxy)
+void CSyntaxParser::MatchParamSet(CSingleSt * single_st, IFeature * feature)
 {
 	LOG_STACK_TRACE();
 
@@ -695,31 +762,25 @@ void CSyntaxParser::MatchParamSet(CComboStatement * combo, IFeature * proxy)
 			{
 				LOG_DEBUG(_T("parsing parameter value") );
 				NextToken(m_lookahead);
-				if ( ! MatchPV2PushParam(combo, proxy, param_name) )	
-				{
-					SYNTAX_ERROR( _T("Missing parameter value") );
-				}
+				if ( ! MatchPV2PushParam(single_st, feature, param_name) )	SYNTAX_ERROR( _T("Missing parameter value") );
 			}
-			else	SetBoolOption(proxy, param_name);
+			else	SetBoolOption(feature, param_name);
 			break; }
 
 		case ID_ABBREV_BOOL:	{
 			LOG_DEBUG(_T("matched abbrev bool %c"), (TCHAR)m_lookahead.m_val );
 			CJCStringT param_name;
-			CheckAbbrev(proxy, (TCHAR)m_lookahead.m_val, param_name);
-			SetBoolOption(proxy, param_name);
+			CheckAbbrev(feature, (TCHAR)m_lookahead.m_val, param_name);
+			SetBoolOption(feature, param_name);
 			NextToken(m_lookahead);
 			continue;				}
 
 		case ID_ABBREV:	{
 			LOG_DEBUG(_T("matched abbrev %c"), (TCHAR)m_lookahead.m_val );
 			CJCStringT param_name;
-			CheckAbbrev(proxy, (TCHAR)m_lookahead.m_val, param_name);
+			CheckAbbrev(feature, (TCHAR)m_lookahead.m_val, param_name);
 			NextToken(m_lookahead);
-			if ( ! MatchPV2PushParam(combo, proxy, param_name) )	
-			{
-				SYNTAX_ERROR(_T("Missint parameter value") );
-			}
+			if ( ! MatchPV2PushParam(single_st, feature, param_name) )	SYNTAX_ERROR(_T("Missint parameter value") );
 			break;					}
 
 		default:
@@ -728,12 +789,10 @@ void CSyntaxParser::MatchParamSet(CComboStatement * combo, IFeature * proxy)
 	}
 }
 
-bool CSyntaxParser::MatchParamVal2(IAtomOperate * & op, bool & constant, bool & file)
+bool CSyntaxParser::MatchParamVal2(CSequenceOp * combo, IAtomOperate * & exp)
 {
 	LOG_STACK_TRACE();
-	JCASSERT(NULL == op);
-	constant = false;
-	file = false;
+	JCASSERT(NULL == exp);
 
 	bool match = true;
 
@@ -742,24 +801,27 @@ bool CSyntaxParser::MatchParamVal2(IAtomOperate * & op, bool & constant, bool & 
 	// constant
 	case ID_STRING:
 	case ID_NUMERAL:		{
-		MatchConstant(op);
-		constant = true;
+		LOG_COMPILE(_T("- constant ") );
+		MatchConstant(exp);
+		combo->AddOp(exp);
 		break; }
 
 	case ID_FILE_NAME: {	// 文件名作为参数。设置文件名为#filename参数
-		op = static_cast<IAtomOperate*>( new CConstantOp<CJCStringT>(m_lookahead.m_str) );
-		constant = true;
-		file = true;
+		LOG_COMPILE(_T("- file ") )
+		exp = static_cast<IAtomOperate*>( new CConstantOp<CJCStringT>(m_lookahead.m_str) );
+		combo->AddOp(exp);
 		NextToken(m_lookahead);
 		break; }				
 
 	case ID_VARIABLE:
-		NextToken(m_lookahead);	//Match(ID_VARIABLE);
-		MatchV3(op);
+		LOG_COMPILE(_T("- variable ") )
+		NextToken(m_lookahead);
+		MatchV3(combo, exp);
 		break;
 
 	default:
 		// error
+		LOG_COMPILE(_T("- do not match p-val"));
 		match = false;
 		break;
 	}
@@ -767,7 +829,7 @@ bool CSyntaxParser::MatchParamVal2(IAtomOperate * & op, bool & constant, bool & 
 }
 
 void CSyntaxParser::MatchConstant(IAtomOperate * & val)
-{
+{	// 终结符
 	LOG_STACK_TRACE();
 	JCASSERT(NULL == val);
 
@@ -788,36 +850,25 @@ void CSyntaxParser::MatchConstant(IAtomOperate * & val)
 	}
 }
 
-void CSyntaxParser::MatchV3(IAtomOperate * & op)
+void CSyntaxParser::MatchV3(CSequenceOp * combo, IAtomOperate * & op)
 {
 	LOG_STACK_TRACE();
+	JCASSERT(combo);
 	JCASSERT(NULL == op);
-	bool constant = false;
+
 	switch (m_lookahead.m_id)
 	{
 	case ID_WORD:
-		MatchVariable(op);
+		MatchVariable(combo, op);
 		break;
-
-	//case ID_CURLY_BRACKET_1:
-	//case ID_BRACKET_1:
-	//	MatchFactor(op, constant);
-	//	JCASSERT(constant == false);
-	//	break;
-
-	//case ID_FILE_NAME: {	//文件作为缺省输入
-	//	MatchFileName(op);
-	//	break;			}
-
 	default:
 		return;
 	}
 }
 
-bool CSyntaxParser::MatchTable(CComboStatement * combo, CComboStatement * & op)
+bool CSyntaxParser::MatchTableParam(CSequenceOp * combo, IChainOperate * & chain)
 {
 	LOG_STACK_TRACE();
-	JCASSERT(NULL == op);
 
 	Match(ID_TABLE, _T("") );
 
@@ -825,98 +876,101 @@ bool CSyntaxParser::MatchTable(CComboStatement * combo, CComboStatement * & op)
 	{
 	case ID_CURLY_BRACKET_1:	{
 		Match(ID_CURLY_BRACKET_1, _T(""));
-		//stdext::auto_interface<CComboStatement> new_combo;
-		CComboStatement::Create(op);
-		stdext::auto_interface<IAtomOperate> st;
-		MatchSingleSt(op, st);
-		// merge new_combo to combo
+		MatchSingleSt(combo, chain);
 		Match(ID_CURLY_BRACKET_2, _T("missing }"));
 		break; }
 
 	default:		{
-		CComboStatement::Create(op);
 		stdext::auto_interface<IAtomOperate> var_op;
-		MatchV3(var_op);
+		MatchV3(combo, var_op);
+		combo->AddOp(var_op);
 
-		op->AddPreproOp(var_op);
 		stdext::auto_interface<IAtomOperate>	loop_var( static_cast<IAtomOperate*>(new CLoopVarOp ));
 		loop_var->SetSource(0, var_op);
-		op->AddLoopOp(loop_var);
+		combo->AddOp(loop_var);
+		loop_var.detach(chain);
 		break;		}
 	}
 	return true;
 }
 
-//bool CSyntaxParser::MatchFileName(IAtomOperate * & op)
-//{
-//	LOG_STACK_TRACE();
-//	JCASSERT(NULL == op);
-//
-//	// 获取文件扩展名作为类型
-//	static const JCSIZE EXT_LENGTH = 15;
-//	TCHAR ext[EXT_LENGTH+1];
-//	memset(ext, 0, sizeof(TCHAR)*(EXT_LENGTH+1));
-//	CJCStringT & fn = m_lookahead.m_str;
-//	JCSIZE dot = fn.find_last_of(_T("."));
-//	JCSIZE ext_size = fn.size() - dot -1;
-//	fn.copy(ext, min(ext_size, EXT_LENGTH), dot+1);
-//
-//	bool br = m_plugin_container->ReadFileOp(ext, m_lookahead.m_str, op);
-//	if ( ! br || ! op) SYNTAX_ERROR(_T("unknow file type %s"), ext);
-//	NextToken(m_lookahead);
-//
-//	return true;
-//}
-
-bool CSyntaxParser::MatchVariable(IAtomOperate * & op)
+bool CSyntaxParser::MatchTableSt(CSequenceOp * combo, IChainOperate * & chain)
 {
 	LOG_STACK_TRACE();
-	JCASSERT(NULL == op);
 
-	if (ID_WORD == m_lookahead.m_id)
-	{
-		stdext::auto_interface<IAtomOperate> sub_op;
-
-		stdext::auto_interface<CVariableOp> vop(
-			new CVariableOp(NULL, m_lookahead.m_str) );
-
-		//!! implement m_var_set in tester
-		vop->SetSource(0, m_var_set);
-
-		NextToken(m_lookahead);
-		MatchV1(vop, sub_op);
-		sub_op.detach(op);
-	}
-	else	SYNTAX_ERROR(_T("expected a variable name."));
-	return false;
-}
-
-bool CSyntaxParser::MatchV1(CVariableOp * parent_op, IAtomOperate * & sub_op)
-{
-	LOG_STACK_TRACE();
-	JCASSERT(NULL == sub_op);
-
+	Match(ID_TABLE, _T("") );
 	switch (m_lookahead.m_id)
 	{
-	case ID_SQUARE_BRACKET_1:
-		SYNTAX_ERROR(_T("unsupport"));
-		break;
+	case ID_CURLY_BRACKET_1:	{
+		Match(ID_CURLY_BRACKET_1, _T(""));
+		MatchSingleSt(combo, chain);
+		Match(ID_CURLY_BRACKET_2, _T("missing }"));	
+		break; }
 
-	case ID_DOT:	{
-		Match(ID_DOT, _T("missing .") );	
-		stdext::auto_interface<CVariableOp> vop (
-			new CVariableOp(parent_op, m_lookahead.m_str) );
-		MatchV1(vop, sub_op);
-		break;	}
+	default:		{
+		stdext::auto_interface<IAtomOperate> var_op;
+		MatchV3(combo, var_op);
+		combo->AddOp(var_op);
 
-	default:		// \E
-		sub_op = static_cast<IAtomOperate*>(parent_op);
-		sub_op ->AddRef();
-		return true;
+		stdext::auto_interface<IAtomOperate>	loop_var( static_cast<IAtomOperate*>(new CLoopVarOp ));
+		loop_var->SetSource(0, var_op);
+		combo->AddOp(loop_var);
+		loop_var.detach(chain);
+		break;		}
 	}
 	return true;
 }
 
+bool CSyntaxParser::MatchVariable(CSequenceOp * combo, IAtomOperate * & op)
+{
+	LOG_STACK_TRACE();
+	JCASSERT(combo);
+
+	JCASSERT(NULL == op);
+
+	stdext::auto_interface<CVariableOp> vop;
+	
+	if (ID_WORD == m_lookahead.m_id)
+	{
+		vop = new CVariableOp(m_lookahead.m_str);	
+		//!! implement m_var_set in tester
+		vop->SetSource(0, m_var_set);
+		combo->AddOp(vop);
+
+		NextToken(m_lookahead);
+		vop.detach(op);
+	}
+	else	SYNTAX_ERROR(_T("expected a variable name."));
+
+	// MatchV1
+	// 循环代替右递归
+	bool loop = true;
+	while (loop)
+	{
+		switch (m_lookahead.m_id)
+		{
+		case ID_SQUARE_BRACKET_1:
+			SYNTAX_ERROR(_T("unsupport"));
+			break;
+
+		case ID_DOT:	{
+			NextToken(m_lookahead);		// Match(ID_DOT)
+			if (ID_WORD != m_lookahead.m_id)	SYNTAX_ERROR(_T("missing variable name"));
+			vop = new CVariableOp(m_lookahead.m_str);
+			vop->SetSource(0, op);
+			combo->AddOp(vop);
+			op->Release(), op = NULL;
+			vop.detach(op);
+			NextToken(m_lookahead);
+			break;	}
+
+		default:
+			loop = false;
+			break;
+		}
+	}
+	return true;
+}
 
 void CSyntaxParser::MatchHelp(IAtomOperate * & op)
 {
@@ -926,40 +980,18 @@ void CSyntaxParser::MatchHelp(IAtomOperate * & op)
 	//switch (m_lookahead.m_id)
 	//{
 	//case ID_COLON:
-
 	//case ID_WORD:
-
 	//}
 }
 
-void CSyntaxParser::MatchFilterSt(CComboStatement * combo, CFilterSt * & ft)
-{
-	LOG_STACK_TRACE();
-	JCASSERT(combo);
-	JCASSERT(NULL == ft);
 
-	NextToken(m_lookahead);
-
-	ft = new CFilterSt;
-
-	// 表格source在添加到loop中时，自动设置
-	ft->SetSource(CFilterSt::SRC_TAB, combo->LastChain( NULL ));
-	stdext::auto_interface<IAtomOperate> op;
-	MatchBoolExpression(combo, op);
-	ft->SetSource(CFilterSt::SRC_EXP, op);
-	combo->AddLoopOp(static_cast<IAtomOperate*>(ft) );
-	combo->LastChain(static_cast<IAtomOperate*>(ft) );
-}
-
-bool CSyntaxParser::MatchBoolExpression(CComboStatement * combo, IAtomOperate * & op)
+bool CSyntaxParser::MatchBoolExpression(CSequenceOp * combo, IAtomOperate * & op)
 {
 	LOG_STACK_TRACE();
 
 	bool match = MatchRelationFactor(combo, op);
-	//if ( !match ) SYNTAX_ERROR(_T("expcted boolean expression")); 
 	if (!match) return false;
 
-	//// MatchBE1();
 	while (1)
 	{
 		bool exit = false;
@@ -978,7 +1010,7 @@ bool CSyntaxParser::MatchBoolExpression(CComboStatement * combo, IAtomOperate * 
 		match = MatchRelationFactor(combo, exp_r);
 		if ( !match ) SYNTAX_ERROR( _T("synatx error in right side of boolean exp") );
 		this_op->SetSource(1, exp_r);
-		combo->AddLoopOp(this_op);
+		combo->AddOp(this_op);
 
 		op->Release(), op = NULL;
 		this_op.detach<IAtomOperate>(op);
@@ -986,7 +1018,7 @@ bool CSyntaxParser::MatchBoolExpression(CComboStatement * combo, IAtomOperate * 
 	return true;
 }
 
-bool CSyntaxParser::MatchRelationFactor(CComboStatement * combo, IAtomOperate * & op)
+bool CSyntaxParser::MatchRelationFactor(CSequenceOp * combo, IAtomOperate * & op)
 {
 	LOG_STACK_TRACE();
 	bool match = false;
@@ -1007,7 +1039,7 @@ bool CSyntaxParser::MatchRelationFactor(CComboStatement * combo, IAtomOperate * 
 		match = MatchRelationFactor(combo, op);
 		if (!match) SYNTAX_ERROR(_T("expected a bool expression"));
 		this_op->SetSource(0, op);
-		combo->AddLoopOp(this_op);
+		combo->AddOp(this_op);
 		op->Release(), op=NULL;
 		this_op.detach<IAtomOperate>(op);
 		break;	}
@@ -1016,11 +1048,9 @@ bool CSyntaxParser::MatchRelationFactor(CComboStatement * combo, IAtomOperate * 
 		match = MatchRelationExp(combo, op);
 	}
 	return match;
-
-	//return MatchRelationExp(combo, exp);
 }
 
-bool CSyntaxParser::MatchRelationExp(CComboStatement * combo, IAtomOperate * & op)
+bool CSyntaxParser::MatchRelationExp(CSequenceOp * combo, IAtomOperate * & op)
 {
 	LOG_STACK_TRACE();
 	JCASSERT(combo);
@@ -1077,7 +1107,7 @@ bool CSyntaxParser::MatchRelationExp(CComboStatement * combo, IAtomOperate * & o
 		SYNTAX_ERROR(_T("unknown relation operate"));
 		break;
 	}
-	combo->AddLoopOp(op);
+	combo->AddOp(op);
 	return true;
 }
 
@@ -1086,7 +1116,7 @@ bool CSyntaxParser::MatchRelationExp(CComboStatement * combo, IAtomOperate * & o
 // 变量：返回变量所在的位置
 // 计算过程：返回一个IAtomOperate
 
-bool CSyntaxParser::MatchExpression(CComboStatement * combo, IAtomOperate * & op)
+bool CSyntaxParser::MatchExpression(CSequenceOp * combo, IAtomOperate * & op)
 {
 	LOG_STACK_TRACE();
 	JCASSERT(NULL == op);
@@ -1116,7 +1146,7 @@ bool CSyntaxParser::MatchExpression(CComboStatement * combo, IAtomOperate * & op
 		if ( !match )  SYNTAX_ERROR( _T("syntax error on right side of exp") );
 
 		this_op->SetSource(1, exp_r);
-		combo->AddLoopOp(this_op);
+		combo->AddOp(this_op);
 
 		op->Release(); op=NULL;
 		this_op.detach<IAtomOperate>(op);
@@ -1124,16 +1154,20 @@ bool CSyntaxParser::MatchExpression(CComboStatement * combo, IAtomOperate * & op
 	return true;
 }
 
-bool CSyntaxParser::MatchTerm(CComboStatement * combo, IAtomOperate * & op)
+bool CSyntaxParser::MatchTerm(CSequenceOp * combo, IAtomOperate * & op)
 {
 	return MatchFactor(combo, op);
 }
 
-bool CSyntaxParser::MatchFactor(CComboStatement * combo, IAtomOperate * & op)
+bool CSyntaxParser::MatchFactor(CSequenceOp * combo, IAtomOperate * & op)
 {
 	LOG_STACK_TRACE();
 	JCASSERT(NULL == op);
 	JCASSERT(combo);
+
+	CSingleSt * st = dynamic_cast<CSingleSt*>(combo);
+	if (!st) SYNTAX_ERROR(_T(". operater must in single st"));
+	IAtomOperate * chain = static_cast<IAtomOperate*>(st->GetInPort());
 
 	switch (m_lookahead.m_id)
 	{
@@ -1145,9 +1179,9 @@ bool CSyntaxParser::MatchFactor(CComboStatement * combo, IAtomOperate * & op)
 		}
 		else
 		{
-			stdext::auto_interface<CComboStatement>	combo;
-			MatchComboSt(combo);
-			combo.detach<IAtomOperate>(op);
+			stdext::auto_interface<CComboSt>	new_combo;
+			MatchComboSt(new_combo);
+			new_combo.detach<IAtomOperate>(op);
 		}
 		Match(ID_CURLY_BRACKET_2, _T("Missing }"));
 		break;					}
@@ -1160,24 +1194,38 @@ bool CSyntaxParser::MatchFactor(CComboStatement * combo, IAtomOperate * & op)
 
 	case ID_VARIABLE:
 		NextToken(m_lookahead);	//Match(ID_VARIABLE);
-		MatchVariable(op);
-		combo->AddPreproOp(op);
+		MatchVariable(combo, op);
 		break;
+
+	case ID_PREDEF_VAR:		{
+		if (m_lookahead.m_str == _T("INDEX"))
+		{
+			if (NULL == chain) SYNTAX_ERROR(_T("missing source for INDEX"));
+			CPdvIndex * index_op = new CPdvIndex();
+			op = static_cast<IAtomOperate*>(index_op);
+			op->SetSource(0, chain);
+			st->AddOp(op);
+		}
+		else SYNTAX_ERROR(_T("Unknown pre defined variable %s"), m_lookahead.m_str.c_str() );
+		NextToken(m_lookahead);
+		break;					}
 
 	case ID_DOT:	{
 		NextToken(m_lookahead);			//Match(ID_DOT, _T("missing ."));
 		// match column value
 		if (ID_WORD != m_lookahead.m_id) 	SYNTAX_ERROR(_T("expected a column name"));
 		op = static_cast<IAtomOperate*>( new CColumnVal(m_lookahead.m_str) );
-		op->SetSource(0, combo->LastChain(NULL) );
-		combo->AddLoopOp(op);
+		if (NULL == chain) SYNTAX_ERROR(_T("missing source for column %s"), m_lookahead.m_str.c_str());
+		op->SetSource(0, chain);
+
+		st->AddOp(op);
 		NextToken(m_lookahead);
 		break;	}
 
 	case ID_STRING:
 	case ID_NUMERAL:
 		MatchConstant(op);
-		combo->AddPreproOp(op);
+		combo->AddOp(op);
 		break;
 
 	default:
@@ -1210,12 +1258,12 @@ bool CSyntaxParser::MatchFactor(CComboStatement * combo, IAtomOperate * & op)
 //}
 
 
-void CSyntaxParser::SetBoolOption(IFeature * proxy, const CJCStringT & param_name)
+void CSyntaxParser::SetBoolOption(IFeature * feature, const CJCStringT & param_name)
 {
-	JCASSERT(proxy);
+	JCASSERT(feature);
 	stdext::auto_interface<jcparam::IValue> val;
 	val = static_cast<jcparam::IValue*>(jcparam::CTypedValue<bool>::Create(true));
-	proxy->PushParameter(param_name, val);
+	feature->PushParameter(param_name, val);
 }
 
 bool CSyntaxParser::CheckAbbrev(IFeature * func, TCHAR abbr, CJCStringT & param_name)
@@ -1226,50 +1274,40 @@ bool CSyntaxParser::CheckAbbrev(IFeature * func, TCHAR abbr, CJCStringT & param_
 	return br;
 }
 
-bool CSyntaxParser::MatchPV2PushParam(CComboStatement * combo,
-		IFeature * func, const CJCStringT & param_name)
+bool CSyntaxParser::MatchPV2PushParam(CSingleSt * single_st,
+		IFeature * feature, const CJCStringT & param_name)
 {
+	// 该函数只在编译参数时被调用
 	LOG_STACK_TRACE();
-	JCASSERT(combo);
-	JCASSERT(func);
+	JCASSERT(single_st);
+	JCASSERT(feature);
 
-	bool constant = false, file=false;
-	stdext::auto_interface<IAtomOperate> expr_op;
+	bool constant = false, is_file=false;
 
-	CPushParamOp * push_op = new CPushParamOp(func, param_name);
+	stdext::auto_interface<CPushParamOp>	push_op( new CPushParamOp(feature, param_name) );
 
 	if (ID_TABLE == m_lookahead.m_id)
 	{
-		LOG_DEBUG(_T("match table"));
-		stdext::auto_interface<CComboStatement> new_combo;
-		MatchTable(combo, new_combo);
-		//stdext::auto_interface<IAtomOperate> last;
-		bool br = combo->Merge(new_combo, expr_op);
-		//bool br = combo->SetLoopVar(op);
-		if (!br) SYNTAX_ERROR(_T("table variable has been already set") );
+		CSequenceOp * combo = single_st->GetSuper();
+		JCASSERT( dynamic_cast<CComboSt*>(combo) );
 
-		//combo->GetLoopVar(expr_op);
-		//JCASSERT(expr_op);
-
-		combo->AddLoopOp(static_cast<IAtomOperate*>(push_op)/*, false*/);
-	}
-	else if ( MatchParamVal2(expr_op, constant, file) )
-	{
-		LOG_DEBUG(_T("match val2"));
-		if (file && _T('#') == param_name.at(0) )
-			push_op->SetParamName(_T("#filename"));
-
-		combo->AddPreproOp(expr_op/*, false*/);
-		combo->AddPreproOp(static_cast<IAtomOperate*>(push_op)/*, false*/);
+		stdext::auto_interface<IChainOperate>	chain;
+		bool br = MatchTableParam(combo, chain);
+		if (chain)	single_st->SetSource(0, chain);
+		push_op->SetSource(0, single_st->GetInPort());
 	}
 	else
 	{
-		push_op->Release();
-		return false;
+		stdext::auto_interface<IAtomOperate> expr_op;
+		is_file = (m_lookahead.m_id == ID_FILE_NAME);
+		if ( MatchParamVal2(single_st, expr_op) )
+		{
+			if (is_file && _T('#') == param_name.at(0) ) push_op->SetParamName(_T("#filename"));
+			push_op->SetSource(0, expr_op);
+		}
+		else	return false;
 	}
-
-	push_op->SetSource(0, expr_op);
-	push_op->Release();
+	single_st->AddOp( static_cast<IAtomOperate*>(push_op) );
 	return true;
 }
 
