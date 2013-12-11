@@ -225,6 +225,7 @@ namespace stdext
 		{
 			JCASSERT(NULL == type);
 			type = dynamic_cast<TRG_TYPE*>(m_ptr);
+			JCASSERT(type);
 			m_ptr = NULL;
 		};
 

@@ -149,9 +149,9 @@ class CJCLogClassSize
 public:
 	CJCLogClassSize(const wchar_t * class_name, CJCLoggerNode * log)
 	{
-		if (log && log->GetLevel() >= LOGGER_LEVEL_TRACE)
+		if (log)
 		{
-			log->LogMessageFunc(("[ClassSize]"), _T("sizeof(%ls) = %d"), class_name, (UINT)(sizeof(TYPE)) );
+			log->LogMessageFunc(("[ClassSize]"), _T("sizeof(%ls)\t\t= %d"), class_name, (UINT)(sizeof(TYPE)) );
 		}
 	}
 };
@@ -202,9 +202,26 @@ public:
 #define LOG_STACK_TRACE_P( ... )
 #define LOG_STACK_TRACE_O( ... )
 #define LOG_SIMPLE_TRACE( ... )
-//#define LOG_STACK_PARAM( ... )
+
+
 #define LOG_CLASS_SIZE( ... )
 #define LOG_CLASS_SIZE_T( ... )
+#define LOG_CLASS_SIZE_T1( ... )
+
+#ifdef	LOG_OUT_CLASS_SIZE
+
+#undef LOG_CLASS_SIZE
+#define LOG_CLASS_SIZE(type)  CJCLogClassSize<type> _size_of_##type(_T(#type), _local_logger);
+
+#undef LOG_CLASS_SIZE_T
+#define LOG_CLASS_SIZE_T(type, sn)	CJCLogClassSize<type> _size_of_##sn(_T(#type), _local_logger);
+
+#undef LOG_CLASS_SIZE_T1
+#define LOG_CLASS_SIZE_T1(class_name, type1)	\
+	CJCLogClassSize< class_name<type1> >		\
+	_size_of_##class_name_##type1(_T(#class_name)_T("<")_T(#type1)_T(">"), _local_logger);
+
+#endif
 
 
 #if LOGGER_LEVEL >= LOGGER_LEVEL_CRITICAL
@@ -249,11 +266,7 @@ public:
 
 
 #if LOGGER_LEVEL >= LOGGER_LEVEL_TRACE
-#undef LOG_CLASS_SIZE
-#define LOG_CLASS_SIZE(type)  CJCLogClassSize<type> _size_of_##type(_T(#type), _local_logger);
 
-#undef LOG_CLASS_SIZE_T
-#define LOG_CLASS_SIZE_T(type, sn)  CJCLogClassSize<type> _size_of_##sn(_T(#type), _local_logger);
 
 #undef LOG_STACK_TRACE
 #define LOG_STACK_TRACE()   \
