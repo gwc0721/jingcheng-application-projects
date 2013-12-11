@@ -7,14 +7,11 @@ LOCAL_LOGGER_ENABLE(_T("parameter"), LOGGER_LEVEL_DEBUGINFO);
 
 ///////////////////////////////////////////////////////////////////////////////
 
-
-
-//LOG_CLASS_SIZE( CTypedValueBase )
-
 LOG_CLASS_SIZE( CTypedValueBase )
-LOG_CLASS_SIZE_T( jcparam::CTypedValue<int>, 0 )
-LOG_CLASS_SIZE_T( jcparam::CTypedValue<CJCStringT>, 1 )
 
+LOG_CLASS_SIZE_T1(CTypedValue, INT64)
+LOG_CLASS_SIZE_T1(CTypedValue, int)
+LOG_CLASS_SIZE_T1(CTypedValue, CJCStringT)
 
 
 
@@ -28,17 +25,17 @@ jcparam::IValue * jcparam::CreateTypedValue(jcparam::VALUE_TYPE vt, void * data)
 	case jcparam::VT_CHAR:
 		val = CTypedValue<char>::Create( (data)?*((const char *)data):(0) );					
 		break;
-	case jcparam::VT_UCHAR:		val = CTypedValue<unsigned char>::Create();			break;
-	case jcparam::VT_SHORT:		val = CTypedValue<short>::Create();					break;
-	case jcparam::VT_USHORT:	val = CTypedValue<unsigned short>::Create();			break;
-	case jcparam::VT_INT:		val = CTypedValue<int>::Create();					break;
-	case jcparam::VT_UINT:		val = CTypedValue<unsigned int>::Create();			break;
+	case jcparam::VT_UCHAR:		val = CTypedValue<unsigned char>::Create();		break;
+	case jcparam::VT_SHORT:		val = CTypedValue<short>::Create();				break;
+	case jcparam::VT_USHORT:	val = CTypedValue<unsigned short>::Create();	break;
+	case jcparam::VT_INT:		val = CTypedValue<int>::Create();				break;
+	case jcparam::VT_UINT:		val = CTypedValue<unsigned int>::Create();		break;
 	case jcparam::VT_INT64:		val = CTypedValue<INT64>::Create();				break;
-	case jcparam::VT_UINT64:	val = CTypedValue<UINT64>::Create();		break;
-	case jcparam::VT_FLOAT:		val = CTypedValue<float>::Create();					break;
-	case jcparam::VT_DOUBLE:	val = CTypedValue<double>::Create();					break;
-	case jcparam::VT_STRING:	val = CTypedValue<CJCStringT>::Create();				break;
-	case jcparam::VT_BOOL:		val = CTypedValue<bool>::Create();					break;
+	case jcparam::VT_UINT64:	val = CTypedValue<UINT64>::Create();			break;
+	case jcparam::VT_FLOAT:		val = CTypedValue<float>::Create();				break;
+	case jcparam::VT_DOUBLE:	val = CTypedValue<double>::Create();			break;
+	case jcparam::VT_STRING:	val = CTypedValue<CJCStringT>::Create();		break;
+	case jcparam::VT_BOOL:		val = CTypedValue<bool>::Create();				break;
 	default:
 		THROW_ERROR(ERR_PARAMETER, _T("Unknow type %d"), (int)vt);
 		break;
@@ -85,7 +82,6 @@ void jcparam::CTypedValueBase::SetSubValue(LPCTSTR name, IValue * val)
 {
 	THROW_ERROR(ERR_APP, _T("Do not support sub value!") );
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 

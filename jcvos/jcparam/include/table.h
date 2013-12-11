@@ -8,14 +8,9 @@ namespace jcparam
 	{
 	public:
 		CColInfoBase(JCSIZE id, VALUE_TYPE type, JCSIZE offset, LPCTSTR name)
-			: m_id(id), m_type(type), /*m_width(width),*/ m_offset(offset),
+			: m_id(id), m_type(type), m_offset(offset),
 			m_name(name)
 		{};
-
-		//CColInfoBase(JCSIZE id, JCSIZE width, JCSIZE offset, LPCTSTR name)
-		//	: m_id(id), m_width(width), m_offset(offset),
-		//	m_name(name)
-		//{};
 
 		virtual void GetText(void * row, CJCStringT & str) const {};
 		virtual void CreateValue(BYTE * src, IValue * & val) const {};
@@ -25,7 +20,6 @@ namespace jcparam
 	public:
 		JCSIZE		m_id;
 		VALUE_TYPE	m_type;
-		//JCSIZE		m_width;
 		JCSIZE		m_offset;
 		CJCStringT	m_name;
 	};
@@ -34,9 +28,6 @@ namespace jcparam
 	class CTypedColInfo : public CColInfoBase
 	{
 	public:
-		//CTypedColInfo (int id, JCSIZE offset, LPCTSTR name)
-		//	: CColInfoBase(id, sizeof(VAL_TYPE), offset, name)
-		//{};
 		CTypedColInfo (int id, JCSIZE offset, LPCTSTR name)
 			: CColInfoBase(id, type_id<VAL_TYPE>::id(), offset, name)
 		{	JCASSERT(1);
@@ -90,7 +81,6 @@ namespace jcparam
 	public:
 		virtual JCSIZE GetRowSize() const = 0;
 		virtual void GetRow(JCSIZE index, IValue * & row) = 0;
-		//virtual void NextRow(IValue * & row) = 0;
 		virtual JCSIZE GetColumnSize() const = 0;
 		virtual void Append(IValue * source) = 0;
 		virtual void AddRow(ITableRow * row) = 0;
@@ -103,14 +93,10 @@ namespace jcparam
 		virtual int GetColumnSize() const = 0;
 
 		// 从一个通用的行中取得通用的列数据
-		//virtual void GetColumnData(const CColInfoBase * col, IValue * & val) const = 0;
-
 		virtual void GetColumnData(int field, IValue * &)	const = 0;
 		virtual const CColInfoBase * GetColumnInfo(LPCTSTR field_name) const = 0;
 		virtual void GetColVal(int field, void *) const = 0;
-		//virtual void GetColumnData(LPCTSTR field_name, IValue * &) const = 0;
 
-		//virtual LPCTSTR GetColumnName(int field_id) const = 0;
 		virtual const CColInfoBase * GetColumnInfo(int field) const = 0;
 		// 从row的类型创建一个表格
 		virtual bool CreateTable(ITable * & tab) = 0;

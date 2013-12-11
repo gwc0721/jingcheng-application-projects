@@ -10,20 +10,7 @@
 
 namespace jcparam
 {
-	// VALUE_TYPE的值表示类型的宽度，用于判断拓展转换的方向
-	// bit 7~4表示长度（字节），bit 3~0：类型区分
-	enum VALUE_TYPE
-	{
-		VT_UNKNOW = 0x00,
-		VT_BOOL = 1,
-		VT_CHAR = 2,		VT_UCHAR = 3,
-		VT_SHORT= 4,		VT_USHORT =5,
-		VT_INT =  6,		VT_UINT =  7,
-		VT_INT64 =8,		VT_UINT64 =9,
-		VT_FLOAT =10,		VT_DOUBLE =11,
-		VT_STRING =12,		VT_MAXNUM,
-		VT_HEX, VT_OTHERS,
-	};
+
 
 	template <typename T>
 	class type_id
@@ -34,25 +21,6 @@ namespace jcparam
 
 	IValue * CreateTypedValue(VALUE_TYPE vt, void * data=NULL);
 	VALUE_TYPE StringToType(LPCTSTR str);
-
-	// 用于基础类型的IValue对象，用类型和值两个域表示。值域的宽度为4字节，如果超过4字节的类型，则使用指针。
-	//class CBasicValue
-	//	: virtual public IValue
-	//{
-	//protected:
-	//	VALUE_TYPE	m_type;
-	//	union 
-	//	{
-	//		bool	m_bool;
-	//		char	m_char;
-	//		BYTE	m_uchar;
-	//		short	m_short;
-	//		WORD	m_ushort;
-	//		int		m_int;
-	//		DWORD	m_uint;
-	//		
-	//	}
-	//};
 
 	class ClassNameNull
 	{
@@ -124,6 +92,17 @@ namespace jcparam
 			else br = __super::QueryInterface(if_name, if_ptr);
 			return br;
 		}
+
+		virtual jcparam::VALUE_TYPE GetType(void) const
+		{
+			return type_id<DATATYPE>::id();
+		}
+
+		virtual const void * GetData(void) const
+		{
+			return (void*)(&m_val);
+		}
+
 	protected:
 		DATATYPE m_val;
 	};

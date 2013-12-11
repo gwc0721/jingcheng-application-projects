@@ -4,6 +4,21 @@
 
 namespace jcparam
 {
+	// VALUE_TYPE的值表示类型的宽度，用于判断拓展转换的方向
+	// bit 7~4表示长度（字节），bit 3~0：类型区分
+	enum VALUE_TYPE
+	{
+		VT_UNKNOW = 0x00,
+		VT_BOOL = 1,
+		VT_CHAR = 2,		VT_UCHAR = 3,
+		VT_SHORT= 4,		VT_USHORT =5,
+		VT_INT =  6,		VT_UINT =  7,
+		VT_INT64 =8,		VT_UINT64 =9,
+		VT_FLOAT =10,		VT_DOUBLE =11,
+		VT_STRING =12,		VT_MAXNUM,
+		VT_HEX, VT_OTHERS,
+	};
+
 	const TCHAR PROP_TYPE[] = _T("type");
 	const TCHAR PROP_SUBTYPE[] = _T("subtype");
 	const TCHAR PROP_CLASS[] = _T("class");
@@ -111,7 +126,9 @@ namespace jcparam
 	class CTypedValueBase : virtual public IValue
 	{
 	public:
+		virtual VALUE_TYPE GetType(void) const = 0;
 		virtual void GetSubValue(LPCTSTR name, IValue * & val);
 		virtual void SetSubValue(LPCTSTR name, IValue * val);
+		virtual const void * GetData(void) const = 0;
 	};
 };
