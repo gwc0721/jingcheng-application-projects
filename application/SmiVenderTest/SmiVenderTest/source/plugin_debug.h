@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-
 #include <SmiDevice.h>
 #include "feature_base.h"
 

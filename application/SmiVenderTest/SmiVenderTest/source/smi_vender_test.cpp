@@ -24,6 +24,7 @@ static CSvtApplication the_app;
 #include "plugin_scsi_device.h"
 
 #include "plugin_simulator.h"
+#include "plugin_trace.h"
 
 
 bool RegistInternalPlugin(void)
@@ -31,19 +32,20 @@ bool RegistInternalPlugin(void)
 	LOG_STACK_TRACE();
 	CPluginManager * manager = CSvtApplication::GetApp()->GetPluginManager();
 	JCASSERT(manager);
-	CPluginTest::Regist(manager);
-	CPluginDevice::Regist(manager);
-	CPluginAtaDevice::Regist(manager);
-	CPluginIsp::Regist(manager);
-	CPluginOverPrgm::Regist(manager);
-	CPluginPerformance::Regist(manager);
-	CPluginScsiDevice::Regist(manager);
+	//CPluginTest::Regist(manager);
+	//CPluginDevice::Regist(manager);
+	//CPluginAtaDevice::Regist(manager);
+	//CPluginIsp::Regist(manager);
+	//CPluginOverPrgm::Regist(manager);
+	//CPluginPerformance::Regist(manager);
+	//CPluginScsiDevice::Regist(manager);
 
-	CPluginSimulator::Regist(manager);
+	//CPluginSimulator::Regist(manager);
 
-//#ifdef _DEBUG
-	CPluginDebug::Regist(manager);
-//#endif
+	//CPluginDebug::Regist(manager);
+
+	CPluginTrace::Regist(manager);
+
 	return true;
 }
 

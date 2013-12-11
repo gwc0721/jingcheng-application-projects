@@ -20,22 +20,6 @@ LOCAL_LOGGER_ENABLE(_T("default_pi"), LOGGER_LEVEL_ERROR);
 void CPluginDefault::GetFeature(const CJCStringT & cmd_name, jcscript::IFeature * & pr)
 {
 	JCASSERT(NULL == pr);
-
-	if (cmd_name == _T("parse"))
-	{
-		ParserBD::Create(this, pr);
-		//pr = new ParserBD;
-	}
-	else if (cmd_name == _T("trace"))
-	{
-		ParserTrace::Create(this, pr);
-		//pr = new ParserTrace;
-	}
-	else if (cmd_name == _T("parsebh"))
-	{
-		ParserBH::Create(this, pr);
-		//pr = new ParserTrace;
-	}
 }
 
 #if 0

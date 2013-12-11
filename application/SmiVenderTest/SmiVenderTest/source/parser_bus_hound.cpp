@@ -10,22 +10,28 @@
 
 LOCAL_LOGGER_ENABLE(_T("parser_bus_hound"), LOGGER_LEVEL_WARNING);
 
-LPCTSTR CFeatureBase<CPluginDefault::ParserBH, CPluginDefault>::m_feature_name = _T("parserbh");
+LPCTSTR CFeatureBase<CPluginTrace::BusHound, CPluginTrace>::m_feature_name = _T("bushound");
 
-CParamDefTab CFeatureBase<CPluginDefault::ParserBH, CPluginDefault>::m_param_def_tab(
+CParamDefTab CFeatureBase<CPluginTrace::BusHound, CPluginTrace>::m_param_def_tab(
 	CParamDefTab::RULE()
-	(new CTypedParamDef<CJCStringT>(_T("#filename"), 0, offsetof(CPluginDefault::ParserBH, m_file_name) ) )
-	//(new CTypedParamDef<bool>(_T("diff_time"), _T('d'), offsetof(CPluginDefault::ParserBH, m_diff_time) ) )
+	(new CTypedParamDef<CJCStringT>(_T("#filename"), 0, offsetof(CPluginTrace::BusHound, m_file_name) ) )
+	//(new CTypedParamDef<bool>(_T("diff_time"), _T('d'), offsetof(CPluginTrace::BusHound, m_diff_time) ) )
 	);
+
+const UINT CPluginTrace::BusHound::_BASE::m_property = jcscript::OPP_LOOP_SOURCE;
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- parser
+LOG_CLASS_SIZE_T(CPluginTrace::BusHound, 0)
+
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
 
-CPluginDefault::ParserBH::ParserBH()
+CPluginTrace::BusHound::BusHound()
 	: m_src_file(NULL)
 	, m_line_buf(NULL)
+	, m_init(false)
+	, m_neof(true)
 {
 	m_col_phase = MAX_LINE_BUF, m_col_data = MAX_LINE_BUF, m_col_desc = MAX_LINE_BUF, m_col_id = MAX_LINE_BUF, m_col_time = MAX_LINE_BUF;
 	m_working_phase = -1;
@@ -33,7 +39,7 @@ CPluginDefault::ParserBH::ParserBH()
 	TraceQueueInit();
 }
 
-CPluginDefault::ParserBH::~ParserBH(void)
+CPluginTrace::BusHound::~BusHound(void)
 {
 	if (m_src_file) fclose(m_src_file);
 	delete [] m_line_buf;
@@ -43,11 +49,11 @@ CPluginDefault::ParserBH::~ParserBH(void)
 	}
 }
 
-void CPluginDefault::ParserBH::GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const
-{
-}
+//void CPluginTrace::BusHound::GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const
+//{
+//}
 
-void CPluginDefault::ParserBH::Init(void)
+void CPluginTrace::BusHound::Init(void)
 {
 	JCASSERT(NULL == m_src_file);
 	if (!m_line_buf) m_line_buf = new char[MAX_LINE_BUF];
@@ -76,6 +82,7 @@ void CPluginDefault::ParserBH::Init(void)
 	}
 	fgets(m_line_buf, MAX_LINE_BUF, m_src_file);
 	m_line_num ++;
+	m_init = true;
 }
 
 // 读取文件直到解析出一个phase
@@ -88,7 +95,7 @@ static	qi::rule<const char*> rule_phase_id =
 		>> (qi::int_ [ref(phase_id) = qi::_1] )>> '.' 
 		>> (qi::int_ [ref(phase_offset) = qi::_1]) >> (-(qi::lit('(') >> qi::int_ >> ')'));
 
-static qi::symbols<char, CPluginDefault::ParserBH::PHASE_TYPE>	rule_phase_type;
+static qi::symbols<char, CPluginTrace::BusHound::PHASE_TYPE>	rule_phase_type;
 
 class InitRulePhaseType
 {
@@ -96,20 +103,20 @@ public:
 	InitRulePhaseType(void)
 	{
 		rule_phase_type.add
-			("CMD", CPluginDefault::ParserBH::PT_CMD)
-			("OUT", CPluginDefault::ParserBH::PT_OUT)
-			("IN", CPluginDefault::ParserBH::PT_IN)
-			("ASTS", CPluginDefault::ParserBH::PT_ASTS)
-			("ATA", CPluginDefault::ParserBH::PT_ATA)
-			("ok", CPluginDefault::ParserBH::PT_OK)
-			("SRB", CPluginDefault::ParserBH::PT_SRB)
-			("SSTS", CPluginDefault::ParserBH::PT_SSTS);
+			("CMD", CPluginTrace::BusHound::PT_CMD)
+			("OUT", CPluginTrace::BusHound::PT_OUT)
+			("IN", CPluginTrace::BusHound::PT_IN)
+			("ASTS", CPluginTrace::BusHound::PT_ASTS)
+			("ATA", CPluginTrace::BusHound::PT_ATA)
+			("ok", CPluginTrace::BusHound::PT_OK)
+			("SRB", CPluginTrace::BusHound::PT_SRB)
+			("SSTS", CPluginTrace::BusHound::PT_SSTS);
 	}
 };
 
 static InitRulePhaseType _init_rule;
 
-bool CPluginDefault::ParserBH::ReadPhase(bus_hound_phase * & cur_phase)
+bool CPluginTrace::BusHound::ReadPhase(bus_hound_phase * & cur_phase)
 {
 	JCASSERT(NULL == cur_phase);
 
@@ -183,7 +190,6 @@ bool CPluginDefault::ParserBH::ReadPhase(bus_hound_phase * & cur_phase)
 			{	// error handling
 			}
 
-
 			if (PT_UNKNOWN != phase_type) 		working_phase->m_type = phase_type;
 			if (data_valid)
 			{
@@ -200,7 +206,7 @@ bool CPluginDefault::ParserBH::ReadPhase(bus_hound_phase * & cur_phase)
 	return true;
 }
 
-bool CPluginDefault::ParserBH::ParseScsiCmd(BYTE * buf, JCSIZE len, CAtaTraceRow * trace)
+bool CPluginTrace::BusHound::ParseScsiCmd(BYTE * buf, JCSIZE len, CAtaTraceRow * trace)
 {
 	JCASSERT(buf);
 	JCASSERT(trace);
@@ -233,102 +239,113 @@ bool CPluginDefault::ParserBH::ParseScsiCmd(BYTE * buf, JCSIZE len, CAtaTraceRow
 	return true;
 }
 
-bool CPluginDefault::ParserBH::InvokeOnce(void)
+bool CPluginTrace::BusHound::IsRunning(void)
 {
+	return m_neof;
+}
+
+bool CPluginTrace::BusHound::InvokeOnce(jcscript::IOutPort * outport)
+{
+	LOG_STACK_TRACE();
+
 	bool neof = true;
-	if (m_output) m_output->Release(), m_output= NULL;
 
-	while (1)
+	bus_hound_phase * phase = NULL;
+	neof = ReadPhase(phase);
+
+	if (phase/* && (PT_CMD == phase->m_type || PT_ATA == phase->m_type)*/ )
 	{
-		bus_hound_phase * phase = NULL;
-		neof = ReadPhase(phase);
+		CAtaTraceRow * working_trace = NULL;
+		if (1 == phase->m_id )
+		{	// 新的 command
+			// 如果trace不是以cmd phase开头，则忽略这个trace
+			if ( (PT_CMD != phase->m_type) && (PT_ATA != phase->m_type) )	return true;
 
-		if (phase)
-		{
-			CAtaTraceRow * working_trace = NULL;
-			if (1 == phase->m_id )
-			{
-				// 如果trace不是以cmd phase开头，则忽略这个trace
-				if ( (PT_CMD != phase->m_type) && (PT_ATA != phase->m_type) )
-					continue;
-
-				// 新的trace
-				// 如果queue满，则取出tail到 output
-				if (TRACE_QUEUE == m_trq_size)
-				{	// 出队列
-					CAtaTraceRow * _trace =  TraceQueuePopup();
-					m_output = static_cast<jcparam::IValue*>( _trace );
-					LOG_DEBUG(_T("POPUP   , s=%d, h=%d, t=%d, id=%d"), m_trq_size, m_trq_head, m_trq_tail, _trace->m_id);
-				}
-
-				// 添加新的trace
-				working_trace = new CAtaTraceRow;
-				working_trace->m_id = phase->m_cmd_id;
-				TraceQueuePushback(working_trace);
-				LOG_DEBUG(_T("PUSHBACK, s=%d, h=%d, t=%d, id=%d"), m_trq_size, m_trq_head, m_trq_tail, working_trace->m_id);
+			// 如果queue满，则取出tail到 output
+			if (TRACE_QUEUE == m_trq_size)
+			{	// 出队列
+				CAtaTraceRow * _trace =  TraceQueuePopup();
+				outport->PushResult( static_cast<jcparam::ITableRow*>(_trace) );
+				_trace->Release();
+				LOG_DEBUG(_T("POPUP   , s=%d, h=%d, t=%d, id=%d"), m_trq_size, m_trq_head, m_trq_tail, _trace->m_id);
 			}
-			else working_trace = TraceQueueSearch(phase->m_cmd_id);
 
-			if (working_trace)
-			{
-				// 在queue中匹配trace id
-				switch (phase->m_type)
-				{
-				case PT_CMD:
-					// 解析CMD
-					ParseScsiCmd(phase->m_data, phase->m_data_len, working_trace);
-					break;
-
-				case PT_ATA:
-					if (phase->m_data_len >= 7)
-					{
-						BYTE * d = phase->m_data;
-						working_trace->m_cmd_code = d[6];
-						working_trace->m_lba = MAKELONG(MAKEWORD(d[2], d[3]), MAKEWORD(d[4], d[5] & 0xF));
-						working_trace->m_sectors = d[1];
-					}
-					break;
-
-				case PT_ASTS:
-					if (phase->m_data_len >= 7)
-					{
-						BYTE * d = phase->m_data;
-						working_trace->m_status = d[6];
-					}
-					break;
-
-				case PT_OUT:
-				case PT_IN:	{
-					JCASSERT(NULL == working_trace->m_data);
-					BYTE * buf = working_trace->CreateBuffer(phase->m_data_len);
-					//working_trace->m_data = new BYTE[phase->m_data_len];
-					//working_trace->m_data_len = phase->m_data_len;
-					memcpy_s(buf, phase->m_data_len, phase->m_data, phase->m_data_len);
-					working_trace->m_data->Unlock();
-					break;	}
-
-				case PT_OK:
-				case PT_SRB:
-				case PT_SSTS:
-					break;
-				default:
-					THROW_ERROR(ERR_USER, _T("unknow phase type at line %d"), m_line_num);
-				}
-			}
+			// 添加新的trace
+			working_trace = new CAtaTraceRow;
+			working_trace->m_id = phase->m_cmd_id;
+			TraceQueuePushback(working_trace);
+			LOG_DEBUG(_T("PUSHBACK, s=%d, h=%d, t=%d, id=%d"), m_trq_size, m_trq_head, m_trq_tail, working_trace->m_id);
 		}
+		else working_trace = TraceQueueSearch(phase->m_cmd_id);
 
-		if (m_output) break;
-
-		if (!neof)
+		if (working_trace)
 		{
-			if (0 == m_trq_size) break;
-			CAtaTraceRow * trace = TraceQueuePopup();
-			m_output = static_cast<jcparam::IValue*>( trace );
-			LOG_DEBUG(_T("POPUP   , s=%d, h=%d, t=%d, id=%d"), m_trq_size, m_trq_head, m_trq_tail, trace->m_id);
-			break;
+			// 在queue中匹配trace id
+			switch (phase->m_type)
+			{
+			case PT_CMD:
+				// 解析CMD
+				ParseScsiCmd(phase->m_data, phase->m_data_len, working_trace);
+				break;
+
+			case PT_ATA:
+				if (phase->m_data_len >= 7)
+				{
+					BYTE * d = phase->m_data;
+					working_trace->m_cmd_code = d[6];
+					working_trace->m_lba = MAKELONG(MAKEWORD(d[2], d[3]), MAKEWORD(d[4], d[5] & 0xF));
+					working_trace->m_sectors = d[1];
+				}
+				break;
+
+			case PT_ASTS:
+				if (phase->m_data_len >= 7)
+				{
+					BYTE * d = phase->m_data;
+					working_trace->m_status = d[6];
+				}
+				break;
+
+			case PT_OUT:
+			case PT_IN:	{
+				JCASSERT(NULL == working_trace->m_data);
+				BYTE * buf = working_trace->CreateBuffer(phase->m_data_len);
+				memcpy_s(buf, phase->m_data_len, phase->m_data, phase->m_data_len);
+				working_trace->m_data->Unlock();
+				break;	}
+
+			case PT_OK:
+			case PT_SRB:
+			case PT_SSTS:
+				break;
+			default:
+				THROW_ERROR(ERR_USER, _T("unknow phase type at line %d"), m_line_num);
+			}
 		}
 	}
 
-	if (! m_output ) return false;
+	if (!neof)
+	{
+		while (m_trq_size > 0)
+		{
+			CAtaTraceRow * trace = TraceQueuePopup();
+			outport->PushResult( static_cast<jcparam::ITableRow*>(trace) );
+			trace->Release();
+			LOG_DEBUG(_T("POPUP   , s=%d, h=%d, t=%d, id=%d"), m_trq_size, m_trq_head, m_trq_tail, trace->m_id);
+		}
+
+		m_neof = false;
+		return false;
+	}
 	else return true;
+}
+
+bool CPluginTrace::BusHound::Invoke(jcparam::IValue * row, jcscript::IOutPort * outport)
+{
+	if ( !m_init) 
+	{
+		Init();
+		m_init = true;
+	}
+	return InvokeOnce(outport);
 }

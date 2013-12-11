@@ -3,8 +3,8 @@
 #include "application.h"
 
 /// for file adaptor plugin
-#include "filead_bus_doctor.h"
-#include "filead_csv.h"
+//#include "filead_bus_doctor.h"
+//#include "filead_csv.h"
 #include "plugin_default.h"
 
 LOCAL_LOGGER_ENABLE(_T("PluginMan"), LOGGER_LEVEL_DEBUGINFO);
@@ -133,17 +133,10 @@ bool CPluginManager::ReadFileOp(LPCTSTR type, const CJCStringT & filename, jcscr
 	JCASSERT(NULL == op);
 
 	//if ( _tcscmp(_T("busd"), type) == 0 )
-	{
-		CBusDoctorOp * _op = new CBusDoctorOp(filename);
-		op = static_cast<jcscript::IAtomOperate*>(_op);
-	}
-	//else if ( _tcscmp(_T("csv"), type) == 0 )
 	//{
-	//	CCsvReaderOp * _op = new CCsvReaderOp(filename);
-	//	op = static_cast<jcscript::IAtomOperate*>(_op);	
+	//	CBusDoctorOp * _op = new CBusDoctorOp(filename);
+	//	op = static_cast<jcscript::IAtomOperate*>(_op);
 	//}
-	//else	return false;
-
 	return true;
 }
 

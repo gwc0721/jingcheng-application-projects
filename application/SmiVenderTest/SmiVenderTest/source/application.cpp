@@ -15,11 +15,6 @@ LOCAL_LOGGER_ENABLE(_T("CSvtApp"), LOGGER_LEVEL_DEBUGINFO);
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- application
-#ifdef _DEBUG
-	// 输出编译的中间结果
-const TCHAR CSvtApplication::INDENTATION[16] = _T("\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t"); 
-#endif
-
 
 CSvtApplication * CSvtApplication::m_app = NULL;
 
@@ -71,19 +66,23 @@ int CSvtApplication::Initialize(LPCTSTR cmd)
 	PassArgument(_T("driver"), m_arg_set, argu_scan);
 	PassArgument(_T("controller"), m_arg_set, argu_scan);
 
-
 	CSmiRecognizer::CreateDummyDevice(m_dev);
 
 	jcparam::IValue * outvar = NULL;
 	ScanDevice(argu_scan, NULL, outvar);
 	if (outvar) outvar->Release();
-#ifdef _DEBUG
-	// 输出编译的中间结果
-	FILE * compile_log = NULL;
-	_tfopen_s(&compile_log, COMPILE_LOG, _T("w+"));
-	if (NULL == compile_log) THROW_ERROR(ERR_APP, _T("Open file %s failed"), COMPILE_LOG);
-	fclose(compile_log);
-#endif
+
+	m_arg_set.GetValT(_T("compile"), m_compile_log_fn);
+	m_compile_only = m_arg_set.Exist(_T("run"));
+
+	if ( !m_compile_log_fn.empty() )
+	{	// 输出编译的中间结果
+		FILE * compile_log = NULL;
+		_tfopen_s(&compile_log, m_compile_log_fn.c_str(), _T("w+"));
+		if (NULL == compile_log) THROW_ERROR(ERR_APP, 
+			_T("Open log file %s failed"), m_compile_log_fn.c_str() );
+		fclose(compile_log);
+	}
 	return 1;
 }
 
@@ -105,10 +104,6 @@ int CSvtApplication::Cleanup(void)
 		m_plugin_manager->Release();
 		m_plugin_manager = NULL;
 	}
-#ifdef _DEBUG
-	// 输出编译的中间结果
-	//fclose(m_compile_log);
-#endif
 	return 0;
 }
 
@@ -143,7 +138,6 @@ bool CSvtApplication::RunScript(LPCTSTR file_name)
 		LOG_DEBUG(_T("Processing script %s"), file_name);
 		stdext::jc_printf(_T("Running script %s ...\n"), file_name);
 		
-		//FILE * script_file = NULL;
 		if ( _tfopen_s(&script_file, file_name, _T("r") ) != 0)
 			THROW_ERROR(ERR_PARAMETER, _T("failure on openning script %s"), file_name);
 
@@ -155,23 +149,16 @@ bool CSvtApplication::RunScript(LPCTSTR file_name)
 		if (m_cur_script)	m_cur_script->Release(), m_cur_script= NULL;
 
 		syntax_parser.MatchScript(m_cur_script);
-#ifdef _DEBUG
-		// 输出编译的中间结果
-		FILE * compile_log = NULL;
-		_tfopen_s(&compile_log, COMPILE_LOG, _T("a+"));
-		JCASSERT(compile_log);
-		stdext::jc_fprintf(compile_log, _T("compiling script file %s.\n"), file_name);
-		m_cur_script->DebugOutput(INDENTATION + 15, compile_log);
-		stdext::jc_fprintf(compile_log, _T("\n"));
-		fclose(compile_log);
-#endif	
-		if ( (!m_arg_set.Exist(_T("compile"))) && (!syntax_parser.GetError()) )
+
+		OutCompileLog(m_cur_script);
+
+		if ( (!m_compile_only) && (!syntax_parser.GetError()) )
 		{
 			LOG_DEBUG(_T("Start invoking script") );
 			m_cur_script->Invoke();
 			LOG_DEBUG(_T("Finished invoking script") );
 		}
-
+		if (m_cur_script)	m_cur_script->Release(), m_cur_script= NULL;
 	}
 	catch (std::exception & err)
 	{
@@ -193,15 +180,8 @@ bool CSvtApplication::ParseCommand(LPCTSTR first, LPCTSTR last)
 
 		if (m_cur_script)	m_cur_script->Release(),	m_cur_script= NULL;
 		syntax_parser.MatchScript(m_cur_script);
-#ifdef _DEBUG
-		// 输出编译的中间结果
-		FILE * compile_log = NULL;
-		_tfopen_s(&compile_log, COMPILE_LOG, _T("a+"));
-		stdext::jc_fprintf(compile_log, _T("compiling command \"%s\""), first);
-		m_cur_script->DebugOutput(INDENTATION + 15, compile_log);
-		stdext::jc_fprintf(compile_log, _T("\n"));
-		fclose(compile_log);
-#endif
+		OutCompileLog(m_cur_script);
+
 		if ( !syntax_parser.GetError() )
 		{
 			LOG_DEBUG(_T("Start invoking command") );
@@ -214,6 +194,24 @@ bool CSvtApplication::ParseCommand(LPCTSTR first, LPCTSTR last)
 		printf("%s\r\n", err.what());
 	}
 	return true;
+}
+
+void CSvtApplication::OutCompileLog(jcscript::IAtomOperate * script)
+{
+	JCASSERT(script);
+	static const TCHAR INDENTATION[] = _T("\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t"); 
+
+	if ( !m_compile_log_fn.empty() )
+	{	// 输出编译的中间结果
+		FILE * compile_log = NULL;
+		_tfopen_s(&compile_log, m_compile_log_fn.c_str(), _T("a+"));
+		if (NULL == compile_log) THROW_ERROR(ERR_APP, 
+			_T("Open log file %s failed"), m_compile_log_fn.c_str() );
+		//stdext::jc_fprintf(compile_log, _T("compiling script file %s.\n"), file_name);
+		script->DebugOutput(INDENTATION + 15, compile_log);
+		stdext::jc_fprintf(compile_log, _T("\n"));
+		fclose(compile_log);
+	}
 }
 
 int CSvtApplication::Run(void)
@@ -343,25 +341,15 @@ void CSvtApplication::GetDevice(ISmiDevice * & dev)
 	if (dev) dev->AddRef();
 }
 
-//#define DUMMY_DEVICE
-
-//bool CSvtApplication::DummyDevice(void)
-//{
-//	LOG_STACK_TRACE();
-//	return true;
-//}
-
-
 const jcparam::CParameterDefinition CSvtApplication::m_cmd_line_parser( jcparam::CParameterDefinition::RULE()
 	(_T("list"),		_T('l'), jcparam::VT_STRING, _T("Give a scan list, like C~Z0~9. Pass this argument to scandev.") )
 	(_T("driver"),		_T('d'), jcparam::VT_STRING, _T("Force using specified driver. Pass this argument to scandev.") )
 	(_T("controller"),	_T('c'), jcparam::VT_STRING, _T("Force using specified controller. Pass this argument to scandev.") )
 	(_T("invoke"),		_T('i'), jcparam::VT_STRING, _T("Invoke following command after start up.") )
 	(_T("script"),		_T('s'), jcparam::VT_STRING, _T("Run commands in the specifide script file.") )
-	(_T("help"),		_T('h'), jcparam::VT_BOOL, _T("Show this help message.") )
-	(_T("compile"),		_T('b'), jcparam::VT_BOOL, _T("Compile only.") )
-	//(_T("#testa"), _T('a'), jcparam::VT_BOOL, _T("Test for hided option name") )
-	//(_T("testb"), 0, jcparam::VT_BOOL, _T("Test for hided abbrev") )
+	(_T("help"),		_T('h'), jcparam::VT_BOOL,	 _T("Show this help message.") )
+	(_T("compile"),		_T('b'), jcparam::VT_STRING, _T("Output compile log to file.") )
+	(_T("run"),			_T('r'), jcparam::VT_BOOL,   _T("Do not run script (compile only).") )
 	);
 
 

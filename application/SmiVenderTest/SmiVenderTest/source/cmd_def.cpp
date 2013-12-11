@@ -28,7 +28,7 @@ CProxyBase::~CProxyBase(void)
 //	if (m_inout) m_inout->AddRef();
 //}
 
-void CProxyBase::SetSource(UINT src_id, IAtomOperate * op)
+void CProxyBase::SetSource(UINT src_id, jcscript::IAtomOperate * op)
 {
 	if (op)
 	{
@@ -99,10 +99,10 @@ void CProxyBase::HelpMessage(FILE * output)
 #ifdef _DEBUG
 void CProxyBase::DebugOutput(LPCTSTR indentation, FILE * outfile)
 {
-	stdext::jc_fprintf(outfile, indentation);
-	stdext::jc_fprintf(outfile, _T("%s, [%08X], <%08X>\n"),
-		m_def->name(), 
-		(UINT)(static_cast<IAtomOperate*>(this)), 
-		(UINT)(m_src_op) );
+	//stdext::jc_fprintf(outfile, indentation);
+	//stdext::jc_fprintf(outfile, _T("%s, [%08X], <%08X>\n"),
+	//	m_def->name(), 
+	//	(UINT)(static_cast<jcscript::IAtomOperate*>(this)), 
+	//	(UINT)(m_src_op) );
 }
 #endif

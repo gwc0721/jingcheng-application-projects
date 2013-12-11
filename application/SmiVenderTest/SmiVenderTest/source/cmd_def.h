@@ -25,7 +25,7 @@ public:
 // IAtomOperate
 public:
 	virtual bool GetResult(jcparam::IValue * & val);
-	virtual void SetSource(UINT src_id, IAtomOperate * op);
+	virtual void SetSource(UINT src_id, jcscript::IAtomOperate * op);
 #ifdef _DEBUG
 public:
 	virtual void DebugOutput(LPCTSTR indentation, FILE * outfile);

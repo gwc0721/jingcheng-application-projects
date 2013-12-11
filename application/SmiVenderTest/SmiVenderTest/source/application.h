@@ -64,7 +64,6 @@ public:
 	void ReportProgress(LPCTSTR msg, int percent);
 
 protected:
-	//bool DummyDevice(void);
 	bool ScanDevice(jcparam::CArguSet & argu, jcparam::IValue *, jcparam::IValue * &);
 
 //-- jcscript::IPlugin实现
@@ -84,12 +83,14 @@ protected:
 protected:
 	// 命令行参数
 	jcparam::CArguSet		m_arg_set;		// argument for process command line
-
-#ifdef _DEBUG
+	
 	// 输出编译的中间结果
-	//FILE* m_compile_log;
+	CJCStringT	m_compile_log_fn;
+	bool		m_compile_only;
+	void OutCompileLog(jcscript::IAtomOperate * script);
+
 	static const TCHAR INDENTATION[];
-#endif
+
 
 	// for command tokenize and invoke
 protected:

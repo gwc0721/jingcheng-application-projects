@@ -8,18 +8,12 @@ class CPluginDefault :
 	virtual public jcscript::IPlugin, public CPluginBase, public CJCInterfaceBase
 {
 public:
-	class ParserBD;
-	class ParserBH;
-	class ParserTrace;
-
-public:
 	CPluginDefault(void) {};
 	virtual ~CPluginDefault() {};
 
 public:
 	virtual bool Reset(void) {return true;} 
 	virtual void GetFeature(const CJCStringT & cmd_name, jcscript::IFeature * & pr);
-	//virtual void ShowFunctionList(FILE * output) const;
 
 public:
 	virtual LPCTSTR name() const {return _T("");}

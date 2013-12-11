@@ -90,12 +90,10 @@ public:
 template <class F_TYPE, class P_TYPE>
 class CFeatureBase
 	:virtual public jcscript::IFeature
-	//, public CJCInterfaceBase
 {
 protected:
-	CFeatureBase() : m_src_op(NULL)
-	{ }
-	~CFeatureBase(void)  { if (m_src_op) m_src_op->Release(); }
+	CFeatureBase(void) {}
+	~CFeatureBase(void)  {}
 
 public:
 	static void Create(jcscript::IPlugin * plugin, jcscript::IFeature * & f)
@@ -107,7 +105,7 @@ public:
 	}
 
 public:
-	static LPCTSTR name() {return m_feature_name;} 
+	static LPCTSTR name(void) {return m_feature_name;} 
 	virtual bool PushParameter(const CJCStringT & var_name, jcparam::IValue * val)
 	{
 		const CParamDef * def = m_param_def_tab.GetItem(var_name);
@@ -124,33 +122,27 @@ public:
 		var_name = def->m_name;
 		return true;
 	}
+	
+	virtual UINT GetProperty(void) const {return m_property;};
 
-	virtual void SetSource(UINT src_id, IAtomOperate * op)
-	{
-		JCASSERT(NULL == m_src_op);
-		m_src_op = op;
-		if (m_src_op) m_src_op->AddRef();
-	}
+	//virtual void SetSource(UINT src_id, jcscript::IAtomOperate * op)
+	//{
+	//	JCASSERT(NULL == m_src_op);
+	//	m_src_op = op;
+	//	if (m_src_op) m_src_op->AddRef();
+	//}
+
+	virtual LPCTSTR GetFeatureName(void) const {return m_feature_name;}
+
+	virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const {};
+	virtual bool Clean(void) {return false; };
 
 protected:
 	static CParamDefTab	m_param_def_tab;
 	static LPCTSTR m_feature_name;
+	static const UINT	m_property;
 
-	IAtomOperate * m_src_op;
 	P_TYPE		* m_plugin;
-
-#ifdef _DEBUG
-// 用于检查编译结果
-public:
-	virtual void DebugOutput(LPCTSTR indentation, FILE * outfile)
-	{
-		stdext::jc_fprintf(outfile, indentation);
-		stdext::jc_fprintf(outfile, _T("%s, [%08X], <%08X>\n"),
-			m_feature_name, 
-			(UINT)(static_cast<IAtomOperate*>(this)), 
-			(UINT)(m_src_op) );
-	}
-#endif
 };
 
 ///////////////////////////////////////////////////////////////////////////////

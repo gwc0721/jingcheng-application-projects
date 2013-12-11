@@ -5,6 +5,7 @@
 #endif		
 
 #define LOGGER_LEVEL LOGGER_LEVEL_DEBUGINFO
+#define LOG_OUT_CLASS_SIZE
 
 #include <stdio.h>
 #include <tchar.h>

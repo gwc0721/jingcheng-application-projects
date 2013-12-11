@@ -192,18 +192,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\file_table.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\source\filead_bus_doctor.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\source\filead_csv.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\source\parser_bus_doctor.cpp"
 				>
 			</File>
@@ -212,7 +200,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\plugin_ata_device.cpp"
+				RelativePath=".\source\parser_vendor_cmd.cpp"
 				>
 			</File>
 			<File
@@ -220,19 +208,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\plugin_debug.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\source\plugin_default.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\source\plugin_device.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\source\plugin_isp.cpp"
 				>
 			</File>
 			<File
@@ -240,23 +216,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\plugin_overprgm.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\source\plugin_performance.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\source\plugin_scsi_device.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\source\plugin_simulator.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\source\plugin_test.cpp"
+				RelativePath=".\source\plugin_trace.cpp"
 				>
 			</File>
 			<File
@@ -295,14 +255,6 @@
 			</File>
 			<File
 				RelativePath=".\source\file_table.h"
-				>
-			</File>
-			<File
-				RelativePath=".\source\filead_bus_doctor.h"
-				>
-			</File>
-			<File
-				RelativePath=".\source\filead_csv.h"
 				>
 			</File>
 			<File
@@ -355,6 +307,10 @@
 			</File>
 			<File
 				RelativePath=".\source\plugin_test.h"
+				>
+			</File>
+			<File
+				RelativePath=".\source\plugin_trace.h"
 				>
 			</File>
 			<File

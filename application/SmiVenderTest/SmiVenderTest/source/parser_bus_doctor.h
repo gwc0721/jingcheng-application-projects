@@ -3,35 +3,36 @@
 #include <jcparam.h>
 
 #include "plugin_default.h"
-#include "feature_base.h"
 #include "ata_trace.h"
 
 #define TRACE_QUEUE		(16)
 #define TQ_MASK			(TRACE_QUEUE -1)
 
 
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // 用于读取bus doctor文件的feature
-class CPluginDefault::ParserBD
-	: virtual public jcscript::ILoopOperate
-	, public CFeatureBase<CPluginDefault::ParserBD, CPluginDefault>
+class CPluginTrace::BusDoctor
+	: virtual public jcscript::IFeature
+	, public CFeatureBase<CPluginTrace::BusDoctor, CPluginTrace>
 	, public CJCInterfaceBase
 {
 public:
-	ParserBD(void);
-	virtual ~ParserBD(void);
+	typedef CFeatureBase<CPluginTrace::BusDoctor, CPluginTrace> _BASE;
+
+public:
+	BusDoctor(void);
+	virtual ~BusDoctor(void);
 
 	// IAtomOperate
 public:
-	virtual bool GetResult(jcparam::IValue * & val);
-	virtual bool Invoke(void);
-// ILoopOperate
-public:
-	virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const;
-	virtual void Init(void);
-	virtual bool InvokeOnce(void);
+	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
+	bool InvokeOnce(jcscript::IOutPort * outport);
+	virtual bool IsRunning(void);
 
 protected:
+	void Init(void);
 	void ParseLine(const CJCStringA & line, JCSIZE length);
 
 public:
@@ -41,29 +42,29 @@ public:
 protected:
 	FILE * m_src_file;
 	bool m_inited;
-	CAtaTraceTable * m_trace_tab;
 
 	// 累计时间戳，如果源文件中的时间戳以差分表示，
 	//	则此变量用于累计源文件时间戳，否则等于源文件的时间戳
 	double m_acc_time_stamp;
-	CAtaTraceRow	* m_trace_row;
 	char * m_line_buf;
 	char * m_last;
 	const char * m_first;
 
-	jcparam::IValue * m_output;
+	bool m_init;
 };
 
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// 用于读取bus doctor文件的feature
-class CPluginDefault::ParserBH
-	: virtual public jcscript::ILoopOperate
-	, public CLoopFeatureBase<CAtaTrace>
-	, public CFeatureBase<CPluginDefault::ParserBH, CPluginDefault>
+// 用于读取bus hound文件的feature
+class CPluginTrace::BusHound
+	: virtual public jcscript::IFeature
+	, public CFeatureBase<CPluginTrace::BusHound, CPluginTrace>
 	, public CJCInterfaceBase
 {
+public:
+	typedef CFeatureBase<CPluginTrace::BusHound, CPluginTrace> _BASE;
+
 public:
 	enum PHASE_TYPE
 	{
@@ -88,15 +89,15 @@ public:
 	};
 
 public:
-	ParserBH(void);
-	virtual ~ParserBH(void);
+	BusHound(void);
+	virtual ~BusHound(void);
 
-
-// ILoopOperate
 public:
-	virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const;
 	virtual void Init(void);
-	virtual bool InvokeOnce(void);
+	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
+	bool InvokeOnce(jcscript::IOutPort * outport);
+
+	virtual bool IsRunning(void);
 
 protected:
 	bool ReadPhase(bus_hound_phase * &);
@@ -107,12 +108,13 @@ public:
 
 protected:
 	FILE * m_src_file;
+	bool m_init;
+	bool m_neof;
 
 	JCSIZE m_line_num;
 
 	// 累计时间戳，如果源文件中的时间戳以差分表示，
 	//	则此变量用于累计源文件时间戳，否则等于源文件的时间戳
-	//double m_acc_time_stamp;
 	char * m_line_buf;
 
 	// 列的起始位置
@@ -163,7 +165,4 @@ protected:
 		}
 		return NULL;
 	}
-
-
-
 };

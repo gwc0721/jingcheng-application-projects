@@ -8,72 +8,40 @@
 
 LOCAL_LOGGER_ENABLE(_T("parser_bus_doctor"), LOGGER_LEVEL_WARNING);
 
-LPCTSTR CFeatureBase<CPluginDefault::ParserBD, CPluginDefault>::m_feature_name = _T("parser");
+LPCTSTR CFeatureBase<CPluginTrace::BusDoctor, CPluginTrace>::m_feature_name = _T("busdoc");
 
-CParamDefTab CFeatureBase<CPluginDefault::ParserBD, CPluginDefault>::m_param_def_tab(
+CParamDefTab CFeatureBase<CPluginTrace::BusDoctor, CPluginTrace>::m_param_def_tab(
 	CParamDefTab::RULE()
-	(new CTypedParamDef<CJCStringT>(_T("#filename"), 0, offsetof(CPluginDefault::ParserBD, m_file_name) ) )
-	(new CTypedParamDef<bool>(_T("diff_time"), _T('d'), offsetof(CPluginDefault::ParserBD, m_diff_time) ) )
+	(new CTypedParamDef<CJCStringT>(_T("#filename"), 0, offsetof(CPluginTrace::BusDoctor, m_file_name) ) )
+	(new CTypedParamDef<bool>(_T("diff_time"), _T('d'), offsetof(CPluginTrace::BusDoctor, m_diff_time) ) )
 	);
 
-CPluginDefault::ParserBD::ParserBD()
+const UINT CPluginTrace::BusDoctor::_BASE::m_property = jcscript::OPP_LOOP_SOURCE;
+
+CPluginTrace::BusDoctor::BusDoctor()
 	: m_src_file(NULL)
-	, m_trace_tab(NULL)
-	, m_trace_row(NULL)
 	, m_diff_time(false)
 	, m_inited(false)
 	, m_line_buf(NULL)
 	, m_last(NULL)
 	, m_first(NULL)
-	, m_output(NULL)
+	, m_init(false)
 {
 }
 
-CPluginDefault::ParserBD::~ParserBD(void)
+CPluginTrace::BusDoctor::~BusDoctor(void)
 {
 	if (m_src_file) fclose(m_src_file);
-	if (m_trace_tab) m_trace_tab->Release();
-	if (m_trace_row) m_trace_row->Release();
-	if (m_output) m_output->Release();
 	delete [] m_line_buf;
 }
 
-bool CPluginDefault::ParserBD::GetResult(jcparam::IValue * & val)
+bool CPluginTrace::BusDoctor::Invoke(jcparam::IValue * row, jcscript::IOutPort * outport)
 {
 	LOG_STACK_TRACE();
-	JCASSERT(NULL == val);
 
-	// 返回当前的命令
-	if (m_output)
-	{
-		val = m_output;
-		val->AddRef();
-	}	
-	
-	return true;
+	if (!m_init)	Init();
+	return InvokeOnce(outport);
 }
-
-bool CPluginDefault::ParserBD::Invoke(void)
-{
-	LOG_STACK_TRACE();
-	
-	Init();
-	
-	CAtaTraceTable::Create(100, m_trace_tab);
-	while ( InvokeOnce() )
-	{
-		if (m_trace_row) m_trace_tab->push_back(*m_trace_row);
-	}
-
-	m_output = static_cast<jcparam::IValue*>(m_trace_tab);
-	m_output->AddRef();
-	return true;
-}
-
-void CPluginDefault::ParserBD::GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const
-{
-}
-
 
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
@@ -176,7 +144,7 @@ public:
 	int test;
 };
 
-void CPluginDefault::ParserBD::Init(void)
+void CPluginTrace::BusDoctor::Init(void)
 {
 	JCASSERT(NULL == m_src_file);
 	if (!m_line_buf) m_line_buf = new char[SRC_READ_SIZE + SRC_BACK_SIZE];
@@ -189,18 +157,19 @@ void CPluginDefault::ParserBD::Init(void)
 	m_acc_time_stamp = 0;
 	m_last = m_line_buf + SRC_READ_SIZE + SRC_BACK_SIZE;
 	m_first = m_last;
+
+	m_init = true;
 }
 
 static busdoctor_gm<const char *> gm;
 
-bool CPluginDefault::ParserBD::InvokeOnce(void)
+bool CPluginTrace::BusDoctor::InvokeOnce(jcscript::IOutPort * outport)
 {
 	LOG_STACK_TRACE();
 	JCASSERT(m_src_file);
 
 	// 处理一条trace
 	stdext::auto_interface<CAtaTraceRow>	trace_row(new CAtaTraceRow);
-	if (m_trace_row)	m_trace_row->Release(), m_trace_row = NULL;
 
 	while (1)
 	{		// 处理源文件1行
@@ -243,13 +212,9 @@ bool CPluginDefault::ParserBD::InvokeOnce(void)
 			trace_row->m_start_time /= (1000 * 1000 * 1000);	// ns -> s
 			trace_row->m_busy_time /= (1000 * 1000);			// ns -> ms
 			// 取得一个完整的trace
+			outport->PushResult(static_cast<jcparam::ITableRow*>(trace_row) );
 
-			//if (m_trace_row) m_trace_row->Release(), m_trace_row = NULL;
-			trace_row.detach(m_trace_row);
-			m_output = m_trace_row;
-			m_output->AddRef();
 			return true;
-			//m_trace_tab->push_back(trace);
 			break;
 
 		case 0x39:	// dma active
@@ -266,5 +231,9 @@ bool CPluginDefault::ParserBD::InvokeOnce(void)
 	return false;
 }
 
+bool CPluginTrace::BusDoctor::IsRunning(void)
+{
+	return !( m_init && (m_first == m_last) && (feof(m_src_file)) );
+}
 
 
