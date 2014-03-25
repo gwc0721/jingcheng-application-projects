@@ -1,0 +1,9 @@
+
+color blue/green yellow/red white/magenta white/magenta
+timeout 0
+default /default
+smi
+map --mem (hd0,0)/dos.iso (fd0)
+map --hook
+chainloader (fd0)+1
+rootnoverify (fd0)
