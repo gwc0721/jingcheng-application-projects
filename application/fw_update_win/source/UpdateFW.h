@@ -1,4 +1,4 @@
-// fw_update_win.h : main header file for the PROJECT_NAME application
+// UpdateFW.h : main header file for the PROJECT_NAME application
 //
 
 #pragma once
@@ -11,7 +11,7 @@
 
 
 // CUpdateFWApp:
-// See fw_update_win.cpp for the implementation of this class
+// See UpdateFW.cpp for the implementation of this class
 //
 
 class CUpdateFWApp : public CWinApp

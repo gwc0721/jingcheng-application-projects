@@ -1,9 +1,8 @@
-// fw_update_win.cpp : Defines the class behaviors for the application.
+// UpdateFW.cpp : Defines the class behaviors for the application.
 //
 
 #include "stdafx.h"
-#include "fw_update_win.h"
-//#include "fw_update_winDlg.h"
+#include "UpdateFW.h"
 
 #include <vld.h>
 #include <stdext.h>
@@ -22,7 +21,6 @@ LOGGER_TO_DEBUG(0, 0
 		| CJCLogger::COL_TIME_STAMP
 		| CJCLogger::COL_COMPNENT_NAME
 		| CJCLogger::COL_FUNCTION_NAME 
-		//| CJCLogger::COL_REAL_TIME
 		, 0);
 
 // CUpdateFWApp
@@ -204,7 +202,7 @@ CUpdateFWApp::PROCESS CUpdateFWApp::ParseCommandLine(void)
 		else if (_tcscmp(cmd_args[ii], _T("/e")) == 0)
 		{	// backup mbr and export file
 			LOG_DEBUG(_T("got option /e"));
-			proc = (PROCESS)(PROC_BACKUP_MBR
+			proc = (PROCESS)( proc
 				| PROC_EXPORT_FILE
 				| PROC_EXPORT_GRLDR_MBR);
 		}
@@ -268,7 +266,7 @@ CUpdateFWApp::PROCESS CUpdateFWApp::ParseCommandLine(void)
 			| PROC_EXPORT_FILE 
 			| PROC_EXPORT_GRLDR_MBR
 			| PROC_WRITE_MBR 
-			| PROC_SET_STARTUP);
+			);
 	}
 	return proc;
 }
