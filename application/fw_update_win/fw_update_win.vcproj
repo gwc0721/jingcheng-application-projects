@@ -17,7 +17,92 @@
 	</ToolFiles>
 	<Configurations>
 		<Configuration
-			Name="Debug|Win32"
+			Name="RELEASE_STATIC_MFC|Win32"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
+			ConfigurationType="1"
+			UseOfMFC="1"
+			CharacterSet="1"
+			WholeProgramOptimization="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				PreprocessorDefinitions="NDEBUG"
+				MkTypLibCompatible="false"
+				ValidateParameters="true"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				EnableIntrinsicFunctions="true"
+				AdditionalIncludeDirectories="C:\library\vld_10;..\..\jcvos\stdext"
+				PreprocessorDefinitions="WIN32;_WINDOWS;NDEBUG"
+				MinimalRebuild="false"
+				RuntimeLibrary="0"
+				EnableFunctionLevelLinking="true"
+				UsePrecompiledHeader="0"
+				WarningLevel="3"
+				DebugInformationFormat="3"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="NDEBUG"
+				Culture="1033"
+				AdditionalIncludeDirectories="$(IntDir)"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				OutputFile="$(OutDir)\UpdateFW.exe"
+				LinkIncremental="1"
+				AdditionalLibraryDirectories="C:\library\vld_10;"
+				GenerateDebugInformation="true"
+				SubSystem="2"
+				OptimizeReferences="2"
+				EnableCOMDATFolding="2"
+				TargetMachine="1"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="DEBUG_STATIC_MFC|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
@@ -45,11 +130,12 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
+				AdditionalIncludeDirectories="C:\library\vld_10;..\..\jcvos\stdext"
 				PreprocessorDefinitions="WIN32;_WINDOWS;_DEBUG"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
-				UsePrecompiledHeader="2"
+				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="4"
 			/>
@@ -68,177 +154,9 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="2"
+				AdditionalLibraryDirectories="C:\library\vld_10;"
 				GenerateDebugInformation="true"
 				SubSystem="2"
-				TargetMachine="1"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="RELEASE_STATIC_LIB|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="1"
-			UseOfMFC="1"
-			CharacterSet="1"
-			WholeProgramOptimization="1"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="NDEBUG"
-				MkTypLibCompatible="false"
-				ValidateParameters="true"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="2"
-				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="C:\library\vld_10;C:\library\boost_1_46_1;..\..\jcvos\stdext"
-				PreprocessorDefinitions="WIN32;_WINDOWS;NDEBUG"
-				MinimalRebuild="false"
-				RuntimeLibrary="0"
-				EnableFunctionLevelLinking="true"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="3"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="NDEBUG"
-				Culture="1033"
-				AdditionalIncludeDirectories="$(IntDir)"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\UpdateFW.exe"
-				LinkIncremental="1"
-				AdditionalLibraryDirectories="C:\library\vld_10;C:\library\boost_1_46_1\stage\lib"
-				GenerateDebugInformation="true"
-				SubSystem="2"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
-				TargetMachine="1"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="RELEASE_DYNAMIC_LIB|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="1"
-			UseOfMFC="1"
-			CharacterSet="1"
-			WholeProgramOptimization="1"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="NDEBUG"
-				MkTypLibCompatible="false"
-				ValidateParameters="true"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="2"
-				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="D:\libs\vld;..\..\jcvos\stdext"
-				PreprocessorDefinitions="WIN32;_WINDOWS;NDEBUG"
-				MinimalRebuild="false"
-				RuntimeLibrary="0"
-				EnableFunctionLevelLinking="true"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="3"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="NDEBUG"
-				Culture="1033"
-				AdditionalIncludeDirectories="$(IntDir)"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\UpdateFW.exe"
-				LinkIncremental="1"
-				GenerateDebugInformation="true"
-				SubSystem="2"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -277,11 +195,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\fw_update_win.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\source\stdafx.cpp"
+				RelativePath=".\source\UpdateFW.cpp"
 				>
 			</File>
 		</Filter>
@@ -299,10 +213,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\fw_update_win.h"
-				>
-			</File>
-			<File
 				RelativePath=".\source\Resource.h"
 				>
 			</File>
@@ -314,6 +224,10 @@
 				RelativePath=".\source\targetver.h"
 				>
 			</File>
+			<File
+				RelativePath=".\source\UpdateFW.h"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Resource Files"
@@ -321,15 +235,7 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
-				RelativePath=".\res\Dos.img"
-				>
-			</File>
-			<File
-				RelativePath=".\source\fw_update_win.rc"
-				>
-			</File>
-			<File
-				RelativePath=".\res\fw_update_win.rc2"
+				RelativePath=".\res\dummy_dos.img"
 				>
 			</File>
 			<File
@@ -346,6 +252,14 @@
 			</File>
 			<File
 				RelativePath=".\res\UpdateFW.ico"
+				>
+			</File>
+			<File
+				RelativePath=".\source\UpdateFW.rc"
+				>
+			</File>
+			<File
+				RelativePath=".\res\UpdateFW.rc2"
 				>
 			</File>
 		</Filter>
