@@ -53,11 +53,22 @@ namespace stdext
 			return &m_handle;
 		};
 
+		//HANDLE_TYPE & operator ()
+		//{
+		//	return m_handle;
+		//}
+
 		void detatch(HANDLE_TYPE & type)
 		{
 			type = m_handle;
 			m_handle=NULL;
 		};
+
+		void close(void)
+		{
+			CLOSE_HANDLE_FUNCS::DoCloseHandle(m_handle);
+			m_handle = NULL;
+		}
 	    
 
 	protected:
@@ -80,12 +91,17 @@ namespace stdext
 		if (handle)	    ::CloseHandle(handle);
 	}
 
+	template <> void CCloseHandle<HKEY>::DoCloseHandle(HKEY hkey)
+	{
+		if (hkey)	::RegCloseKey(hkey);
+	}
+
 	#ifdef ATL_SUPPORT
 	template <> void CCloseHandle<IUnknown*>::DoCloseHandle(IUnknown * ptr)
 	{
 		if (ptr) ptr->Release();
 	}
-	#endif
+	#endif	// ATL_SUPPORT
 
 	///////////////////////////////////////////////////////////////////////////////
 	// -- Default implement of CLOSE_HANCLE_FUNCS for FILE *
@@ -98,7 +114,7 @@ namespace stdext
 		}
 	};
 
-	#endif
+	#endif // WIN32
 
 	template <> void CCloseHandle<IJCInterface*>::DoCloseHandle(IJCInterface * ptr)
 	{
