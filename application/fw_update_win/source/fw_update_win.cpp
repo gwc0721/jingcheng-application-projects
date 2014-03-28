@@ -1,8 +1,8 @@
-// UpdateFW.cpp : Defines the class behaviors for the application.
+// fw_update_win.cpp : Defines the class behaviors for the application.
 //
 
 #include "stdafx.h"
-#include "UpdateFW.h"
+#include "fw_update_win.h"
 
 #include <vld.h>
 #include <stdext.h>
@@ -209,7 +209,6 @@ bool CUpdateFWApp::CleanUp(void)
 	DeleteFile(file_name);
 
 	RemoveAutoRun();
-	return true;
 }
 
 CUpdateFWApp::PROCESS CUpdateFWApp::ParseCommandLine(void)

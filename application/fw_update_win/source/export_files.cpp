@@ -178,25 +178,24 @@ int LogicalToPhysical(LPCTSTR szDrive)
 	return sd.DeviceNumber;
 }
 
-bool OpenDevice(HANDLE & disk)
+bool OpenDevice(HANDLE & disk, LPCTSTR disk_letter)
 {
 	LOG_STACK_TRACE();
 	JCASSERT( NULL == disk || INVALID_HANDLE_VALUE == disk);
 
-	int disk_num = LogicalToPhysical(_T("\\\\.\\\\C:"));
+	CString logical_drive;
+	logical_drive.Format(_T("\\\\.\\\\%s"), disk_letter);
+	int disk_num = LogicalToPhysical(logical_drive);
 	CString disk_name;
 	disk_name.Format(_T("\\\\.\\PhysicalDrive%d"), disk_num);
 	int retry = RETRY_TIMES;
 	while ( (retry > 0) && (disk == INVALID_HANDLE_VALUE))
 	{
-		disk = CreateFile(	
-			      disk_name, 
+		disk = CreateFile(disk_name, 
 				  GENERIC_READ|GENERIC_WRITE, 
 				  FILE_SHARE_READ|FILE_SHARE_WRITE, 
-				  NULL, 
-				  OPEN_EXISTING, 
-				  0, 
-				  NULL );
+				  NULL, OPEN_EXISTING, 
+				  0, NULL );
 		--retry;
 	}
 	if (INVALID_HANDLE_VALUE == disk) THROW_WIN32_ERROR(_T("failure on openning disk %s"), disk_name);	
@@ -204,7 +203,7 @@ bool OpenDevice(HANDLE & disk)
 }
 
 
-bool BackupMBR(HANDLE disk, BYTE * read_buf, JCSIZE mbr_size)
+bool BackupMBR(HANDLE disk, BYTE * read_buf, JCSIZE mbr_size, LPCTSTR file_name)
 {
 	LOG_STACK_TRACE();
 
@@ -214,16 +213,16 @@ bool BackupMBR(HANDLE disk, BYTE * read_buf, JCSIZE mbr_size)
 	if (!br) THROW_ERROR(ERR_APP, _T("failure on reading mbr"));
 
 	FILE * file_mbr_back = NULL;
-	stdext::jc_fopen(& file_mbr_back, MBR_BACKUP, _T("w+b"));
-	if (NULL == file_mbr_back) THROW_ERROR(ERR_USER, _T("failure on creating file %s"), MBR_BACKUP);
+	stdext::jc_fopen(& file_mbr_back, file_name, _T("w+b"));
+	if (NULL == file_mbr_back) THROW_ERROR(ERR_USER, _T("failure on creating file %s"), file_name);
 	fwrite(read_buf, 1, mbr_size, file_mbr_back);
 	fclose(file_mbr_back);
 	file_mbr_back = NULL;
 
 	// verify
 	stdext::auto_array<BYTE> ver_buf(mbr_size);
-	stdext::jc_fopen(& file_mbr_back, MBR_BACKUP, _T("rb"));
-	if (NULL == file_mbr_back) THROW_ERROR(ERR_USER, _T("failure on creating file %s"), MBR_BACKUP);
+	stdext::jc_fopen(& file_mbr_back, file_name, _T("rb"));
+	if (NULL == file_mbr_back) THROW_ERROR(ERR_USER, _T("failure on creating file %s"), file_name);
 	fread(ver_buf, 1, mbr_size, file_mbr_back);
 	fclose(file_mbr_back);
 	if (memcmp(read_buf, ver_buf, mbr_size) != 0) THROW_ERROR(ERR_APP, _T("failure on verify backup file."));
@@ -301,15 +300,12 @@ bool Reboot(void)
 	return true;
 }
 
-bool DeleteTempFiles(void)
+bool RemoveAutoRun(void)
 {
 	LOG_STACK_TRACE();
 	// delete files
-	DeleteFile(MBR_BACKUP);
-	DeleteFile(FN_DOS_IMAGE);
-	DeleteFile(FN_GRLDR);
-	DeleteFile(FN_MENU_LST);
-	DeleteFile(FN_GRLDR_MBR);
+
+	
 	LOG_NOTICE(_T("file removed"));
 	// remove auto run
 
@@ -331,14 +327,14 @@ bool DeleteTempFiles(void)
 	return true;
 }
 
-bool RestoreMBR(HANDLE disk)
+bool RestoreMBR(HANDLE disk, LPCTSTR file_name)
 {
 	LOG_STACK_TRACE();
 	JCASSERT( disk && (INVALID_HANDLE_VALUE != disk) );
 
 	FILE *file = NULL;
-	stdext::jc_fopen(&file, MBR_BACKUP, _T("rb"));
-	if ( NULL == file) THROW_ERROR(ERR_USER, _T("failure on openning mbr backup file %s"), MBR_BACKUP);
+	stdext::jc_fopen(&file, file_name, _T("rb"));
+	if ( NULL == file) THROW_ERROR(ERR_USER, _T("failure on openning mbr backup file %s"), file_name);
 
 	stdext::auto_array<BYTE> buf(MAX_MBR_SIZE);
 	JCSIZE read_size = fread(buf, 1, MAX_MBR_SIZE, file);
