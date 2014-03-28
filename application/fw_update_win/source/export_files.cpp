@@ -157,7 +157,7 @@ bool SetAutoRun(void)
 	return true;  
 }
 
-int LogicalToPhysical(TCHAR *szDrive)
+int LogicalToPhysical(LPCTSTR szDrive)
 {
 	LOG_STACK_TRACE();
 
