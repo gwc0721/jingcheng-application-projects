@@ -236,6 +236,8 @@ namespace stdext
 		template <typename PTR_TYPE>
 		PTR_TYPE d_cast() { return dynamic_cast<PTR_TYPE>(m_ptr); };
 
+		void release(void) { if(m_ptr) m_ptr->Release(); m_ptr= NULL;};
+
 		template <typename TRG_TYPE>
 		void detach(TRG_TYPE * & type)
 		{
