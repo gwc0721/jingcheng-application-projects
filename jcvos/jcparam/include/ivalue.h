@@ -26,11 +26,6 @@ namespace jcparam
 
 	class IValue;
 
-	class CValueEnumerateListener
-	{
-		virtual void OnEnumerate(const CJCStringT & name, IValue * val) = 0;
-	};
-
 	class IValue : virtual public IJCInterface 
 	{
 	public:
@@ -38,30 +33,86 @@ namespace jcparam
 		virtual void GetSubValue(LPCTSTR name, IValue * & val) = 0;
 		// 如果name不存在，则插入，否则修改name的值
 		virtual void SetSubValue(LPCTSTR name, IValue * val) = 0;
-	};
-
-	class IValueConvertor : virtual public IJCInterface
-	{
-	public:
-		// 转换器
 		virtual void GetValueText(CJCStringT & str) const = 0;
 		virtual void SetValueText(LPCTSTR str)  = 0;
 	};
 
-	class IValueViewer : virtual public IJCInterface
-	{
-
-	};
+	//class IValueConvertor : virtual public IJCInterface
+	//{
+	//public:
+	//	// 转换器
+	//	virtual void GetValueText(CJCStringT & str) const = 0;
+	//	virtual void SetValueText(LPCTSTR str)  = 0;
+	//};
 
 	const char IF_NAME_VALUE_FORMAT[] = "IValueFormat";
 
-	class IValueFormat : virtual public IJCInterface
+	class IValueFormat : virtual public IValue
 	{
 	public:
 		virtual void Format(FILE * file, LPCTSTR format) = 0;
 		virtual void WriteHeader(FILE * file) = 0;
-
 	};
+
+	class IVector : virtual public IValue
+	{
+	public:
+		virtual void PushBack(IValue * val) = 0;
+		virtual void GetRow(JCSIZE index, IValue * & val) = 0;
+		virtual JCSIZE GetRowSize() const = 0;
+	};
+
+	struct COLUMN_INFO_BASE
+	{
+	public:
+		COLUMN_INFO_BASE(JCSIZE id, VALUE_TYPE type, JCSIZE offset, LPCTSTR name)
+			: m_id(id), m_type(type), m_offset(offset),
+			m_name(name)
+		{};
+
+		virtual void GetText(void * row, CJCStringT & str) const {};
+		virtual void CreateValue(BYTE * src, IValue * & val) const {};
+		virtual void GetColVal(BYTE * src, void *) const {};
+		LPCTSTR name(void) const {return m_name.c_str(); }
+
+	public:
+		JCSIZE		m_id;
+		VALUE_TYPE	m_type;
+		JCSIZE		m_offset;
+		CJCStringT	m_name;
+	};
+
+	class ITable : virtual public IVector
+	{
+		// for column access
+	public:
+		virtual JCSIZE GetColumnSize() const = 0;
+		//virtual bool GetColumn(int filed, IVector * &) const	= 0;
+		//virtual const COLUMN_INFO_BASE * GetColumnInfo(LPCTSTR field_name) const = 0;
+		//virtual const COLUMN_INFO_BASE * GetColumnInfo(int field) const = 0;
+
+	public:
+		virtual void Append(IValue * source) = 0;
+	};
+
+	class ITableRow : virtual public IValue
+	{
+		// for column(field) access
+	public:
+		virtual int GetColumnSize() const = 0;
+		virtual const COLUMN_INFO_BASE * GetColumnInfo(LPCTSTR field_name) const = 0;
+		virtual const COLUMN_INFO_BASE * GetColumnInfo(int field) const = 0;
+		// 从一个通用的行中取得通用的列数据
+		virtual void GetColumnData(int field, IValue * &)	const = 0;
+
+		virtual void GetColVal(int field, void *) const = 0;
+
+	public:
+		virtual JCSIZE GetRowID(void) const = 0;
+		// 从row的类型创建一个表格
+		virtual bool CreateTable(ITable * & tab) = 0;
+	};
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // CConvertor<T>
@@ -132,3 +183,6 @@ namespace jcparam
 		virtual const void * GetData(void) const = 0;
 	};
 };
+
+
+typedef stdext::auto_interface<jcparam::IValue> AUTO_IVAL;

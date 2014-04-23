@@ -15,8 +15,9 @@ bool CArguSet::GetCommand(JCSIZE index, CJCStringT & str_cmd)
 	stdext::auto_interface<IValue> cmd;
 	bool br = GetCommand(index, cmd);
 	if ( !br ) return false;
-	IValueConvertor * conv = cmd.d_cast<IValueConvertor*>();
-	if ( conv ) conv->GetValueText(str_cmd);
+	//IValueConvertor * conv = cmd.d_cast<IValueConvertor*>();
+	//if ( conv ) conv->GetValueText(str_cmd);
+	cmd->GetValueText(str_cmd);
 	return true;
 }
 
@@ -72,8 +73,7 @@ CParameterDefinition::RULE & CParameterDefinition::RULE::operator() (
 
 	std::pair<PARAM_ITERATOR, bool> rs = m_param_map->insert(ARG_DESC_PAIR(name, ptr_arg));
 	if (!rs.second)
-	{
-		// 重复定义
+	{	// 重复定义
 		_arg = NULL;
 		THROW_ERROR(ERR_PARAMETER, _T("Argument %s has already defined"), ptr_arg->mName.c_str());
 	}
@@ -115,6 +115,27 @@ CParameterDefinition::~CParameterDefinition(void)
 
 	delete m_param_map;
 	delete [] m_abbr_map;
+}
+
+bool CParameterDefinition::AddParamDefine(const CArguDesc * arg_desc)
+{
+	JCASSERT(arg_desc);
+
+	TCHAR abbrev = arg_desc->mAbbrev;
+	if ( abbrev && m_abbr_map[abbrev] )
+	{
+		THROW_ERROR( ERR_PARAMETER, 		// 略称重复定义
+			_T("Abbreviation %c has already been used by argument %s"), abbrev, 
+			arg_desc->mName.c_str());
+	}
+
+	std::pair<PARAM_ITERATOR, bool> rs = m_param_map->insert(ARG_DESC_PAIR(arg_desc->mName, arg_desc));
+	if (!rs.second)
+	{	// 重复定义
+		THROW_ERROR(ERR_PARAMETER, _T("Argument %s has already defined"), arg_desc->mName.c_str());
+	}
+	if ( abbrev ) m_abbr_map[abbrev] = arg_desc;
+	return true;
 }
 
 void CParameterDefinition::OutputHelpString(FILE * output) const

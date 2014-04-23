@@ -8,7 +8,7 @@ using namespace jcparam;
 
 // CColumn --
 
-CColumn::CColumn(ITable * tab, const CColInfoBase * col_info)
+CColumn::CColumn(ITable * tab, const COLUMN_INFO_BASE * col_info)
 	: m_parent_tab(tab)
 	, m_col_info(col_info)
 {
@@ -47,7 +47,7 @@ JCSIZE CColumn::GetColumnSize() const
 	return 1;
 }
 
-void CColumn::AddRow(ITableRow * row)
+void CColumn::PushBack(IValue * row)
 {
 	THROW_ERROR(ERR_UNSUPPORT, _T("Nor support"));
 }

@@ -10,8 +10,6 @@
 
 namespace jcparam
 {
-
-
 	template <typename T>
 	class type_id
 	{
@@ -32,7 +30,7 @@ namespace jcparam
 	class CTypedValue 
 		: virtual public IValue
 		, virtual public IValueFormat
-		, virtual public IValueConvertor
+		//, virtual public IValueConvertor
 		, public CJCInterfaceBase
 		, public CTypedValueBase
 	{
@@ -119,6 +117,8 @@ namespace jcparam
 			JCASSERT(NULL==val);
 			val = new CParamSet(); 
 		}
+		virtual void GetValueText(CJCStringT & str) const {};
+		virtual void SetValueText(LPCTSTR str)  {};
 
 	protected:
 		CParamSet(void);
@@ -139,44 +139,76 @@ namespace jcparam
 		PARAM_MAP m_param_map;
 	};
 
-	template <typename DATATYPE>
-	class CSimpleArray :
-		virtual public IValue, public CJCInterfaceBase, public CTypedValueBase
-	{
-	protected:
-		CSimpleArray(JCSIZE count) : m_size(count) { m_array = new DATATYPE[count]; };
-		virtual ~CSimpleArray(void) { delete[] m_array; };
+	//template <typename DATATYPE>
+	//class CSimpleArray :
+	//	virtual public IValue, public CJCInterfaceBase, public CTypedValueBase
+	//{
+	//protected:
+	//	CSimpleArray(JCSIZE count) : m_size(count) { m_array = new DATATYPE[count]; };
+	//	virtual ~CSimpleArray(void) { delete[] m_array; };
 
-	public:
-		DATATYPE* Lock(void)	{ return m_array; }
-		const DATATYPE* Lock(void) const {return m_array;}
-		void Unlock(void) const {};
-		operator const DATATYPE * () const {return m_array;}
-		JCSIZE GetSize(void) const { return m_size; }
+	//public:
+	//	DATATYPE* Lock(void)	{ return m_array; }
+	//	const DATATYPE* Lock(void) const {return m_array;}
+	//	void Unlock(void) const {};
+	//	operator const DATATYPE * () const {return m_array;}
+	//	JCSIZE GetSize(void) const { return m_size; }
 
-	protected:
-		DATATYPE *	 m_array;
-		JCSIZE		m_size;
-	};
+	//protected:
+	//	DATATYPE *	 m_array;
+	//	JCSIZE		m_size;
+	//};
 
 	// 元素不能为NULL
-	class CValueArray : virtual public IValue, public CJCInterfaceBase, public CTypedValueBase
+	//class CValueArray : virtual public IValue, public CJCInterfaceBase, public CTypedValueBase
+	//{
+	//protected:
+	//	typedef std::vector<IValue *> VALUE_VECTOR;
+	//	typedef VALUE_VECTOR::iterator VALUE_ITERATOR;
+
+	//public:
+	//	CValueArray(void) {};
+	//	virtual ~CValueArray(void);
+
+	//public:
+	//	virtual bool GetValueAt(int index, IValue * &value);
+	//	virtual bool PushBack(IValue * value);
+	//	JCSIZE GetSize()	{ return (JCSIZE)m_value_vector.size(); }
+
+	//	VALUE_VECTOR	m_value_vector;
+	//};
+	
+
+	typedef std::vector<IValue *> VALUE_VECTOR;
+	typedef VALUE_VECTOR::iterator VALUE_ITERATOR;
+
+	class CVector
+		: virtual public IVector
+		, virtual public IValueFormat
+		, public CJCInterfaceBase
 	{
+	public:
+		CVector(void);
+		~CVector(void);
+
+	public:
+		virtual void GetValueText(CJCStringT & str) const {};
+		virtual void SetValueText(LPCTSTR str)  {};
+	
+		virtual void PushBack(IValue * val);
+		virtual void GetRow(JCSIZE index, IValue * & val);
+		virtual JCSIZE GetRowSize() const;
+
+		virtual void Format(FILE * file, LPCTSTR format);
+		virtual void WriteHeader(FILE * file);
+	public:
+		virtual void GetSubValue(LPCTSTR name, IValue * & val) {};
+		virtual void SetSubValue(LPCTSTR name, IValue * val) {};
+
 	protected:
-		typedef std::vector<IValue *> VALUE_VECTOR;
-		typedef VALUE_VECTOR::iterator VALUE_ITERATOR;
-
-	public:
-		CValueArray(void) {};
-		virtual ~CValueArray(void);
-
-	public:
-		virtual bool GetValueAt(int index, IValue * &value);
-		virtual bool PushBack(IValue * value);
-		JCSIZE GetSize()	{ return (JCSIZE)m_value_vector.size(); }
-
-		VALUE_VECTOR	m_value_vector;
+		VALUE_VECTOR m_vector;
 	};
+
 
 	typedef std::pair<CJCStringT, IValue*>	KVP;
 
@@ -186,11 +218,11 @@ namespace jcparam
 		CTypedValue<T> * v = dynamic_cast<CTypedValue<T> * >(val);
 		if (v)	{ t = (*v); return true; }
 
-		jcparam::IValueConvertor * c = dynamic_cast<jcparam::IValueConvertor *>(val);
-		if ( !c)  return false;
+		//jcparam::IValueConvertor * c = dynamic_cast<jcparam::IValueConvertor *>(val);
+		//if ( !c)  return false;
 
 		CJCStringT str;
-		c->GetValueText(str);
+		val->GetValueText(str);
 		jcparam::CConvertor<T>::S2T(str.c_str(), t);
 		return true;
 	}
@@ -204,5 +236,15 @@ namespace jcparam
 		if ( !sub ) return false;
 
 		return jcparam::GetSimpleValue<T>(sub, t);
+	}
+
+	template <typename T>
+	inline void GetVal(IValue * val, T & t)
+	{
+		//IValueConvertor * conv = dynamic_cast<IValueConvertor *>(val);
+		//if (NULL == conv) THROW_ERROR(ERR_APP, _T("ivalue do not support convertor"));
+		CJCStringT str;
+		val->GetValueText(str);
+		CConvertor<T>::S2T(str.c_str(), t);
 	}
 };

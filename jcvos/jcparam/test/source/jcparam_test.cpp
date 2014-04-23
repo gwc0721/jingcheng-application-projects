@@ -146,7 +146,7 @@ void OutputArgument(CCmdLineParser & cmd_line)
 	cmd_line.GetValI(NULL, argument);
 	JCASSERT(argument.valid());
 
-	// output command
+	// output command - CValueArray never support
 
 	stdext::auto_cif<CValueArray, IValue> cmd_set;
 	argument->GetSubValue(CArguSet::PNAME_CMD, cmd_set);

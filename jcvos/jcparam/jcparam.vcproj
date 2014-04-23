@@ -204,7 +204,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="DEBUG_STATIC_LIB|Win32"
+			Name="DEBUG_STATIC_MFC|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
@@ -490,7 +490,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\value_array.cpp"
+				RelativePath=".\source\vector.cpp"
 				>
 			</File>
 		</Filter>

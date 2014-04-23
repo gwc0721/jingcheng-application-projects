@@ -91,7 +91,7 @@ namespace jcparam
 		}
 
 
-		virtual void AddRow(ITableRow * row)
+		virtual void PushBack(IValue * row)
 		{
 			JCASSERT(0);
 			//DATATYPE * _row = dynamic_cast<DATATYPE*> (row);
@@ -183,27 +183,29 @@ namespace jcparam
 		~CDynaRow();
 
 	public:
+		virtual void GetValueText(CJCStringT & str) const {};
+		virtual void SetValueText(LPCTSTR str)  {};
+
 		virtual JCSIZE GetRowID(void) const {return m_id;}
 		virtual int GetColumnSize() const;
 		//virtual void GetColumnData(LPCTSTR field_name, IValue * &) const;
 		virtual void GetColumnData(int field, IValue * &)	const;
-		virtual const CColInfoBase * GetColumnInfo(LPCTSTR field_name) const
+		virtual const COLUMN_INFO_BASE * GetColumnInfo(LPCTSTR field_name) const
 		{
 			return m_col_info->GetItem(field_name);
 		}
 		virtual void GetColVal(int field, void *val) const
 		{
 			JCASSERT((JCSIZE)field < m_col_info->GetSize() );
-			const CColInfoBase * col_info = m_col_info->GetItem(field);
+			const COLUMN_INFO_BASE * col_info = m_col_info->GetItem(field);
 			col_info->GetColVal(  (BYTE*)(static_cast<const ITableRow*>(this)), val );
 		}
-		//virtual void GetColumnData(const CColInfoBase * col, IValue * & val) const;
 		virtual LPCTSTR GetColumnName(int field_id) const;	
 		virtual void GetSubValue(LPCTSTR name, IValue * & val);
 		// 如果name不存在，则插入，否则修改name的值
 		virtual void SetSubValue(LPCTSTR name, IValue * val);
 		//
-		virtual const CColInfoBase * GetColumnInfo(int field) const;
+		virtual const COLUMN_INFO_BASE * GetColumnInfo(int field) const;
 		virtual bool CreateTable(ITable * & tab);
 
 	public:
@@ -229,6 +231,8 @@ namespace jcparam
 
 	public:
 		static void Create(CDynaTab * & tab) { JCASSERT(NULL == tab); tab = new CDynaTab();};
+		virtual void GetValueText(CJCStringT & str) const {};
+		virtual void SetValueText(LPCTSTR str)  {};
 
 	public:
 		virtual JCSIZE GetRowSize() const { return m_rows.size(); }
@@ -245,7 +249,7 @@ namespace jcparam
 		virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr);
 
 		// 添加一行数据到表格
-		virtual void AddRow(ITableRow * row);
+		virtual void PushBack(IValue * row);
 
 	public:
 		void AddColumn(LPCTSTR name);

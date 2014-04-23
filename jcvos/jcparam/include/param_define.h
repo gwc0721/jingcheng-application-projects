@@ -44,6 +44,8 @@ namespace jcparam
 			return m_abbr_map[(abbrev & 0x7f)];
 		}
 
+		bool AddParamDefine(const CArguDesc *);
+
 	protected:
 		typedef std::map<CJCStringT, const CArguDesc *>	PARAM_MAP;
 		typedef PARAM_MAP::const_iterator				PARAM_ITERATOR;
@@ -78,8 +80,9 @@ namespace jcparam
 			GetSubValue(arg, ptr_val);
 			if ( ! ptr_val ) return false;
 			CJCStringT str_tmp;
-			IValueConvertor * cov = ptr_val.d_cast<IValueConvertor*>();
-			if (cov) cov->GetValueText(str_tmp);
+			//IValueConvertor * cov = ptr_val.d_cast<IValueConvertor*>();
+			//if (cov) cov->GetValueText(str_tmp);
+			ptr_val->GetValueText(str_tmp);
 			CConvertor<TYPE>::S2T(str_tmp.c_str(), val);
 			return true; 
 		}

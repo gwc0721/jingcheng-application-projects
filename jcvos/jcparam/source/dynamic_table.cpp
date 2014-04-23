@@ -114,7 +114,7 @@ CDynaTab::~CDynaTab(void)
 
 void CDynaTab::AddColumn(LPCTSTR name)
 {
-	CColInfoBase * col_info = new CColInfoBase(
+	COLUMN_INFO_BASE * col_info = new COLUMN_INFO_BASE(
 		m_col_info.GetSize(), VT_UNKNOW, 0, name);
 	m_col_info.AddItem(col_info);
 }
@@ -123,12 +123,10 @@ bool CDynaTab::CreateRow(CDynaRow * & row)
 {
 	JCASSERT(NULL == row);
 	row = new CDynaRow(&m_col_info, m_rows.size());
-	//m_rows.push_back(row);
-	//row->AddRef();
 	return true;
 }
 
-void CDynaTab::AddRow(ITableRow * row)
+void CDynaTab::PushBack(IValue * row)
 {
 	CDynaRow * _row = dynamic_cast<CDynaRow*>(row);
 	if (NULL == _row)	THROW_ERROR(ERR_PARAMETER, _T("row type does not matche table type") );
@@ -172,7 +170,7 @@ void CDynaTab::Format(FILE * file, LPCTSTR format)
 	JCSIZE col_size = m_col_info.GetSize();
 	for (JCSIZE ii = 0; ii < col_size; ++ii)
 	{
-		const CColInfoBase * col_info = m_col_info.GetItem(ii);
+		const COLUMN_INFO_BASE * col_info = m_col_info.GetItem(ii);
 		JCASSERT(col_info);
 		stdext::jc_fprintf(file, _T("%s, "), col_info->m_name.c_str());
 	}
@@ -231,7 +229,7 @@ void CDynaRow::SetColumnVal(JCSIZE col_id, IValue * val)
 void CDynaRow::SetSubValue(LPCTSTR name, IValue * val)
 {
 	JCASSERT(m_col_info);
-	const CColInfoBase * col_info = m_col_info->GetItem(name);
+	const COLUMN_INFO_BASE * col_info = m_col_info->GetItem(name);
 	if ( (!col_info) || (col_info->m_id >= m_col_size) )	
 		THROW_ERROR(ERR_PARAMETER, _T("Unknow column name %s"), name);
 	JCSIZE col_id = col_info->m_id;
@@ -244,7 +242,7 @@ void CDynaRow::GetSubValue(LPCTSTR name, IValue * & val)
 {
 	JCASSERT(m_col_info);
 	JCASSERT(NULL == val);
-	const CColInfoBase * col_info = m_col_info->GetItem(name);
+	const COLUMN_INFO_BASE * col_info = m_col_info->GetItem(name);
 	if ( (!col_info) || (col_info->m_id >= m_col_size) )	
 		THROW_ERROR(ERR_PARAMETER, _T("Unknow column name %s"), name);
 	val = m_cols[col_info->m_id];
@@ -265,7 +263,7 @@ void CDynaRow::GetColumnData(int field, IValue * &val)	const
 	if (val) val->AddRef();
 }
 
-const CColInfoBase * CDynaRow::GetColumnInfo(int field) const
+const COLUMN_INFO_BASE * CDynaRow::GetColumnInfo(int field) const
 {
 	JCASSERT((JCSIZE)field < m_col_size);
 	return m_col_info->GetItem(field);
@@ -274,7 +272,7 @@ const CColInfoBase * CDynaRow::GetColumnInfo(int field) const
 LPCTSTR CDynaRow::GetColumnName(int field_id) const
 {
 	JCASSERT(m_col_info);
-	const CColInfoBase * col_info = m_col_info->GetItem(field_id);
+	const COLUMN_INFO_BASE * col_info = m_col_info->GetItem(field_id);
 	return (col_info)?(col_info->m_name.c_str()):NULL;
 }
 
