@@ -3,7 +3,7 @@
 #include "../include/jcexception.h"
 #include <time.h>
 
-#include "../include/jclogger_appenders.h"
+#include "jclogger_appenders.h"
 
 static CJCLoggerAppender * gptr_log = NULL;
 

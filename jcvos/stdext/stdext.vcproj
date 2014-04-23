@@ -525,7 +525,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\jclogger_appenders.h"
+				RelativePath=".\source\jclogger_appenders.h"
 				>
 			</File>
 			<File

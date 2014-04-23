@@ -1,7 +1,7 @@
 #pragma once
 
-#include "comm_define.h"
-#include "jclogger_base.h"
+#include "../include/comm_define.h"
+#include "../include/jclogger_base.h"
 
 namespace jclogger
 {
