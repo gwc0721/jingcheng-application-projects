@@ -10,7 +10,7 @@
 //	NOTICE:		script运行trace
 //  TRACE:		调用堆栈
 
-LOCAL_LOGGER_ENABLE(_T("expression_op"), LOGGER_LEVEL_WARNING);
+LOCAL_LOGGER_ENABLE(_T("script.operates"), LOGGER_LEVEL_WARNING);
 
 using namespace jcscript;
 
@@ -154,14 +154,13 @@ bool CAthOpBase<ATH_OP>::Invoke(void)
 		m_op = ATH_OP::AthOp[m_res_type];
 		JCASSERT(m_op);
 
-		LOG_NOTICE(_T("{%08X} ath %s: type_l=%d, type_r=%d, type_res"), 
-			static_cast<IAtomOperate*>(this), _T("+"), tl, tr, m_res_type);
+		LOG_NOTICE(_T("%s init: type_l=%d, type_r=%d, type_res=%d"), ATH_OP::m_name, tl, tr, m_res_type);
 	}
 	m_conv_l(m_src[0]->GetValue(), sl);
 	m_conv_r(m_src[1]->GetValue(), sr);
 	m_op(sl, sr, m_res);
 
-	LOG_NOTICE(_T("{%08X} ath %s: "), static_cast<IAtomOperate*>(this), _T("+") );
+	LOG_NOTICE(_T("%d %s %d = %d"), *((int*)sl), ATH_OP::m_name, *((int*)(sr)), *((int*)m_res) );
 	return true;
 }
 
@@ -221,7 +220,7 @@ bool CColumnVal::Invoke(void)
 
 	if (jcparam::VT_UNKNOW == m_res_type)
 	{
-		const jcparam::CColInfoBase * info = row->GetColumnInfo(m_col_name.c_str());
+		const jcparam::COLUMN_INFO_BASE * info = row->GetColumnInfo(m_col_name.c_str());
 		if (!info) THROW_ERROR(ERR_USER, _T("Unknow column %s"), m_col_name.c_str() );
 		m_res_type = info->m_type;
 		m_col_id = info->m_id;
@@ -254,8 +253,7 @@ CBoolOpBase<BOOL_OP>::CBoolOpBase(void)
 template <class BOOL_OP>
 bool CBoolOpBase<BOOL_OP>::GetResult(jcparam::IValue * & val)
 {
-	JCASSERT(NULL == val);
-	val = static_cast<jcparam::IValue*>(jcparam::CTypedValue<bool>::Create(m_res));
+	if (NULL == val) val = static_cast<jcparam::IValue*>(jcparam::CTypedValue<bool>::Create(m_res));
 	return m_res;
 }
 
@@ -265,7 +263,8 @@ bool CBoolOpBase<BOOL_OP>::Invoke(void)
 	bool *_r = (bool*)(m_src[0]->GetValue());
 	bool *_l = (bool*)(m_src[1]->GetValue());
 	m_res = BOOL_OP::op(* _r, * _l);
-	return m_res;
+	LOG_NOTICE(_T("%d %s %d = %d"), *_r, BOOL_OP::m_name, *_l, m_res );
+	return true;
 }
 
 const TCHAR CBoolAnd::m_name[] = _T("and");
@@ -277,8 +276,6 @@ LOG_CLASS_SIZE_T1(CBoolOpBase, CBoolAnd);
 
 template class CBoolOpBase<CBoolOr>;
 LOG_CLASS_SIZE_T1(CBoolOpBase, CBoolOr);
-
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- Constant
@@ -297,8 +294,7 @@ CRelOpBase<REL_OP>::CRelOpBase(void)
 template <class REL_OP>
 bool CRelOpBase<REL_OP>::GetResult(jcparam::IValue * & val)
 {
-	JCASSERT(NULL == val);
-	val = static_cast<jcparam::IValue*>(jcparam::CTypedValue<bool>::Create(m_res));
+	if (NULL == val)	val = static_cast<jcparam::IValue*>(jcparam::CTypedValue<bool>::Create(m_res));
 	return m_res;
 }
 
@@ -327,7 +323,8 @@ bool CRelOpBase<REL_OP>::Invoke(void)
 	m_conv_l(m_src[0]->GetValue(), sl);
 	m_conv_r(m_src[1]->GetValue(), sr);
 	m_res = m_op(sl, sr);
-	return m_res;
+	LOG_NOTICE(_T("%d %s %d = %d"), *((int*)sl), REL_OP::m_name, *((int*)(sr)), m_res );
+	return true;
 }
 
 
@@ -359,8 +356,6 @@ const RELOP_FUN CRopLE::RelOp[] = {
 const TCHAR CRopLE::m_name[] = _T("<=");
 
 template class CRelOpBase<CRopLE>;
-
-//LOG_CLASS_SIZE(CRopEQ);
 
 LOG_CLASS_SIZE(CRelOpEQ);
 LOG_CLASS_SIZE(CRelOpLT);
@@ -413,7 +408,18 @@ bool CVariableOp::Invoke(void)
 	m_src[0]->GetResult(val);		// 如果m_parent被设，m_src[0]一定等于m_parent。
 	val->GetSubValue(m_var_name.c_str(), m_val);
 	val->Release();
+	if (NULL == m_val)	THROW_ERROR(ERR_USER, _T("variable $%s is not exist"), m_var_name.c_str() )
 	m_typed_val = dynamic_cast<jcparam::CTypedValueBase*>(m_val);
+#ifdef _DEBUG
+	CJCStringT _str;
+	//if ( NULL != dynamic_cast<jcparam::IValueConvertor*>(val) )
+	{
+		jcparam::GetVal(m_val, _str);
+		LOG_SCRIPT(_T("%s=%s"), m_var_name.c_str(), _str.c_str());
+	}
+#else
+	LOG_SCRIPT(_T("%s"), m_var_name.c_str() );
+#endif	
 	return true;
 }
 

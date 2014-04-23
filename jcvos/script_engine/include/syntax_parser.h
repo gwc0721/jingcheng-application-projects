@@ -132,19 +132,21 @@ public:
 	// [INOUT] chain: 输入，前一个single st，作为当前single st的输入，
 	//				输出，assign语句本身，或者NULL
 	//		所有sigle st级别(filter st, assign, ...)的match函数支持类似参数
-	bool MatchAssign(CSequenceOp * combo, IChainOperate * & chain);
+	bool MatchAssign(CSequenceOp * combo, IChainOperate * chain);
 
 	bool MatchBoolExpression(CSequenceOp * combo, IAtomOperate * & op);
-	//void MatchBE1(CComboStatement * combo, IAtomOperate * & op);
 
 	bool MatchCmdSet(CSingleSt * st, IFeature * proxy, int index);
-	bool MatchComboSt(CComboSt * combo);		
+	bool MatchComboSt(CSequenceOp * prog);		
 	void MatchConstant(IAtomOperate * & val);	// 终结符
+
 	// 解析一个表达式，结果在op中返回。如果op立刻可以被求结果
 	//（常数，常熟组成的表达式等）则返回true，通过调用op的Invloke
 	// 成员函数得到计算结果。
 	bool MatchExpression(CSequenceOp * combo, IAtomOperate * & op);
-	//bool MatchExp1();
+	bool MatchTermVec(CSequenceOp * combo, IAtomOperate * & op);
+	bool MatchTermAdd(CSequenceOp * combo, IAtomOperate * & op);
+	bool MatchTermMul(CSequenceOp * combo, IAtomOperate * & op);
 
 	bool MatchFactor(CSequenceOp * combo, IAtomOperate * & op);
 
@@ -181,10 +183,8 @@ public:
 	// 处理Combo头上的@符号
 	bool MatchTableSt(CSequenceOp * combo, IChainOperate * & chain);
 
-	bool MatchTerm(CSequenceOp * combo, IAtomOperate * & op);
 
 	bool MatchVariable(CSequenceOp * combo, IAtomOperate * & op);
-	//bool MatchV1(CSequenceOp * combo, CVariableOp * parent_op, IAtomOperate * & op);
 
 	void MatchV3(CSequenceOp * combo, IAtomOperate * & op);
 
@@ -220,8 +220,6 @@ protected:
 	// 变量管理对象，目前仅支持全局变量管理。下一步可支持局部变量。
 	// m_var_set不需要调用Invoke()，仅调用GetResult()就能够得到全局变量的根。
 	IAtomOperate * m_var_set;
-
-	//IAtomOperate * m_chain;
 
 	// 源文件处理
 	FILE * m_file;

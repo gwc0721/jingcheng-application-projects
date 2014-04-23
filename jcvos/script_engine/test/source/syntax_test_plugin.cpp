@@ -195,14 +195,6 @@ CRowSyntest::CRowSyntest(CValueSyntest * tab)
 {
 }
 
-//void CRowSyntest::GetColumnData(const jcparam::CColInfoBase * col, jcparam::IValue * & val) const
-//{
-//	JCASSERT(NULL == val);
-//	const jcparam::IValue * _val = static_cast<const jcparam::IValue*>(this);
-//	val = const_cast<jcparam::IValue *>(_val);
-//	val->AddRef();
-//}
-
 void CRowSyntest::GetColumnData(int field, jcparam::IValue * & val)	const
 {
 	JCASSERT(field < 5);

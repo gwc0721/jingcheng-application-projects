@@ -66,15 +66,13 @@ public:
 	virtual JCSIZE GetRowID(void) const {return 1;};
 	virtual int GetColumnSize() const {return 5;}
 
-	//virtual void GetColumnData(const jcparam::CColInfoBase * col, jcparam::IValue * & val) const;
 	virtual void GetColumnData(int field, jcparam::IValue * &)	const;
-	//virtual void GetColumnData(LPCTSTR field_name, jcparam::IValue * &) const;
 
 	virtual LPCTSTR GetColumnName(int field_id) const
 	{
 		return _T("column");
 	}
-	virtual const jcparam::CColInfoBase * GetColumnInfo(int field) const {return NULL;};
+	virtual const jcparam::COLUMN_INFO_BASE * GetColumnInfo(int field) const {return NULL;};
 	
 	virtual void GetSubValue(LPCTSTR name, IValue * & val) {};
 	// 如果name不存在，则插入，否则修改name的值
@@ -109,7 +107,7 @@ public:
 
 	virtual JCSIZE GetColumnSize() const {return m_row->GetColumnSize();}
 	virtual void Append(IValue * source) {}
-	virtual void AddRow(jcparam::ITableRow * row) {};
+	virtual void PushBack(jcparam::IValue * row) {};
 
 
 // for memory leak debug

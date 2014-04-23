@@ -9,6 +9,14 @@
 	m_name, (UINT)(static_cast<IAtomOperate*>(this)), str);	\
 	}
 
+#define LOG_SCRIPT_OUT(fmt, ...)		{\
+	TCHAR str[128];	\
+	stdext::jc_sprintf(str, fmt, __VA_ARGS__); \
+	LOG_NOTICE( _T("- %s [%08X] %s"), \
+	m_name, (UINT)(static_cast<IAtomOperate*>(this)), str);	\
+	}
+
+#define DUMMY_VALPTR (reinterpret_cast<jcparam::IValue*>(0xFFFFFFFF))
 
 namespace jcscript
 {
@@ -55,13 +63,12 @@ namespace jcscript
 	public:
 		virtual void SetSource(UINT src_id,  IAtomOperate * op)
 		{
-			JCASSERT(src_id < src_num);
-			JCASSERT(NULL == m_src[src_id]);
+			JCASSERT(src_id < src_num); JCASSERT(op); JCASSERT(NULL == m_src[src_id]);
+
+			m_dependency = max(m_dependency, op->GetDependency());
+			op->AddRef();
 			m_src[src_id] = dynamic_cast<SRC_TYPE*>(op);
 			JCASSERT(m_src[src_id]);
-			m_src[src_id]->AddRef();
-
-			m_dependency = max(m_dependency, m_src[src_id]->GetDependency());
 		}
 		virtual UINT GetProperty(void) const {return 0;} ;
 		virtual UINT GetDependency(void) {return m_dependency;};
@@ -163,7 +170,6 @@ namespace jcscript
 
 	protected:
 		// m_paraent是m_source的拷贝，用于表示需要被Invoke。 m_parent不需要引用计数
-		//CVariableOp * m_parent;		
 		CJCStringT m_var_name;
 		jcparam::IValue * m_val;
 		jcparam::CTypedValueBase *	m_typed_val;
@@ -252,10 +258,7 @@ const TCHAR CConstantOp<DTYPE>::name[] = _T("constant");
 	protected:
 		jcparam::VALUE_TYPE m_res_type;		// 用于决定src的目的类型。
 
-		//jcparam::VALUE_TYPE	m_res_type;
 		// 数据缓存，[0]:L, [1]:R, [2]:res
-		//BYTE m_sl[sizeof(double)];
-		//BYTE m_sr[sizeof(double)];
 		BYTE m_res[sizeof(double)];
 
 	protected:
@@ -387,9 +390,6 @@ JCIFBASE
 	// debug info
 	protected:
 		jcparam::VALUE_TYPE m_res_type;		// 用于决定src的目的类型。
-
-		//BYTE m_sl[sizeof(double)];
-		//BYTE m_sr[sizeof(double)];
 		bool m_res;
 
 	protected:

@@ -7,7 +7,7 @@
 //	NOTICE:		script运行trace
 //  TRACE:		调用堆栈
 
-LOCAL_LOGGER_ENABLE(_T("atom_operates"), LOGGER_LEVEL_WARNING);
+LOCAL_LOGGER_ENABLE(_T("script.operates"), LOGGER_LEVEL_WARNING);
 
 using namespace jcscript;
 
@@ -24,7 +24,6 @@ CAssignOp::CAssignOp(IAtomOperate * dst_op, const CJCStringT & dst_name)
 	LOG_STACK_TRACE();
 	JCASSERT(m_dst_op);
 	m_dst_op->AddRef();
-	//strcpy_s(_class_name, "Assign");
 }
 
 CAssignOp::~CAssignOp(void)
@@ -35,8 +34,7 @@ CAssignOp::~CAssignOp(void)
 
 bool CAssignOp::GetResult(jcparam::IValue * & val)
 {
-	// 应当不会被调用
-	JCASSERT(0);
+	// 可能作为combo/script的result op使用
 	return false;
 }
 
@@ -48,6 +46,18 @@ bool CAssignOp::Invoke(void)
 
 	jcparam::IValue *val = NULL;
 	m_src[0]->GetResult(val);
+
+#ifdef _DEBUG
+	CJCStringT _str;
+	//if ( NULL != dynamic_cast<jcparam::IValueConvertor*>(val) )
+	{
+		jcparam::GetVal(val, _str);
+		LOG_SCRIPT(_T("val=%s => %s"), _str.c_str(), m_dst_name.c_str());
+	}
+#else
+	LOG_SCRIPT(_T("=>%s"),  m_dst_name.c_str());
+#endif
+
 
 	if (val)
 	{
@@ -149,16 +159,11 @@ bool CSaveToFileOp::Invoke(void)
 	// 行写入
 	stdext::auto_interface<jcparam::IValue> val;
 	m_src[0]->GetResult(val);
-	if ( !val) 
-	{	// warnint
-		return true;
-	}
+	if ( !val) return false; // !! warning
+
 	stdext::auto_cif<jcparam::IValueFormat>	format;
 	val->QueryInterface(jcparam::IF_NAME_VALUE_FORMAT, format);
-	if ( ! format)
-	{	// !! warning
-		return true;
-	}
+	if ( ! format)	return false;	// !! warning
 
 	if (NULL == m_file)
 	{	// 初始化
@@ -169,7 +174,8 @@ bool CSaveToFileOp::Invoke(void)
 	}
 
 	format->Format(m_file, _T("") );
-	return true;
+	// return false means no need more running for this input
+	return false;
 }
 
 void CSaveToFileOp::DebugInfo(FILE * outfile)
@@ -216,10 +222,11 @@ bool CFeatureWrapper::GetResult(jcparam::IValue * & val)
 
 bool CFeatureWrapper::Invoke(void)
 {
-	LOG_SCRIPT(_T("<%08X>"), (UINT)(m_feature) )
 	stdext::auto_interface<jcparam::IValue> val;
 	if (m_src[0])	m_src[0]->GetResult(val);
-	return m_feature->Invoke(val, m_outport);
+	bool br = m_feature->Invoke(val, m_outport);
+	LOG_SCRIPT(_T("%s: <%08X>: more=%d"), m_feature->GetFeatureName(), (UINT)(m_feature), br )
+	return br;
 }
 
 void CFeatureWrapper::SetOutPort(IOutPort * outport)
@@ -256,18 +263,19 @@ bool CFilterSt::Invoke(void)
 	// src0: the source of bool expression.
 	// src1: the source of table
 
-	stdext::auto_interface<jcparam::IValue> val;
+	static jcparam::IValue * val = DUMMY_VALPTR;
 	stdext::auto_interface<jcparam::IValue> _row;
-	bool br = m_src[SRC_EXP]->GetResult(val);
+	bool br = m_src[SRC_EXP]->GetResult( val );
 	if ( br )
 	{
 		m_src[SRC_TAB]->GetResult(_row);
-		jcparam::ITableRow * row = _row.d_cast<jcparam::ITableRow*>();
+		jcparam::IValue * row = _row;
 		if ( !row ) THROW_ERROR(ERR_USER, _T("The input of filter should be a row"));
 		m_outport->PushResult(row);
 	}
 	LOG_SCRIPT(_T(": %s"), br?_T("true"):_T("false"));
-	return true;
+	// return false means no need more running for current input
+	return false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -289,7 +297,6 @@ CInPort::~CInPort(void)
 bool CInPort::GetResult(jcparam::IValue * & val)
 {
 	JCASSERT(NULL == val);
-	LOG_SCRIPT(_T(""));
 	if (m_row)
 	{
 		val = static_cast<jcparam::IValue*>(m_row);
@@ -297,14 +304,13 @@ bool CInPort::GetResult(jcparam::IValue * & val)
 		return true;
 	}
 	else	return false;
-
 }
 
 bool CInPort::Invoke(void)
 {
-	LOG_SCRIPT(_T(""));
 	if (m_row)	m_row->Release(), m_row=NULL;
 	bool br = m_src[0]->PopupResult(m_row);
+	LOG_SCRIPT(_T("inport=%d"), br);
 	return br;
 }
 

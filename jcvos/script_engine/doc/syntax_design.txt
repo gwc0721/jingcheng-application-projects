@@ -6,18 +6,74 @@
 	尽量使用符号代替关键字/命令。
 
 2，以实现语法
-  [program]
-  [combo_statement] => 	#[anything]				// comment
-						[help_statement]		// 严格上说，help语句后，不能接其他语句
-						// 以下消除左递归
-						//[single_statement] 
-						//[combo_statement] | [single_statement]  
-						// 消除左递归
-						[expression] [S1]
-						[single_statement] [S1]
-  [S1] =>				| [single_statement] [S1]
-						E
+	[program] =>	<MatchScript()>
+					[combo_st] \n [combo_st]
+					#[anything]				// comment
+					[help_statement]		// 严格上说，help语句后，不能接其他语句
+					
+	[combo_st] => 	<MatchComboSt()>
+					// 以下消除左递归
+					//[single_statement] 
+					// 
+					$([expr]) [S1]
+					@([expr]) [S1]
+					([expr]) [S1]
+					
+					${[combo_st]} [S1]
+					// 消除左递归: [combo_st] | [single_st] 
+					[single_st] [S1]
+					
+					
+	[single_st] => 	<MatchSingleSt()>
+					[id]:[id] [param_set]		// moudle:feature
+					
+					:[id] [param_set]			//default:feature
+						//[variable]
 						
+	[S1] =>			<MatchS1()>
+					| [single_st] [S1]
+					=> [id] 				// 给变量[id]赋值
+					E
+					
+	// 表达式
+	[expr] =>		<>
+					[vector_mk]
+						$(combo_statement)
+						@[variable]				// 表格
+						@(combo_statement)
+						
+					
+						
+	[vector_mk]	=>	[expr-1] : [expr-2]				// 产生一个从 [expr-1]到[expr-2]的矢量，增量为1
+					[expr-1] : [expr-2] : [expr-3]  // 产生一个从 [expr-1]到[expr-2]的矢量，增量为[expr-3]
+					
+	[factor] =>		<MatchFactor()>
+					$[variable]				// 变量
+					(string) / (numeral)	// 常数
+	
+	[feature] =>	<MatchFeature()>
+					([id] / E) : [id] [cmd_set] [param_set]
+					
+	[cmd_set] =>	
+					
+					
+	[param_set] => 	<MatchParamSet()>
+					// 消除左递归: [param_set] [parameter]
+					[param] [P1]
+					
+	[P1] =>			[param] [P1]
+					E
+						
+	[param] => 		<>
+					--[id]
+					--[id]=[factor]
+					-[ch]
+					-[ch][factor]
+
+					--[id]@					// 取对循环变量
+					--@[table]				// 取表格中的列名为参数名
+						
+		
   [command] =>			: [id]
 						[id]:[id]
 						
@@ -27,30 +83,5 @@
 						? :[id]					// show help message of feature
 						? [id]					// list out all features for plugin
 						? [id]:[id]				// show help message of feature 
-				
-  [single_statement] => [id]:[id] [param_set]		// moudle:feature
-						:[id] [param_set]			//default:feature
-						//[variable]
-						
-  [param_set] => 		// 消除左递归
-						// [param_set] [parameter]
-						[parameter] [P1]
-  [P1] =>				[parameter] [P1]
-						E
-						
-  [parameter] => 		--[id]
-						--[id]=[expression]
-						-[ch]
-						-[ch][expression]
-						[expression]
-						--[id]@					// 取对循环变量
-						--@[table]				// 取表格中的列名为参数名
-						
-  [expression] =>		(string)				// 常数
-						(numeral)				// 常数
-						$[variable]				// 变量
-						$(combo_statement)
-						@[variable]				// 表格
-						@(combo_statement)
-						
+		
 3，待实现语法

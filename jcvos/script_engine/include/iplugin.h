@@ -14,16 +14,12 @@ namespace jcscript
 	{
 		OPP_LOOP_SOURCE = 0x80000000,
 		OPP_LOOP_DEPEND = 0x40000000,
+		OOP_STATE =		  0x20000000,	// a op which need to keep state (state machine)
 
 	};
 
 	class IAtomOperate : virtual public IJCInterface
 	{
-	//public:
-	//	inline virtual void AddRef()		{};
-	//	inline virtual void Release(void)	{};
-	//	virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr) {return false;};
-
 	public:
 		virtual bool GetResult(jcparam::IValue * & val) = 0;
 		virtual bool Invoke(void) = 0;
@@ -40,19 +36,13 @@ namespace jcscript
 		virtual void DebugOutput(LPCTSTR indentation, FILE * outfile) = 0;
 	};
 
-	class ILoop : virtual public IAtomOperate
-	{
-	public:
-		virtual bool IsRunning(void) = 0;
-	};
-
 	class IOutPort: virtual public IAtomOperate
 	{
 	public:
 		// 如果队列空，返回false，并且val=NULL
-		virtual bool PopupResult(jcparam::ITableRow * & val) = 0;
+		virtual bool PopupResult(jcparam::IValue * & val) = 0;
 		// 如果队列满，返回false
-		virtual bool PushResult(jcparam::ITableRow * val) = 0;
+		virtual bool PushResult(jcparam::IValue * val) = 0;
 		virtual bool IsEmpty(void) = 0;
 	};
 
@@ -69,13 +59,10 @@ namespace jcscript
 		virtual bool Invoke(jcparam::IValue * row, IOutPort * outport) = 0;
 		virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const = 0;
 		virtual bool Clean(void) = 0;
-		virtual UINT GetProperty(void) const = 0;
-
 		virtual bool PushParameter(const CJCStringT & var_name, jcparam::IValue * val) = 0;
 		virtual bool CheckAbbrev(TCHAR param_name, CJCStringT & var_name) const = 0;
 
 		virtual LPCTSTR GetFeatureName(void) const = 0;
-		virtual bool IsRunning(void) = 0;
 	};
 
 	class ILoopOperate : virtual public IFeature
@@ -104,7 +91,6 @@ namespace jcscript
 	public:
 		virtual bool GetPlugin(const CJCStringT & name, IPlugin * & plugin) = 0;
 		virtual void GetVarOp(IAtomOperate * & op) = 0;
-		//virtual bool ReadFileOp(LPCTSTR type, const CJCStringT & filename, IAtomOperate *& op) = 0;
 	};
 };
 
