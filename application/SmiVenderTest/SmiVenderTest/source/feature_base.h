@@ -72,11 +72,12 @@ public:
 
 	virtual void SetValue(BYTE * base, jcparam::IValue * val) const
 	{
-		jcparam::IValueConvertor * conv = dynamic_cast<
-			jcparam::IValueConvertor *>(val);
-		if (!conv) THROW_ERROR(ERR_PARAMETER, _T("failure on converting parameter."));
 		CJCStringT str_val;
-		conv->GetValueText(str_val);
+		//jcparam::IValueConvertor * conv = dynamic_cast<
+		//	jcparam::IValueConvertor *>(val);
+		//if (!conv) THROW_ERROR(ERR_PARAMETER, _T("failure on converting parameter."));
+		//conv->GetValueText(str_val);
+		val->GetValueText(str_val);
 
 		VAL_TYPE * ptr = (VAL_TYPE*)( base + m_offset);
 		jcparam::CConvertor<VAL_TYPE>::S2T(str_val.c_str(), *ptr);
@@ -91,6 +92,9 @@ template <class F_TYPE, class P_TYPE>
 class CFeatureBase
 	:virtual public jcscript::IFeature
 {
+public:
+	typedef CFeatureBase<F_TYPE, P_TYPE>  _BASE_TYPE;
+
 protected:
 	CFeatureBase(void) {}
 	~CFeatureBase(void)  {}
@@ -123,14 +127,7 @@ public:
 		return true;
 	}
 	
-	virtual UINT GetProperty(void) const {return m_property;};
-
-	//virtual void SetSource(UINT src_id, jcscript::IAtomOperate * op)
-	//{
-	//	JCASSERT(NULL == m_src_op);
-	//	m_src_op = op;
-	//	if (m_src_op) m_src_op->AddRef();
-	//}
+	//virtual UINT GetProperty(void) const {return m_property;};
 
 	virtual LPCTSTR GetFeatureName(void) const {return m_feature_name;}
 
@@ -213,7 +210,6 @@ public:
 
 public:
 	LPCTSTR name() const {return m_feature_name;}
-	//const CJCStringT & name() const {return m_feature_name;}
 };
 
 template <class F>
@@ -259,10 +255,7 @@ public:
 		return true;
 	}
 
-	//ISmiDevice * GetSmiDevice(void) { return m_dev; }
-
 protected:
 	static CJCStringT m_name;
 	static FEATURE_LIST	m_feature_list;
-	//ISmiDevice	* m_dev;
 };

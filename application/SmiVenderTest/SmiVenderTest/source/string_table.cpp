@@ -19,5 +19,5 @@ const TCHAR CPluginTest::PLUGIN_NAME[] = _T("test");
 const TCHAR CPluginTest::VTS_TIMELOG[] = _T("time_log");
 
 
-#include "plugin_device.h"
-LPCTSTR CPluginDevice::PLUGIN_NAME = _T("device");
+//#include "plugin_device.h"
+//LPCTSTR CPluginDevice::PLUGIN_NAME = _T("device");

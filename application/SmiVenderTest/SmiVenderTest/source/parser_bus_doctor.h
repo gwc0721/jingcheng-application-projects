@@ -8,9 +8,6 @@
 #define TRACE_QUEUE		(16)
 #define TQ_MASK			(TRACE_QUEUE -1)
 
-
-
-
 ///////////////////////////////////////////////////////////////////////////////
 // 用于读取bus doctor文件的feature
 class CPluginTrace::BusDoctor
@@ -29,7 +26,7 @@ public:
 public:
 	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
 	bool InvokeOnce(jcscript::IOutPort * outport);
-	virtual bool IsRunning(void);
+	//virtual bool IsRunning(void);
 
 protected:
 	void Init(void);
@@ -55,7 +52,6 @@ protected:
 
 
 ///////////////////////////////////////////////////////////////////////////////
-
 // 用于读取bus hound文件的feature
 class CPluginTrace::BusHound
 	: virtual public jcscript::IFeature
@@ -69,7 +65,7 @@ public:
 	enum PHASE_TYPE
 	{
 		PT_CMD, PT_OUT, PT_IN, PT_ASTS, PT_ATA,
-		PT_OK,	PT_SRB, PT_SSTS, PT_UNKNOWN,
+		PT_OK,	PT_SRB, PT_SSTS, PT_SPT, PT_UNKNOWN,
 	};
 
 	struct bus_hound_phase
@@ -97,7 +93,7 @@ public:
 	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
 	bool InvokeOnce(jcscript::IOutPort * outport);
 
-	virtual bool IsRunning(void);
+	//virtual bool IsRunning(void);
 
 protected:
 	bool ReadPhase(bus_hound_phase * &);
@@ -165,4 +161,43 @@ protected:
 		}
 		return NULL;
 	}
+};
+
+
+///////////////////////////////////////////////////////////////////////////////
+// 用于读取lecory sata suite文件的feature
+class CPluginTrace::LeCory
+	: virtual public jcscript::IFeature
+	, public CFeatureBase<CPluginTrace::LeCory, CPluginTrace>
+	, public CJCInterfaceBase
+{
+public:
+	typedef CFeatureBase<CPluginTrace::LeCory, CPluginTrace> _BASE;
+
+	enum PARSE_SM {
+		PSM_BEGIN, PSM_CONTENT, PSM_END,
+	};
+public:
+	LeCory(void);
+	virtual ~LeCory(void);
+
+public:
+	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
+	//virtual bool IsRunning(void);
+
+protected:
+	void Init(jcscript::IOutPort * outport);
+
+
+public:
+	CJCStringT m_file_name;
+
+protected:
+	FILE * m_src_file;
+	bool	m_inited;
+	char * m_line_buf;
+	//bool	m_running;
+
+	JCSIZE m_line_num;
+	CAtaTraceRow * m_trace;
 };

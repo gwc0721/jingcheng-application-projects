@@ -23,8 +23,7 @@ namespace jcparam
 		// 通过名称获取列的值
 		virtual void GetSubValue(LPCTSTR name, IValue * & val);
 
-		//virtual LPCTSTR GetColumnName(int field_id) const = 0;
-		virtual const CColInfoBase * GetColumnInfo(int field) const = 0;
+		virtual const COLUMN_INFO_BASE * GetColumnInfo(int field) const = 0;
 		// 从row的类型创建一个表格
 		virtual bool CreateTable(ITable * & tab) = 0;
 	};
@@ -40,8 +39,8 @@ namespace jcparam
 		//virtual void NextRow(IValue * & row) = 0;
 		virtual JCSIZE GetColumnSize() const = 0;
 		virtual void Append(IValue * source) = 0;
-		virtual void AddRow(ITableRow * row) = 0;
+		virtual void PushBack(IValue * row) = 0;
 
-		virtual const CColInfoBase * GetColumnInfo(int field) const = 0;
+		virtual const COLUMN_INFO_BASE * GetColumnInfo(int field) const = 0;
 	};
 };

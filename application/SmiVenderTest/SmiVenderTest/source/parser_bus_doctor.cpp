@@ -6,7 +6,7 @@
 
 #include "parser_bus_doctor.h"
 
-LOCAL_LOGGER_ENABLE(_T("parser_bus_doctor"), LOGGER_LEVEL_WARNING);
+LOCAL_LOGGER_ENABLE(_T("parser.bus_doctor"), LOGGER_LEVEL_WARNING);
 
 LPCTSTR CFeatureBase<CPluginTrace::BusDoctor, CPluginTrace>::m_feature_name = _T("busdoc");
 
@@ -176,11 +176,14 @@ bool CPluginTrace::BusDoctor::InvokeOnce(jcscript::IOutPort * outport)
 		JCSIZE remain = m_last - m_first;
 		if ( (remain < SRC_BACK_SIZE ) && !feof(m_src_file) )
 		{	// charge buffer
+			LOG_DEBUG(_T("m_line_buf:<%08X>, end_buf:<%08X>"), (UINT)(m_line_buf), (UINT)(m_line_buf + MAX_LINE_BUF) );
+			LOG_DEBUG(_T("m_first:<%08X>, m_last:<%08X>, remain:%X"), (UINT)(m_first), (UINT)(m_last), remain );
 			LOG_DEBUG(_T("[reading]") );
 			memcpy_s(m_line_buf, m_first - m_line_buf, m_first, remain);
 			m_first = m_line_buf, m_last = m_line_buf + remain;
 			JCSIZE read_size = fread(m_last, 1, SRC_READ_SIZE, m_src_file);
 			m_last += read_size;
+			LOG_DEBUG(_T("m_first:<%08X>, m_last:<%08X>, read_size:%X"), (UINT)(m_first), (UINT)(m_last), read_size );
 		}
 
 		LOG_DEBUG(_T("[parsing]") );
@@ -224,16 +227,18 @@ bool CPluginTrace::BusDoctor::InvokeOnce(jcscript::IOutPort * outport)
 		}
 
 		// 处理未匹配部分
-		for ( ; ('\n' != *(m_first++) ) && (m_first != m_last); );
-		if ( (m_first == m_last) && (feof(m_src_file)) ) return false;
+		LOG_DEBUG(_T("processing: %c"), *m_first);
+		// '\n' != *(m_first++): 忽略其余字段，直到EOL，并且把m_first指针指向下一行首。
+		for ( ; ('\n' != *(m_first++) ) && (m_first < m_last); );
+		if ( (m_first >= m_last) && (feof(m_src_file)) ) return false;
 	}
 
 	return false;
 }
 
-bool CPluginTrace::BusDoctor::IsRunning(void)
-{
-	return !( m_init && (m_first == m_last) && (feof(m_src_file)) );
-}
+//bool CPluginTrace::BusDoctor::IsRunning(void)
+//{
+//	return !( m_init && (m_first == m_last) && (feof(m_src_file)) );
+//}
 
 

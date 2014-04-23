@@ -10,36 +10,23 @@
 #define CMD_READ_DMA		(0xC8)
 #define CMD_WRITE_SECTOR	(0x30)
 #define CMD_READ_SECTOR		(0x20)
+#define CMD_WRITE_DMA_EX	(0x35)
+#define CMD_READ_DMA_EX		(0x25)
 
 #define MAX_COLUMN			(20)
 
-///////////////////////////////////////////////////////////////////////////////
-// vender command
-class CVenderCmd
-{
-public:
-	CVenderCmd(void);
-
-public:
-	WORD	m_cmd_id;	// 0, 1
-	WORD	m_block;	// 2, 3
-	WORD	m_page;		// 4, 5
-	BYTE	m_chunk;	// 6
-	BYTE	m_size;		// B
-	BYTE	m_other;	// 7~F
-};
+class CTracePayload;	// 用于格式化输出IN/OUT的data
 
 ///////////////////////////////////////////////////////////////////////////////
 // Ata Trace
 class CAtaTrace
 {
 public:
-	class TracePayload;	// 用于格式化输出IN/OUT的data
 public:
 	CAtaTrace(void) : m_data(NULL) {memset(this, 0, sizeof(CAtaTrace));}
 	CAtaTrace(const CAtaTrace & trace) 
 		: m_id(trace.m_id), m_start_time(trace.m_start_time), m_busy_time(trace.m_busy_time)
-		, m_featue(trace.m_featue), m_cmd_code(trace.m_cmd_code), m_lba(trace.m_lba)
+		, m_feature(trace.m_feature), m_cmd_code(trace.m_cmd_code), m_lba(trace.m_lba)
 		, m_sectors(trace.m_sectors), m_status(trace.m_status), m_data(trace.m_data) 
 	{if (m_data) m_data->AddRef();}
 	~CAtaTrace(void) {if (m_data) m_data->Release(); }
@@ -53,13 +40,14 @@ public:
 
 public:
 	JCSIZE	m_id;			// store
-	double	m_start_time;	// time stamp in sec
-	double	m_busy_time;	// command's busy time
-	BYTE	m_featue;
+	double	m_start_time;	// time stamp in (sec)
+	double	m_busy_time;	// command's busy time in (ms)
+	BYTE	m_feature;
 	BYTE	m_cmd_code;
 	JCSIZE	m_lba;
 	JCSIZE	m_sectors;
 	BYTE	m_status;
+	BYTE	m_error;
 	CBinaryBuffer	* m_data;
 
 public:
@@ -70,10 +58,11 @@ public:
 	}
 };
 
-class CAtaTrace::TracePayload	: public jcparam::CColInfoBase
+class CTracePayload	: public jcparam::COLUMN_INFO_BASE
 {
 public:
-	TracePayload(int id) : jcparam::CColInfoBase(id, jcparam::VT_OTHERS, offsetof(CAtaTrace, m_data), _T("data")) {};
+	CTracePayload(int id, JCSIZE offset, LPCTSTR title) 
+		: jcparam::COLUMN_INFO_BASE(id, jcparam::VT_OTHERS, offset, title) {};
 
 public:
 	virtual void GetText(void * row, CJCStringT & str) const;
@@ -84,6 +73,34 @@ typedef jcparam::CTableRowBase<CAtaTrace>	CAtaTraceRow;
 typedef jcparam::CTypedTable<CAtaTrace>		CAtaTraceTable;
 
 
+///////////////////////////////////////////////////////////////////////////////
+// vender command
+class CVenderCmd
+{
+public:
+	CVenderCmd(void);
+	CVenderCmd(const CVenderCmd & cmd);
+	~CVenderCmd(void);
+
+	static const JCSIZE CMD_BUF_LENGTH = 16;
+
+public:
+	void SetCmdData(BYTE * data, JCSIZE length);
+
+public:
+	JCSIZE	m_id;		// store
+	WORD	m_cmd_id;		// 0, 1 command id
+	WORD	m_block;	// 2, 3
+	WORD	m_page;		// 4, 5
+	BYTE	m_chunk;	// 6
+	int	m_read_write;
+	JCSIZE	m_sectors;		// actual data size in sector
+	//BYTE[CMD_BUF_LENGTH]	m_cmd_data;	// 7~F
+	CBinaryBuffer * m_cmd_data;
+	CBinaryBuffer * m_data;
+};
+
+typedef jcparam::CTableRowBase<CVenderCmd>	CVenderCmdRow;
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- read trace file
@@ -113,7 +130,7 @@ protected:
 	static void StaticInit(void);
 	void FillFileBuffer(void);
 	bool ParsePayload(const char * &first, const char * last, CAtaTrace * trace);
-	virtual bool IsRunning(void) {JCASSERT(0); return true;}
+	//virtual bool IsRunning(void) {return m_running;}
 
 public:
 	CJCStringT m_file_name;
@@ -132,6 +149,8 @@ protected:
 
 	// 源文件的行号
 	JCSIZE m_line;
+
+	//bool m_running;
 
 protected:
 	static bool s_init;
@@ -153,7 +172,7 @@ public:
 
 public:
 	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
-	virtual bool IsRunning(void);
+	//virtual bool IsRunning(void);
 
 protected:
 	void Init(void);
@@ -164,4 +183,6 @@ public:
 protected:
 	UINT	m_cmd_status;
 	bool	m_init;
+	JCSIZE m_store;
+	CVenderCmdRow * m_cmd;
 };

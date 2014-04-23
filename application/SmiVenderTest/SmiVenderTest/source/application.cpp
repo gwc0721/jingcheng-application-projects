@@ -11,7 +11,10 @@ LOCAL_LOGGER_ENABLE(_T("CSvtApp"), LOGGER_LEVEL_DEBUGINFO);
 
 #include "application.h"
 
-#define COMPILE_LOG		_T("compile.log")
+
+#include "category_comm.h"
+#include "feature_2246_readcount.h"
+#include "plugin_device_comm.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- application
@@ -22,11 +25,18 @@ CSvtApplication::CSvtApplication(void)
 	: m_plugin_manager(NULL)
 	, m_cur_script(NULL)
 	, m_main_ver(0), m_sub_ver(0)
+	, m_result(NULL)
 {
 	JCASSERT(m_app == NULL);
 	m_app = this;
-
 	m_plugin_manager = new CPluginManager;
+
+	LOGGER_SELECT_COL( 0
+		| CJCLogger::COL_TIME_STAMP
+		| CJCLogger::COL_FUNCTION_NAME
+		| CJCLogger::COL_REAL_TIME
+		);
+	LOGGER_CONFIG(_T("jclog.cfg"));
 }
 
 
@@ -46,10 +56,27 @@ static void PassArgument(LPCTSTR name, jcparam::CArguSet & from, jcparam::CArguS
 	}
 }
 
+void CSvtApplication::RegisterPlugins(void)
+{
+	CCategoryComm * cat = NULL;
+
+	cat = new CCategoryComm(_T("device"));
+	cat->RegisterFeatureT<CFeature2246ReadCount>();
+	cat->RegisterFeatureT<CDeviceReadSpare>();
+	m_plugin_manager->RegistPlugin(cat);
+	cat->Release(), cat = NULL;
+
+	cat = new CCategoryComm(_T("debug"));
+	m_plugin_manager->RegistPlugin(cat);
+	cat->Release(), cat = NULL;
+}
+
 
 int CSvtApplication::Initialize(LPCTSTR cmd)
 {
 	GetVersionInfo();
+
+	RegisterPlugins();
 
 	ProcessCommandLine(cmd);
 	bool has_help = false;
@@ -104,6 +131,7 @@ int CSvtApplication::Cleanup(void)
 		m_plugin_manager->Release();
 		m_plugin_manager = NULL;
 	}
+	if (m_result)	m_result->Release(), m_result=NULL;
 	return 0;
 }
 
@@ -157,6 +185,21 @@ bool CSvtApplication::RunScript(LPCTSTR file_name)
 			LOG_DEBUG(_T("Start invoking script") );
 			m_cur_script->Invoke();
 			LOG_DEBUG(_T("Finished invoking script") );
+			// for debug only
+#ifdef _DEBUG
+			// get result
+			if (m_result) m_result->Release(), m_result = NULL;
+			m_cur_script->GetResult(m_result);
+			if (m_result)
+			{
+				// save res to $res
+				AUTO_IVAL var(NULL);
+				m_plugin_manager->GetVariable(var);
+				if (var) var->SetSubValue(_T("res"), m_result);
+				// show res
+				SmartShowVar(m_result);
+			}
+#endif
 		}
 		if (m_cur_script)	m_cur_script->Release(), m_cur_script= NULL;
 	}
@@ -165,6 +208,45 @@ bool CSvtApplication::RunScript(LPCTSTR file_name)
 		printf("%s\r\n", err.what());
 		return false;
 	}
+	return true;
+}
+
+bool CSvtApplication::SmartShowVar(jcparam::IValue * var)
+{
+	JCASSERT(var);
+	LOG_STACK_TRACE();
+
+	CBinaryBuffer * buf = NULL;
+	jcparam::IVector * vec = NULL;
+	jcparam::IValueFormat * val_format = dynamic_cast<jcparam::IValueFormat *>(var);
+	if (NULL == val_format) return false;
+
+	if ( buf = dynamic_cast<CBinaryBuffer *>(var) )
+	{	// for binary data
+
+	}
+	else if ( vec = dynamic_cast<jcparam::IVector *>(var) )
+	{	// for table / vector
+		val_format->WriteHeader(stdout);
+		printf("\n");
+		JCSIZE count = vec->GetRowSize();
+		if (count > 20) count = 20;
+		for (JCSIZE ii =0; ii<count; ++ii)
+		{
+			AUTO_IVAL row(NULL);
+			vec->GetRow(ii, row);
+			jcparam::IValueFormat* f= row.d_cast<jcparam::IValueFormat*>();
+			if (f) f->Format(stdout, _T("text"));
+			printf("\n");
+		}
+	}
+	else
+	{	// for value
+		//var_in->QueryInterface(jcparam::IF_NAME_VALUE_FORMAT, format);
+		val_format->Format(stdout, _T("text"));
+		stdext::jc_fprintf(stdout, _T("\n"));
+	}
+
 	return true;
 }
 
@@ -187,6 +269,18 @@ bool CSvtApplication::ParseCommand(LPCTSTR first, LPCTSTR last)
 			LOG_DEBUG(_T("Start invoking command") );
 			m_cur_script->Invoke();
 			LOG_DEBUG(_T("Finished invoking command") );
+			// get result
+			if (m_result) m_result->Release(), m_result = NULL;
+			m_cur_script->GetResult(m_result);
+			if (m_result)
+			{
+				// save res to $res
+				AUTO_IVAL var(NULL);
+				m_plugin_manager->GetVariable(var);
+				if (var) var->SetSubValue(_T("res"), m_result);
+				// show res
+				SmartShowVar(m_result);
+			}
 		}
 	}
 	catch (std::exception & err)
@@ -388,7 +482,7 @@ bool CSvtApplication::GetDefaultVariable(const CJCStringT & name, jcparam::IValu
 	JCASSERT(NULL == var);
 	bool match = false;
 
-	if ( name == _T("MAX_BLOCKS") )
+	if ( name == _T("BKS") )
 	{
 		CCardInfo info;
 		m_dev->GetCardInfo(info);

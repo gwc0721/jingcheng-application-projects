@@ -42,10 +42,13 @@ public:
 	// Default variable: 和系统或者device有关的一些变量/常量，如:max lba, pages per block等
 	bool GetDefaultVariable(const CJCStringT & name, jcparam::IValue * & var);
 	void SetDevice(const CJCStringT & name, ISmiDevice * dev);
+	void RegisterPlugins(void);
 
 protected:
 	ISmiDevice * m_dev;
 	CJCStringT m_device_name;
+
+	jcparam::IValue * m_result;
 
 
 //--命令解析与执行
@@ -56,6 +59,7 @@ protected:
 	void ShowHelpMessage() const;
 	virtual void OnError(JCSIZE line, JCSIZE column, LPCTSTR msg);
 	void GetVersionInfo(void);
+	bool SmartShowVar(jcparam::IValue * var);
 
 	UINT m_main_ver, m_sub_ver;
 

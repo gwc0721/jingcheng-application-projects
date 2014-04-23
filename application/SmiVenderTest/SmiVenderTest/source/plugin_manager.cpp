@@ -2,9 +2,6 @@
 #include "plugin_manager.h"
 #include "application.h"
 
-/// for file adaptor plugin
-//#include "filead_bus_doctor.h"
-//#include "filead_csv.h"
 #include "plugin_default.h"
 
 LOCAL_LOGGER_ENABLE(_T("PluginMan"), LOGGER_LEVEL_DEBUGINFO);
@@ -25,7 +22,15 @@ CVariableContainer::~CVariableContainer(void)
 
 void CVariableContainer::GetSubValue(LPCTSTR name, IValue * & val)
 {
-	m_global_var->GetSubValue(name, val);
+	CSvtApplication * app = CSvtApplication::GetApp();
+	JCASSERT(app);
+	bool br = app->GetDefaultVariable(name, val);
+
+	if (!br)
+	{
+		JCASSERT(m_global_var);
+		m_global_var->GetSubValue(name, val);
+	}
 }
 
 void CVariableContainer::SetSubValue(LPCTSTR name, IValue * val)
@@ -74,6 +79,27 @@ bool CPluginManager::RegistPlugin(const CJCStringT & name, CDynamicModule * modu
 	return true;
 }
 
+bool CPluginManager::RegistPlugin(jcscript::IPlugin * plugin)
+{
+	LOG_STACK_TRACE();
+	JCASSERT(plugin);
+
+	LPCTSTR name = plugin->name();
+	LOG_TRACE(_T("plugin: %s, ptr = 0x%08X"), name, (UINT)(plugin));
+
+	CPluginInfo * info = new CPluginInfo(name, NULL, CPluginInfo::PIP_SINGLETONE, NULL);
+	info->m_object = plugin;
+	plugin->AddRef();
+
+	std::pair<PLUGIN_ITERATOR, bool> rs = m_plugin_map.insert(PLUGIN_INFO_PAIR(name, info));
+	if (!rs.second)
+	{
+		delete info;
+		THROW_ERROR(ERR_APP, _T("Plugin %s has already registed"), name );
+	}
+	return true;
+}
+
 bool CPluginManager::GetPlugin(const CJCStringT & name, jcscript::IPlugin * & plugin)
 {
 	JCASSERT(plugin == NULL);
@@ -82,8 +108,6 @@ bool CPluginManager::GetPlugin(const CJCStringT & name, jcscript::IPlugin * & pl
 	{
 		plugin = m_default_plugin;
 		plugin->AddRef();
-		//plugin = dynamic_cast<jcscript::IPlugin *>(CSvtApplication::GetApp());
-		//JCASSERT(plugin);
 	}
 	else
 	{

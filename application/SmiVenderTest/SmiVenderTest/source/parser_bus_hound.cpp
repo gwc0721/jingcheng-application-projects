@@ -45,13 +45,9 @@ CPluginTrace::BusHound::~BusHound(void)
 	delete [] m_line_buf;
 	for (JCSIZE ii = 0; ii < TRACE_QUEUE; ++ii)
 	{
-		JCASSERT(NULL == m_trace_que[ii] );
+		if (m_trace_que[ii]) m_trace_que[ii]->Release();
 	}
 }
-
-//void CPluginTrace::BusHound::GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const
-//{
-//}
 
 void CPluginTrace::BusHound::Init(void)
 {
@@ -110,7 +106,8 @@ public:
 			("ATA", CPluginTrace::BusHound::PT_ATA)
 			("ok", CPluginTrace::BusHound::PT_OK)
 			("SRB", CPluginTrace::BusHound::PT_SRB)
-			("SSTS", CPluginTrace::BusHound::PT_SSTS);
+			("SSTS", CPluginTrace::BusHound::PT_SSTS)
+			("SPT", CPluginTrace::BusHound::PT_SPT);
 	}
 };
 
@@ -224,7 +221,7 @@ bool CPluginTrace::BusHound::ParseScsiCmd(BYTE * buf, JCSIZE len, CAtaTraceRow *
 
 	case 0x28:
 		if (len < 10) THROW_ERROR(ERR_USER, _T("data format error at line %d"), m_line_num);
-		trace->m_cmd_code = CMD_WRITE_DMA;
+		trace->m_cmd_code = CMD_READ_DMA;
 		trace->m_lba = MAKELONG(MAKEWORD(buf[5], buf[4]), MAKEWORD(buf[3], buf[2]) );
 		trace->m_sectors = buf[8];
 		break;
@@ -239,10 +236,10 @@ bool CPluginTrace::BusHound::ParseScsiCmd(BYTE * buf, JCSIZE len, CAtaTraceRow *
 	return true;
 }
 
-bool CPluginTrace::BusHound::IsRunning(void)
-{
-	return m_neof;
-}
+//bool CPluginTrace::BusHound::IsRunning(void)
+//{
+//	return m_neof;
+//}
 
 bool CPluginTrace::BusHound::InvokeOnce(jcscript::IOutPort * outport)
 {
@@ -317,9 +314,10 @@ bool CPluginTrace::BusHound::InvokeOnce(jcscript::IOutPort * outport)
 			case PT_OK:
 			case PT_SRB:
 			case PT_SSTS:
+			case PT_SPT:
 				break;
 			default:
-				THROW_ERROR(ERR_USER, _T("unknow phase type at line %d"), m_line_num);
+				THROW_ERROR(ERR_USER, _T("unknow phase type (%d) at line %d"), (int)(phase->m_type), m_line_num);
 			}
 		}
 	}

@@ -19,7 +19,7 @@ BEGIN_COLUMN_TABLE()
 	COLINFO_HEX( BYTE,		3,		m_cmd_code,		_T("cmd_code") )
 	COLINFO_HEX( JCSIZE,	4,		m_lba,			_T("lba") )
 	COLINFO_DEC( WORD,		5,		m_sectors,		_T("sectors") )
-	( new CAtaTrace::TracePayload(6) )
+	( new CTracePayload(6, offsetof(CAtaTrace, m_data), _T("data") ) )
 
 END_COLUMN_TABLE()
 #undef __COL_CLASS_NAME
@@ -29,14 +29,16 @@ END_COLUMN_TABLE()
 LOG_CLASS_SIZE(CAtaTrace)
 LOG_CLASS_SIZE(CAtaTraceRow)
 
-void CAtaTrace::TracePayload::GetText(void * row, CJCStringT & str) const
+void CTracePayload::GetText(void * row, CJCStringT & str) const
 {
-	CAtaTrace * trace = reinterpret_cast<CAtaTrace*>(row);
-	if (NULL == trace->m_data) return;
-	BYTE * buf = trace->m_data->Lock();
+	void *  ptr = ((BYTE*)(row) + m_offset);
+	CBinaryBuffer * _buf = *((CBinaryBuffer**)(ptr));
+	//CAtaTrace * trace = reinterpret_cast<CAtaTrace*>(row);
+	if (NULL == _buf) return;
+	BYTE * buf = _buf->Lock();
 	JCASSERT(buf);
 
-	JCSIZE len = min(trace->m_data->GetSize(), TRACE_DATA_OUTPUT);
+	JCSIZE len = min(_buf->GetSize(), TRACE_DATA_OUTPUT);
 	JCSIZE str_len = len * 3 + 1;
 
 	str.resize(len * 3 + 1);
@@ -47,10 +49,10 @@ void CAtaTrace::TracePayload::GetText(void * row, CJCStringT & str) const
 		_str += written;
 		str_len -= written;
 	}
-	trace->m_data->Unlock();
+	_buf->Unlock();
 }
 
-void CAtaTrace::TracePayload::CreateValue(BYTE * src, jcparam::IValue * & val) const
+void CTracePayload::CreateValue(BYTE * src, jcparam::IValue * & val) const
 {
 	CJCStringT str;
 	GetText(src, str);
@@ -93,11 +95,6 @@ void CPluginTrace::ParserTrace::StaticInit(void)
 		("sectors",		CAtaTrace::COL_SECTORS)
 		("data",		CAtaTrace::COL_DATA)
 		("status",		CAtaTrace::COL_STATUS);
-		//("",	CAtaTrace::)
-		//("",	CAtaTrace::)
-		//("",	CAtaTrace::)
-		//("",	CAtaTrace::)
-
 	s_init = true;
 }
 
@@ -108,6 +105,7 @@ CPluginTrace::ParserTrace::ParserTrace()
 	, m_last(NULL)
 	, m_first(NULL)
 	, m_init(false)
+	//, m_running(true)
 {
 	m_col_num = 0;
 	memset(m_col_list, 0, sizeof(m_col_list) );
@@ -192,7 +190,6 @@ using namespace boost::phoenix;
 bool CPluginTrace::ParserTrace::InvokeOnce(jcscript::IOutPort * outport)
 {
 	//!! This function is thread UNSAFE!
-
 	LOG_STACK_TRACE();
 	JCASSERT(m_src_file);
 
@@ -203,7 +200,9 @@ bool CPluginTrace::ParserTrace::InvokeOnce(jcscript::IOutPort * outport)
 	static UINT hex_val;
 	static qi::rule<const char*> rule_hex_val ( (qi::hex[ref(hex_val) = qi::_1] )>> ',');
 
-	if (! fgets(m_line_buf, MAX_LINE_BUF, m_src_file) ) return false;	// Skip header
+	// Skip header	
+	if (! fgets(m_line_buf, MAX_LINE_BUF, m_src_file) ) return false;
+
 	m_first = m_line_buf;
 	m_last = m_first + strlen(m_first);
 
@@ -263,7 +262,7 @@ bool CPluginTrace::ParserTrace::InvokeOnce(jcscript::IOutPort * outport)
 	outport->PushResult(trace);
 	trace->Release();
 
-	if ( (m_first == m_last) && (feof(m_src_file)) ) return false;
+	if ( (m_first == m_last) && (feof(m_src_file)) )	return false;
 	return true;
 }
 

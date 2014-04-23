@@ -6,7 +6,7 @@
 
 #include <stdext.h>
 
-LOCAL_LOGGER_ENABLE(_T("SmiVenderTest"), LOGGER_LEVEL_DEBUGINFO);
+LOCAL_LOGGER_ENABLE(_T("SmiVenderTest"), LOGGER_LEVEL_ERROR);
 
 #include <jcparam.h>
 #include <SmiDevice.h>
@@ -15,7 +15,7 @@ LOCAL_LOGGER_ENABLE(_T("SmiVenderTest"), LOGGER_LEVEL_DEBUGINFO);
 static CSvtApplication the_app;
 
 #include "plugin_test.h"
-#include "plugin_device.h"
+//#include "plugin_device.h"
 #include "plugin_ata_device.h"
 #include "plugin_debug.h"
 #include "plugin_isp.h"
@@ -62,8 +62,9 @@ bool RegistInternalPlugin(void)
 //	return (lkt.QuadPart + lut.QuadPart);
 //}
 
-#ifdef _DEBUG
-//#if 0
+/*
+//#ifdef _DEBUG
+#if 0
 LOGGER_TO_DEBUG(0, 0
 		//| CJCLogger::COL_COMPNENT_NAME
 		| CJCLogger::COL_TIME_STAMP
@@ -77,6 +78,8 @@ LOGGER_TO_FILE(0, _T("SmiVendorTest.log"),
 		CJCLogger::COL_FUNCTION_NAME | 
 		CJCLogger::COL_REAL_TIME, 0);
 #endif
+*/
+
 
 void timestamptest(void)
 {
@@ -91,20 +94,16 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	int return_code = 0;
 	setvbuf(stdout, NULL, _IONBF, 0);
-	//stdext::jc_printf(_T("Ferri Debuger\n"));
-	//stdext::jc_printf(_T("Ver. 2.0\n"));
-	//stdext::jc_printf(_T("Jingcheng Yuan\n"));
-
 	try
 	{
 		// Configurate jclogger
-		FILE * config_file = NULL;
-		_tfopen_s(&config_file, _T("jclog.cfg"), _T("r"));
-		if (config_file)
-		{
-			CJCLogger::Instance()->Configurate(config_file);
-			fclose(config_file);
-		}
+		//FILE * config_file = NULL;
+		//_tfopen_s(&config_file, _T("jclog.cfg"), _T("r"));
+		//if (config_file)
+		//{
+		//	CJCLogger::Instance()->Configurate(config_file);
+		//	fclose(config_file);
+		//}
 
 		RegistInternalPlugin();
 		the_app.Initialize( GetCommandLine() );

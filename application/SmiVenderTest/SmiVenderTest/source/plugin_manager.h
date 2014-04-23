@@ -7,7 +7,6 @@
 class jcscript::IPlugin;
 class CDynamicModule;
 
-//typedef jcscript::IPlugin * (*PLUGIN_CREATOR)(jcparam::IValue *);
 typedef bool (*PLUGIN_CREATOR)(jcparam::IValue *, jcscript::IPlugin * &);
 
 class CPluginDefault;
@@ -23,6 +22,8 @@ public:
 	virtual ~CVariableContainer(void);
 	
 public:
+	virtual void GetValueText(CJCStringT & str) const {};
+	virtual void SetValueText(LPCTSTR str)  {};
 	virtual void GetSubValue(LPCTSTR name, IValue * & val);
 	// 如果name不存在，则插入，否则修改name的值
 	virtual void SetSubValue(LPCTSTR name, IValue * val);
@@ -71,8 +72,17 @@ public:
 
 public:
 	bool RegistPlugin(const CJCStringT & name, CDynamicModule * module, DWORD _property, PLUGIN_CREATOR creator);
+	bool RegistPlugin(jcscript::IPlugin * plugin);
+
 	bool ReleasePlugin(jcscript::IPlugin* plugin);
 	bool RegistDefaultPlugin(jcscript::IPlugin * plugin);
+
+	void GetVariable(jcparam::IValue * & vars)
+	{
+		JCASSERT(NULL == vars);
+		vars = m_vars;
+		if (vars) vars->AddRef();
+	}
 
 	virtual bool GetPlugin(const CJCStringT & name, jcscript::IPlugin * & plugin);
 	virtual void GetVarOp(jcscript::IAtomOperate * & op);
