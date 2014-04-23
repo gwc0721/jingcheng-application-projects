@@ -37,7 +37,7 @@ public:
 
 public:
 	virtual void ReadSmartFromWpro(BYTE * data);
-	virtual JCSIZE CLT2244::GetSystemBlockId(JCSIZE id);
+	virtual JCSIZE GetSystemBlockId(JCSIZE id);
 
 protected:
 	CLT2244(IStorageDevice * dev);
@@ -48,7 +48,6 @@ protected:
 	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(void) const {return &m_smart_def_2244lt;}
 	virtual void GetSpare(CSpareData & spare, BYTE* spare_buf);
 
-	//virtual UINT GetProperty(const CJCStringT & prop_name);
 	virtual bool GetProperty(LPCTSTR prop_name, UINT & val);
 
 // Implement CSmiDeviceComm Interface

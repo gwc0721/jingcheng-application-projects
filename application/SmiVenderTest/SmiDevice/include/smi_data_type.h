@@ -85,6 +85,8 @@ protected:
 	friend class CBinaryBuffer;
 
 public:
+	virtual void GetValueText(CJCStringT & str) const {};
+	virtual void SetValueText(LPCTSTR str)  {};
 	virtual ADDRESS_TYPE GetType() {return IAddress::ADD_FLASH;}
 	virtual void * GetValue()
 	{
@@ -105,6 +107,8 @@ protected:
 	CTypedAddress(ATYPE add)	: m_offset(add) {};
 	friend class CBinaryBuffer;
 public:
+	virtual void GetValueText(CJCStringT & str) const {};
+	virtual void SetValueText(LPCTSTR str)  {};
 	virtual ADDRESS_TYPE GetType();
 	virtual void * GetValue() {	return (void*)m_offset; }
 	virtual void GetSubValue(LPCTSTR name, jcparam::IValue * & val)
@@ -180,6 +184,9 @@ protected:
 	~CBinaryBuffer();
 
 public:
+	virtual void GetValueText(CJCStringT & str) const {};
+	virtual void SetValueText(LPCTSTR str)  {};
+
 	virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr);
 	virtual void Format(FILE * file, LPCTSTR format);
 	virtual void WriteHeader(FILE * file) {}
@@ -257,6 +264,8 @@ public:
 	CFBlockInfo(const CFlashAddress & fadd, const CSpareData &spare) 
 		: m_f_add(fadd), m_spare(spare), m_id(spare.m_id)
 	{}
+	void SetSpare(const CSpareData & spare) {m_spare = spare;}
+	void SetAddress(const CFlashAddress & add)	{m_f_add = add;}
 
 public:
 	WORD		m_id;
@@ -267,11 +276,11 @@ public:
 typedef jcparam::CTableRowBase<CFBlockInfo>		BLOCK_ROW;
 typedef jcparam::CTypedTable<CFBlockInfo>		CBlockTable;
 
-class CFBlockInfo::CBitErrColInfo	: public jcparam::CColInfoBase
+class CFBlockInfo::CBitErrColInfo	: public jcparam::COLUMN_INFO_BASE
 {
 public:
 	CBitErrColInfo(int id, LPCTSTR name)
-		: jcparam::CColInfoBase(id, jcparam::VT_OTHERS, 0, name) {}
+		: jcparam::COLUMN_INFO_BASE(id, jcparam::VT_OTHERS, 0, name) {}
 
 	virtual void GetText(void * row, CJCStringT & str) const
 	{

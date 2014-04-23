@@ -1,7 +1,7 @@
 ﻿#include "stdafx.h"
 #include "SM2244LT.h"
 
-LOCAL_LOGGER_ENABLE(_T("SM2244LT"), LOGGER_LEVEL_ERROR);
+LOCAL_LOGGER_ENABLE(_T("device_lt2244"), LOGGER_LEVEL_ERROR);
 
 static LPCTSTR STR_RESERVED = _T("Reserved");
 
@@ -176,9 +176,17 @@ bool CLT2244::Initialize(void)
 		m_f_chunk_per_page = m_p_chunk_per_page * m_plane;		
 
 		// Read page 1 for f-block number
-		cmd.page(1);
-		VendorCommand(cmd, read, buf, 1);
-		m_f_block_num = MAKEWORD(buf[0xB7], buf[0xB6]);
+		// search page 1
+		for (UINT pp = 1; pp < 10; ++pp)
+		{
+			cmd.page(pp);
+			VendorCommand(cmd, read, buf, 1);
+			if (strcmp((char*)(buf + 0xA0), ("SM2244LTAB")) == 0)
+			{
+				m_f_block_num = MAKEWORD(buf[0xB7], buf[0xB6]);
+				break;
+			}
+		}
 	}
 	return true;
 }
