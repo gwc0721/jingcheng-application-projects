@@ -1,48 +1,43 @@
 #pragma once
 
 #include "comm_define.h"
+#include "jclogger_base.h"
 
-class CJCLoggerAppender
+namespace jclogger
 {
-public:
-	enum PROPERTY
+
+	class FileAppender : public CJCLoggerAppender
 	{
-		PROP_APPEND = 0x00000001,
+	public:
+		FileAppender(LPCTSTR file_name, DWORD prop = 0);
+		virtual ~FileAppender(void);
+
+	public:
+		virtual void WriteString(LPCTSTR str, JCSIZE len);
+		virtual void Flush();
+
+	protected:
+
+	#ifdef WIN32
+		HANDLE		m_file;
+		OVERLAPPED	m_overlap;
+		TCHAR	* m_str_buf;
+	#else	// WIN32
+		FILE * m_file;
+	#endif	// WIN32
 	};
 
-    virtual void WriteString(LPCTSTR str) = 0;
-    virtual void Flush() = 0;
-};
+	#ifdef WIN32
+	class CDebugAppender : public CJCLoggerAppender
+	{
+	public:
+		CDebugAppender(DWORD prop = 0);
+		virtual ~CDebugAppender(void);
 
-class FileAppender : public CJCLoggerAppender
-{
-public:
-    FileAppender(LPCTSTR file_name, DWORD col, DWORD prop = 0);
-    virtual ~FileAppender(void);
+	public:
+		virtual void WriteString(LPCTSTR str, JCSIZE len);
+		virtual void Flush();
+	};
+	#endif
 
-public:
-    virtual void WriteString(LPCTSTR str);
-    virtual void Flush();
-
-#ifdef WIN32
-protected:
-    HANDLE m_file;
-#else
-protected:
-    FILE * m_file;
-#endif
-	
-};
-
-#ifdef WIN32
-class CDebugAppender : public CJCLoggerAppender
-{
-public:
-    CDebugAppender(DWORD col, DWORD prop = 0);
-    virtual ~CDebugAppender(void);
-
-public:
-    virtual void WriteString(LPCTSTR str);
-    virtual void Flush();
-};
-#endif
+}

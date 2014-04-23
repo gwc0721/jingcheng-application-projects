@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "jclogger_appenders.h"
+#include "comm_define.h"
 
 #include <map>
 
@@ -22,6 +22,22 @@
 #define LOGGER_LEVEL_ALL            90
 
 class CJCLogger;
+
+class CJCLoggerAppender
+{
+public:
+	enum PROPERTY
+	{
+		PROP_APPEND = 0x00000001,
+		PROP_ASYNC	= 0x00000002,
+	};
+
+	// len: legnth of str, in BYTE
+	virtual ~CJCLoggerAppender() {};
+    virtual void WriteString(LPCTSTR str, JCSIZE len) = 0;
+    virtual void Flush() = 0;
+};
+
 
 class CJCLoggerNode
 {
@@ -92,15 +108,15 @@ public:
     typedef std::map<CJCStringW, CJCLoggerNode*> LoggerCategoryMap;
     CJCLogger(CJCLoggerAppender * appender);
     ~CJCLogger(void);
+	void CleanUp(void);
 
     static CJCLogger * Instance(void);
-	static void Init(CJCLoggerAppender * appender);
+
+	void CreateAppender(LPCTSTR app_type, LPCTSTR file_name, DWORD prop);
 
     bool RegisterLoggerNode(CJCLoggerNode * node);
     bool UnregisterLoggerNode(CJCLoggerNode * node);
-    void WriteString(LPCTSTR str);
-
-    void SetAppender(CJCLoggerAppender * appender)	{ m_appender = appender; }
+    void WriteString(LPCTSTR str, JCSIZE len);
 
 	DWORD GetColumnSelect(void) const	{return m_column_select;}
 	void SetColumnSelect(DWORD sel)		{ m_column_select = sel; }
@@ -109,13 +125,20 @@ public:
 	double GetTimeStampCycle()			{return m_ts_cycle;}
 
 	// Read config from text file
-	//  format: <Node Name>,<Level>
-	//  exp:	CParameter,DEBUGINFO
+	//  format:
+	//		set appender:	><target>,<prop hex>,<filename>...		/exp:	>FILE,2,
+	//		set column:		COL|<column name>|<column name>...	/exp:
+	//		set node:		<Node Name>,<Level>					/exp:	CParameter,DEBUGINFO
 	bool Configurate(FILE * config);
+	bool Configurate(LPCTSTR file_name = NULL);
 
-public:
     CJCLoggerNode * EnableCategory(const CJCStringT & name, int level);
     CJCLoggerNode * GetLogger(const CJCStringT & name);
+
+protected:
+	void ParseAppender(LPTSTR line);
+	void ParseNode(LPTSTR line);
+
 
 protected:
     LoggerCategoryMap m_logger_category;
@@ -134,7 +157,6 @@ class CJCStackTrace
 public:
     CJCStackTrace(CJCLoggerNode * log, const char * func_name, LPCTSTR msg);
     ~CJCStackTrace(void);
-    //void Parameter(const char * format, ...);
 
 private:
     CJCLoggerNode * m_log;
@@ -149,28 +171,33 @@ class CJCLogClassSize
 public:
 	CJCLogClassSize(const wchar_t * class_name, CJCLoggerNode * log)
 	{
-		if (log)
-		{
-			log->LogMessageFunc(("[ClassSize]"), _T("sizeof(%ls)\t\t= %d"), class_name, (UINT)(sizeof(TYPE)) );
-		}
+		if (log)		log->LogMessageFunc(("[ClassSize]"), _T("sizeof(%ls)\t\t= %d"), 
+			class_name, (UINT)(sizeof(TYPE)) );
 	}
 };
 
 
 
 ///////////////////////////////////////////////////////////////////////////////
+//bool CreateLogAppender(LPCTSTR app_type, LPCTSTR file_name, DWORD col_list, DWORD prop); 
+
 
 // 以下方法实现的问题是：__logger 是一个局部对象，而不是CJCLogger中的__logger_object__对象
 // 实际上appender并没有关联到全局__logger中。
 // 以下是解决方法。但是这样的话，就无法实现为每个模块制定不同的logfile了。
-#define LOGGER_TO_FILE(level, file_name, ...)    \
-    FileAppender __file_appender(file_name, __VA_ARGS__); 
 
-#define LOGGER_TO_DEBUG(level, ...)    \
-    CDebugAppender __appender(__VA_ARGS__); 
+#define LOGGER_INIT(app_type, file_name, prop)   \
+	CJCLogger::Instance()->CreateAppender(app_type, file_name, prop);
 
-#define LOGGER_IMPLEMENT(level, appender)   \
-    CJCLogger __logger(level, appender);
+#define LOGGER_CLEANUP	\
+	CJCLogger::Instance()->CleanUp();
+
+#define LOGGER_SELECT_COL(cols)	\
+	CJCLogger::Instance()->SetColumnSelect(cols);
+
+#define LOGGER_CONFIG(file_name) \
+	CJCLogger::Instance()->Configurate(file_name);
+
 
 #define LOCAL_LOGGER_ENABLE(name, level)  \
     static CJCLoggerNode * _local_logger = CJCLogger::Instance()->EnableCategory(name, level);
