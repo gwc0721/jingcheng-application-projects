@@ -10,9 +10,6 @@ namespace jcscript
 	///////////////////////////////////////////////////////////////////////////////
 	//--CExitException
 	//  用于执行Exit并退出命令循环
-	class CExitException
-	{
-	};	
 
 	// 声明IAtomOperate的类(按字母顺序)	
 	class CComboSt;
@@ -22,7 +19,6 @@ namespace jcscript
 	class CFilterSt;
 	class CSequenceOp;
 #define IChainOperate IAtomOperate
-	//class IChainOperate;
 	class CSingleSt;
 
 	// 词法分析
@@ -102,11 +98,6 @@ namespace jcscript
 		CSyntaxParser	* m_parser;
 	};
 
-	class LSyntaxErrorHandler
-	{
-	public:
-		virtual void OnError(JCSIZE line, JCSIZE column, LPCTSTR msg) = 0;
-	};
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -119,10 +110,15 @@ public:
 	CSyntaxParser(IPluginContainer * plugin_container, LSyntaxErrorHandler * err_handler);
 	~CSyntaxParser(void);
 
+	typedef void (CSyntaxParser::* TOKEN_FUNC)(CTokenProperty & prop);
+
 public:
-	static bool CreateVarOp(jcparam::IValue * val, IAtomOperate * &op);
+	//static bool CreateVarOp(jcparam::IValue * val, IAtomOperate * &op);
 	void SetVariableManager(IAtomOperate * val_op);
 	void Parse(LPCTSTR &str, LPCTSTR last);
+	void Parse(jcparam::IStream * stream);
+	void StreamToken(CTokenProperty & prop);
+
 	void Source(FILE * file);
 	bool GetError(void)	{return m_syntax_error;};
 	bool MatchScript(IAtomOperate * & program);
@@ -203,13 +199,14 @@ protected:
 
 	void OnError(LPCTSTR msg, ...);
 
-
-
 protected:
 	// 记录需要编译的字符串的头和尾
 	LPCTSTR m_first, m_last;
 	JCSIZE	m_line_num;		// 行计数
 	LPCTSTR	m_line_begin;	// 行的开始位置
+
+	CReadIterator * m_first_it;
+	CReadIterator * m_last_it;
 
 	CTokenProperty	m_lookahead;
 
@@ -233,4 +230,6 @@ protected:
 
 	// 是否曾经发生过编译错误
 	bool m_syntax_error;
+
+	TOKEN_FUNC m_token_func;
 };
