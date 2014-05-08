@@ -469,10 +469,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\cmd_process.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\source\combost_op.cpp"
 				>
 			</File>
@@ -519,6 +515,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source\operate_base.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\parser.h"
+				>
+			</File>
+			<File
 				RelativePath=".\script_engine.h"
 				>
 			</File>
@@ -527,10 +531,14 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\syntax_parser.h"
+				RelativePath=".\source\syntax_parser.h"
 				>
 			</File>
 		</Filter>
+		<File
+			RelativePath=".\doc\ClassDiagram.cd"
+			>
+		</File>
 		<File
 			RelativePath=".\ReadMe.txt"
 			>

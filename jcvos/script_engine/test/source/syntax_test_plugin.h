@@ -106,7 +106,7 @@ public:
 	virtual void GetRow(JCSIZE index, IValue * & row);
 
 	virtual JCSIZE GetColumnSize() const {return m_row->GetColumnSize();}
-	virtual void Append(IValue * source) {}
+	//virtual void Append(IValue * source) {}
 	virtual void PushBack(jcparam::IValue * row) {};
 
 

@@ -1,5 +1,5 @@
 ﻿#include "stdafx.h"
-#include "../include/syntax_parser.h"
+#include "syntax_parser.h"
 #include "atom_operates.h"
 
 // LOG 输出定义：
@@ -142,12 +142,14 @@ const TCHAR CSaveToFileOp::m_name[] = _T("save_file");
 CSaveToFileOp::CSaveToFileOp(const CJCStringT & filename)
 	: m_file_name(filename)
 	, m_file(NULL)
+	, m_stream(NULL)
 {
 }
 		
 CSaveToFileOp::~CSaveToFileOp(void)
 {
 	if (m_file)		fclose(m_file);
+	if (m_stream)	m_stream->Release();
 }
 
 bool CSaveToFileOp::Invoke(void)
@@ -161,19 +163,35 @@ bool CSaveToFileOp::Invoke(void)
 	m_src[0]->GetResult(val);
 	if ( !val) return false; // !! warning
 
-	stdext::auto_cif<jcparam::IValueFormat>	format;
-	val->QueryInterface(jcparam::IF_NAME_VALUE_FORMAT, format);
-	if ( ! format)	return false;	// !! warning
+	// try for IValueFormat if
+	jcparam::IVisibalValue * vval = NULL;
 
-	if (NULL == m_file)
-	{	// 初始化
-		_tfopen_s(&m_file, m_file_name.c_str(), _T("w+b"));
-		if ( !m_file ) THROW_ERROR(ERR_PARAMETER, 
-			_T("failure on openning file %s"), m_file_name.c_str());
-		format->WriteHeader(m_file);
-	}
+	//stdext::auto_cif<jcparam::IValueFormat>	format;
+	//val->QueryInterface(jcparam::IF_NAME_VALUE_FORMAT, format);
+	//if ( !format )
+	//{
+		vval = val.d_cast<jcparam::IVisibalValue*>();
+		if (!vval) return false;
 
-	format->Format(m_file, _T("") );
+	//}
+
+	//if (vval)
+	//{
+		if (NULL == m_stream)	CreateStreamFile(m_file_name.c_str(), jcparam::WRITE, m_stream);
+		vval->ToStream(m_stream, jcparam::VF_DEFAULT);
+		m_stream->Put(_T('\n'));
+	//}
+	//else if (format)
+	//{
+	//	if (NULL == m_file)
+	//	{	// 初始化
+	//		_tfopen_s(&m_file, m_file_name.c_str(), _T("w+b"));
+	//		if ( !m_file ) THROW_ERROR(ERR_PARAMETER, 
+	//			_T("failure on openning file %s"), m_file_name.c_str());
+	//		format->WriteHeader(m_file);
+	//	}
+	//	format->Format(m_file, _T("") );
+	//}
 	// return false means no need more running for this input
 	return false;
 }
@@ -314,4 +332,3 @@ bool CInPort::Invoke(void)
 	return br;
 }
 
-const TCHAR CHelpProxy::name[] = _T("help");

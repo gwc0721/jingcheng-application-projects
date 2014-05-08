@@ -4,7 +4,7 @@
 LOCAL_LOGGER_ENABLE(_T("script.operates"), LOGGER_LEVEL_WARNING);
 
 using namespace jcscript;
-
+/*
 ///////////////////////////////////////////////////////////////////////////////
 LOG_CLASS_SIZE(CHelpProxy)
 
@@ -34,3 +34,6 @@ bool CHelpProxy::Invoke()
 	}
 	return true;
 }
+*/
+
+//const TCHAR CHelpProxy::name[] = _T("help");

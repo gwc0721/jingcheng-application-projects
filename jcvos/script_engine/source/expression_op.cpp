@@ -1,5 +1,5 @@
 ﻿#include "stdafx.h"
-#include "../include/syntax_parser.h"
+#include "syntax_parser.h"
 
 #pragma warning (disable: 4800)
 
@@ -40,6 +40,23 @@ void ToIValue(jcparam::VALUE_TYPE type, void * data, jcparam::IValue * & val)
 	}
 	return;
 }
+
+template <typename T>
+bool FromIValue(jcparam::IValue * val, void * data)
+{
+	using namespace jcparam;
+	CTypedValue<T> * _val = dynamic_cast<CTypedValue<T>*>(val);
+	if (! _val ) return false;
+	*((T*)data) = (*_val);
+	return true;
+}
+
+static const FROM_IVALUE FROM_IVALUE_FUN_TAB[jcparam::VT_MAXNUM] = {
+	NULL, // unknown
+	FromIValue<bool>,	FromIValue<char>,	FromIValue<BYTE>,	FromIValue<short>,	
+	FromIValue<WORD>,	FromIValue<int>,	FromIValue<UINT>,	FromIValue<INT64>,	
+	FromIValue<UINT64>,	FromIValue<float>,	FromIValue<double>,	NULL};
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- CAthOpBase
@@ -194,6 +211,7 @@ const TCHAR CColumnVal::m_name[] = _T("column_val");
 CColumnVal::CColumnVal(const CJCStringT & col_name)
 	: m_col_name(col_name)
 	, m_res_type(jcparam::VT_UNKNOW)
+	, m_convertor(NULL)
 {
 }
 
@@ -226,8 +244,19 @@ bool CColumnVal::Invoke(void)
 		m_col_id = info->m_id;
 		// 选择转换函数
 		LOG_SCRIPT(_T(": init col=%d, type=%d"), m_col_id, m_res_type);
+		m_convertor = FROM_IVALUE_FUN_TAB[m_res_type];
+		if (! m_convertor) THROW_ERROR(ERR_UNSUPPORT, _T("unsupport type %d"), m_res_type);
 	}
-	row->GetColVal(m_col_id, m_res);
+	//const COLUMN_INFO_BASE * col_info = row->GetColumnInfo(m_col_id);
+	//JCASSERT(col_info);
+	//col_info->GetColVal( 
+
+	stdext::auto_interface<jcparam::IValue> col_val;
+	row->GetColumnData(m_col_id, col_val);
+	bool br = m_convertor(col_val, m_res);
+	if (!br) THROW_ERROR(ERR_PARAMETER, _T("wrong type convert"));
+
+	//row->GetColVal(m_col_id, m_res);
 
 	LOG_SCRIPT(_T(": val=%X"), *((UINT*)(m_res)) );
 	return true;

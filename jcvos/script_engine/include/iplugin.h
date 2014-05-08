@@ -1,12 +1,9 @@
 ﻿#pragma once
 
-#include <jcparam.h>
+#include "../../jcparam/include/ivalue.h"
 
 // 定义一个基本执行单位，包括从何处取参数1和2，执行什么过程(IProxy)，经结果保存在何处。
 // 如果执行的过程为NULL，则直接将参数1保存到结果
-
-#define JCIFBASE \
-	, public CJCInterfaceBase
 
 namespace jcscript
 {
@@ -15,10 +12,23 @@ namespace jcscript
 		OPP_LOOP_SOURCE = 0x80000000,
 		OPP_LOOP_DEPEND = 0x40000000,
 		OOP_STATE =		  0x20000000,	// a op which need to keep state (state machine)
-
 	};
 
-	class IAtomOperate : virtual public IJCInterface
+	class CExitException
+	{
+	};	
+
+	class IScript : virtual public IJCInterface
+	{
+	};
+
+	class LSyntaxErrorHandler
+	{
+	public:
+		virtual void OnError(JCSIZE line, JCSIZE column, LPCTSTR msg) = 0;
+	};
+
+	class IAtomOperate : public IJCInterface
 	{
 	public:
 		virtual bool GetResult(jcparam::IValue * & val) = 0;
@@ -46,12 +56,11 @@ namespace jcscript
 		virtual bool IsEmpty(void) = 0;
 	};
 
-	class IHelpMessage : virtual public IJCInterface
-	{
-	public:
-		virtual void HelpMessage(FILE * output) = 0;
-
-	};
+	//class IHelpMessage : virtual public IJCInterface
+	//{
+	//public:
+	//	virtual void HelpMessage(FILE * output) = 0;
+	//};
 
 	class IFeature : virtual public IJCInterface
 	{
@@ -64,16 +73,6 @@ namespace jcscript
 
 		virtual LPCTSTR GetFeatureName(void) const = 0;
 	};
-
-	class ILoopOperate : virtual public IFeature
-	{
-	public:
-		virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const = 0;
-		virtual void Init(void) = 0;
-		virtual bool InvokeOnce(void) = 0;
-	};
-
-
 
 	class IPlugin : public virtual IJCInterface
 	{

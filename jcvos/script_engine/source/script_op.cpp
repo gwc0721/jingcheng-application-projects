@@ -21,12 +21,6 @@ CScriptOp::~CScriptOp(void)
 	LOG_STACK_TRACE();
 }
 
-//bool CScriptOp::GetResult(jcparam::IValue * & val) 
-//{
-//	LOG_STACK_TRACE();
-//	return true;
-//}
-
 bool CScriptOp::Invoke()
 {
 	LOG_STACK_TRACE();

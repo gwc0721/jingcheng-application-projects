@@ -20,8 +20,7 @@ namespace jcscript
 	//-- CAssignOp
 	// 用于从source中取出结果，赋值到制定op的var中
 	class CAssignOp 
-		: virtual public IAtomOperate
-		, public COpSourceSupport<IAtomOperate, 1, CAssignOp>
+		: public CAtomOpBase<IAtomOperate, 1, CAssignOp>
 		JCIFBASE
 	{
 	public:
@@ -46,8 +45,7 @@ namespace jcscript
 	//-- CPushParamOp
 	// 用于从source中取出结果，设置函数的参数
 	class CPushParamOp
-		: virtual public IAtomOperate
-		, public COpSourceSupport<IAtomOperate, 1, CPushParamOp>
+		: public CAtomOpBase<IAtomOperate, 1, CPushParamOp>
 		JCIFBASE
 	{
 	public:
@@ -76,8 +74,7 @@ namespace jcscript
 	//-- CLoopVarOp
 	// 用于combo执行循环时，处理循环变量
 	class CLoopVarOp
-		: virtual public IAtomOperate
-		, public COpSourceSupport<IAtomOperate, 1, CLoopVarOp>
+		: public CAtomOpBase<IAtomOperate, 1, CLoopVarOp>
 		JCIFBASE
 	{
 	public:
@@ -112,8 +109,7 @@ namespace jcscript
 	//-- CCollectOp
 	// 在ComoboSt的循环中，将最后语句输出的表格连接在一起。
 	class CCollectOp
-		: virtual public IAtomOperate
-		, public COpSourceSupport<IOutPort, 1, CCollectOp>
+		: public CAtomOpBase<IOutPort, 1, CCollectOp>
 		JCIFBASE
 	{
 	public:
@@ -132,29 +128,29 @@ namespace jcscript
 		jcparam::IVector * m_table;
 	};
 
-	class CHelpProxy
-		: virtual public IAtomOperate
-		, public COpSourceSupport0<CHelpProxy>
-		JCIFBASE
-	{
-	protected:
-		CHelpProxy(IHelpMessage * help);
-		virtual ~CHelpProxy(void);
+	//class CHelpProxy
+	//	: virtual public IAtomOperate
+	//	, public COpSourceSupport0<CHelpProxy>
+	//	JCIFBASE
+	//{
+	//protected:
+	//	CHelpProxy(IHelpMessage * help);
+	//	virtual ~CHelpProxy(void);
 
-	public:
-		friend class COpSourceSupport0<CHelpProxy>;
-		static void Create(IHelpMessage * help, CHelpProxy * & proxy);
+	//public:
+	//	friend class COpSourceSupport0<CHelpProxy>;
+	//	static void Create(IHelpMessage * help, CHelpProxy * & proxy);
 
-	public:
-		virtual bool GetResult(jcparam::IValue * & val);
-		virtual bool Invoke();
-		virtual void SetSource(UINT src_id, IAtomOperate * op);
+	//public:
+	//	virtual bool GetResult(jcparam::IValue * & val);
+	//	virtual bool Invoke();
+	//	virtual void SetSource(UINT src_id, IAtomOperate * op);
 
 
-	protected:
-		IHelpMessage * m_help;
-		static const TCHAR name[];
-	};
+	//protected:
+	//	IHelpMessage * m_help;
+	//	static const TCHAR name[];
+	//};
 
 	///////////////////////////////////////////////////////////////////////////////
 
@@ -163,8 +159,7 @@ namespace jcscript
 	//-- CSaveToFileOp
 	// 将变量保存到文件
 	class CSaveToFileOp
-		: virtual public IAtomOperate
-		, public COpSourceSupport<IAtomOperate, 1, CSaveToFileOp>
+		: public CAtomOpBase<IAtomOperate, 1, CSaveToFileOp>
 		JCIFBASE 
 	{
 	public:
@@ -182,13 +177,14 @@ namespace jcscript
 	protected:
 		CJCStringT m_file_name;
 		FILE * m_file;
+
+		jcparam::IStream * m_stream;
 	};
 
 	///////////////////////////////////////////////////////////////////////////////
 	//-- CExitOp
 	class CExitOp
-		: virtual public IAtomOperate
-		, public COpSourceSupport0<CExitOp>
+		: public COpSourceSupport0<CExitOp, IAtomOperate>
 		JCIFBASE 
 	{
 	public:
@@ -201,8 +197,7 @@ namespace jcscript
 ///////////////////////////////////////////////////////////////////////////////
 // filter statement
 	class CFilterSt
-		: virtual public IAtomOperate
-		, public COpSourceSupport<IAtomOperate, 2, CFilterSt>
+		: public CAtomOpBase<IAtomOperate, 2, CFilterSt>
 		JCIFBASE
 	{
 	public:
@@ -248,8 +243,7 @@ namespace jcscript
 ///////////////////////////////////////////////////////////////////////////////
 //-- 
 	class CInPort
-		: virtual public IAtomOperate
-		, public COpSourceSupport<IOutPort, 1, CInPort>
+		: public CAtomOpBase<IOutPort, 1, CInPort>
 		JCIFBASE
 	{
 	public:
@@ -275,8 +269,7 @@ namespace jcscript
 // -- feature wrapper
 	// feature wrapper is a state op, it need to be insert in to single statement
 	class CFeatureWrapper
-		: virtual public IAtomOperate
-		, public COpSourceSupport<IAtomOperate, 1, CFeatureWrapper>
+		: public CAtomOpBase<IAtomOperate, 1, CFeatureWrapper>
 		JCIFBASE
 	{
 	public:
@@ -302,8 +295,7 @@ namespace jcscript
 ///////////////////////////////////////////////////////////////////////////////
 // -- vector maker
 	class COpVectorMaker
-		: virtual public IAtomOperate
-		, public COpSourceSupport<IAtomOperate, 3, COpVectorMaker>
+		: public CAtomOpBase<IAtomOperate, 3, COpVectorMaker>
 		JCIFBASE
 	{
 	public:

@@ -3,7 +3,7 @@
 #include <vector>
 #include <jcparam.h>
 
-#include "iplugin.h"
+#include "../include/iplugin.h"
 
 namespace jcscript
 {
@@ -113,7 +113,6 @@ public:
 	typedef void (CSyntaxParser::* TOKEN_FUNC)(CTokenProperty & prop);
 
 public:
-	//static bool CreateVarOp(jcparam::IValue * val, IAtomOperate * &op);
 	void SetVariableManager(IAtomOperate * val_op);
 	void Parse(LPCTSTR &str, LPCTSTR last);
 	void Parse(jcparam::IStream * stream);

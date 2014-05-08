@@ -1,10 +1,11 @@
 ﻿#include "stdafx.h"
 
 #include <boost/spirit/include/lex_lexertl.hpp>
-#include "../include/syntax_parser.h"
+#include "syntax_parser.h"
 #include "atom_operates.h"
 #include "expression_op.h"
 #include "flow_ctrl_op.h"
+#include "../include/parser.h"
 
 // LOG 输出定义：
 //  WARNING:	编译错误
@@ -200,16 +201,6 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- syntax error handling
-/*
-#define SYNTAX_ERROR(...)	{ \
-		LPTSTR __temp_str = new TCHAR[512];		\
-		stdext::jc_sprintf(__temp_str, 512, __VA_ARGS__);	\
-		OnError(__temp_str);			\
-		CSyntaxError err(__temp_str); \
-		delete [] __temp_str;					\
-        throw err; }
-*/
-
 #define SYNTAX_ERROR(...)	{ \
 		LOG_DEBUG(_T("syntax error!"));	\
 		OnError(__VA_ARGS__);			\
@@ -245,6 +236,10 @@ CSyntaxParser::CSyntaxParser(IPluginContainer * plugin_container, LSyntaxErrorHa
 	, m_one_line(false)
 	, m_error_handler(err_handler)
 	, m_syntax_error(false)
+	, m_token_func(NULL)
+	, m_first_it(NULL)
+	, m_last_it(NULL)
+	, m_first(NULL)
 {
 	LOG_STACK_TRACE();
 	JCASSERT(plugin_container);
@@ -263,6 +258,9 @@ CSyntaxParser::~CSyntaxParser(void)
 	delete [] m_src_buf;
 
 	if (m_var_set) m_var_set->Release();
+
+	if (m_first_it)		delete m_first_it;
+	if (m_last_it)		delete m_last_it;
 }
 
 void CSyntaxParser::Source(FILE * file)
@@ -280,6 +278,8 @@ void CSyntaxParser::Source(FILE * file)
 	m_line_begin = m_first;
 	m_line_num = 1;
 
+	m_token_func = &CSyntaxParser::Token;
+
 	NextToken(m_lookahead);
 }
 
@@ -295,24 +295,45 @@ void CSyntaxParser::Parse(LPCTSTR &first, LPCTSTR last)
 	m_line_num = 1;
 	m_line_begin = m_first;
 
+	m_token_func = &CSyntaxParser::Token;
 	NextToken(m_lookahead);
 }
 
-// for unicode file
-//void CSyntaxParser::ReadSource(void)
-//{
-//	JCSIZE len = m_last - m_first;
-//	if ( (len < SRC_BACK_SIZE) && m_file && (!feof(m_file)) )
-//	{
-//		// move tail to begin
-//		memcpy_s(m_src_buf, (m_first - m_src_buf), m_first, len); 
-//		m_first = m_src_buf; 
-//		m_last = m_src_buf + len;
-//		// read from file
-//		JCSIZE read_size = fread(m_last, SRC_READ_SIZE, 1 m_file);
-//		m_last += read_size;
-//	}
-//}
+void CSyntaxParser::Parse(jcparam::IStream * stream)
+{
+	JCASSERT(stream);
+	m_first_it = new CReadIterator(stream);
+	m_last_it = new CReadIterator();
+	m_line_num = 1;
+
+	m_token_func = &CSyntaxParser::StreamToken;
+	NextToken(m_lookahead);
+}
+
+void CSyntaxParser::StreamToken(CTokenProperty & prop)
+{
+	typedef lex::lexertl::token<CReadIterator> t_type;
+	typedef lex::lexertl::lexer<t_type>	l_type;
+	static const cmd_line_tokens< l_type > token_functor;
+
+	LOG_STACK_TRACE();
+
+	try
+	{
+		lexer_parser analyzer(&prop);
+		CReadIterator & first = *m_first_it;
+		lex::tokenize(first, *m_last_it, token_functor, analyzer);
+		if (ID_SYMBO_ERROR == prop.m_id) 
+		{
+			prop.m_val = *(*m_first_it);
+			++ (*m_first_it);
+		}
+	}
+	catch (CEofException &)
+	{
+		prop.m_id = ID_EOF;
+	}
+}
 
 // for ASCII file
 void CSyntaxParser::ReadSource(void)
@@ -366,12 +387,16 @@ void CSyntaxParser::Token(CTokenProperty & prop)
 void CSyntaxParser::NextToken(CTokenProperty & prop)
 {
 	// for compile log
-	TCHAR strline[64] = {0};
-	memcpy_s(strline, 63*sizeof(TCHAR), m_first, 63*sizeof(TCHAR));
-	LOG_NOTICE(_T("[token] %s ..."), strline);
+	if (m_first)
+	{
+		TCHAR strline[64] = {0};
+		memcpy_s(strline, 63*sizeof(TCHAR), m_first, 63*sizeof(TCHAR));
+		LOG_NOTICE(_T("[token] %s ..."), strline);
+	}
 
 	prop.m_id = ID_SYMBO_ERROR;
-	Token(prop);
+	JCASSERT(m_token_func);
+	(this->*m_token_func)(prop);
 	LOG_TRACE(_T("[TRACE] id=%d, val=%d, str=%s"), prop.m_id, (UINT)(prop.m_val), prop.m_str.c_str())
 
 	if (ID_SYMBO_ERROR == prop.m_id)
@@ -455,9 +480,7 @@ bool CSyntaxParser::MatchScript1(CSequenceOp * prog)
 
 			default:	{
 				LOG_COMPILE(_T("- combo  "));
-				//stdext::auto_interface<CComboSt>	combo(new CComboSt(prog) );
 				MatchComboSt( prog );
-				//if ( !combo->IsEmpty() )	prog->AddOp( static_cast<IAtomOperate *>(combo) );
 				break;	}
 			}
 		}
@@ -472,8 +495,6 @@ bool CSyntaxParser::MatchScript1(CSequenceOp * prog)
 				if ( *m_first == _T('\n') )	{m_lookahead.m_id = ID_NEW_LINE; break;}
 				m_first ++;
 			}
-			//while (m_lookahead.m_id != ID_NEW_LINE && m_lookahead.m_id != ID_EOF) 
-			//	Token(m_lookahead);
 		}
 	}
 	return true;
@@ -549,7 +570,6 @@ bool CSyntaxParser::MatchComboSt(CSequenceOp * prog)
 		op->SetSource(0, chain);
 		combo->AddOp(op);
 		chain.release();	
-		//chian = op;
 		op.detach<IAtomOperate>(chain);
 
 		prog->AddOp( static_cast<IAtomOperate *>(combo) );
@@ -604,22 +624,6 @@ bool CSyntaxParser::MatchAssign(CSequenceOp * combo, IChainOperate * chain)
 		combo->AddOp(op);
 		break;		}
 
-/*
-	case ID_FILE_NAME:	{		// 文件名作为作值(assignee)，将结果保存到文件
-		stdext::auto_interface<CSingleSt> single_st(new CSingleSt(combo) );
-		single_st->SetSource(0, chain);
-
-		op = static_cast<IAtomOperate*>(new CSaveToFileOp(m_lookahead.m_str));
-		op->SetSource(0, single_st->GetInPort() );
-		single_st->AddOp( op );
-
-		combo->AddOp( static_cast<IAtomOperate*>(single_st) );
-		chain->Release(), chain = NULL;
-		single_st.detach(chain);
-
-		NextToken(m_lookahead);
-		break;			}
-*/
 	default:
 		SYNTAX_ERROR(_T("missing variable name."));
 		return false;
@@ -924,14 +928,13 @@ bool CSyntaxParser::MatchTableSt(CSequenceOp * combo, IChainOperate * & chain)
 	default:		{
 		stdext::auto_interface<IAtomOperate> var_op;
 		MatchV3(combo, var_op);
-		//combo->AddOp(var_op);
-		
+	
 		stdext::auto_interface<CSingleSt> single_st(new CSingleSt(combo) );
 
-			stdext::auto_interface<CLoopVarOp>	loop_var( new CLoopVarOp );
-			loop_var->SetSource(0, var_op);
-			loop_var->SetOutPort(single_st.d_cast<IOutPort*>());
-			single_st->AddOp(loop_var);
+		stdext::auto_interface<CLoopVarOp>	loop_var( new CLoopVarOp );
+		loop_var->SetSource(0, var_op);
+		loop_var->SetOutPort(single_st.d_cast<IOutPort*>());
+		single_st->AddOp(loop_var);
 
 		combo->AddOp(single_st);
 		single_st.detach(chain);
@@ -995,12 +998,6 @@ void CSyntaxParser::MatchHelp(IAtomOperate * & op)
 {
 	LOG_STACK_TRACE();
 	JCASSERT(NULL == op);
-	
-	//switch (m_lookahead.m_id)
-	//{
-	//case ID_COLON:
-	//case ID_WORD:
-	//}
 }
 
 
@@ -1236,10 +1233,6 @@ bool CSyntaxParser::MatchFactor(CSequenceOp * combo, IAtomOperate * & exp)
 	JCASSERT(combo);
 
 	CSingleSt * st = dynamic_cast<CSingleSt*>(combo);
-	//if (!st) SYNTAX_ERROR(_T(". operater must in single st"));
-	//IAtomOperate * chain = NULL;
-	//if (st) chain = static_cast<IAtomOperate*>(st->GetInPort());
-
 	switch (m_lookahead.m_id)
 	{
 	case ID_STRING:
@@ -1318,10 +1311,6 @@ bool CSyntaxParser::MatchFactor(CSequenceOp * combo, IAtomOperate * & exp)
 			exp = chain;
 			exp->AddRef();
 		}
-
-		//if (ID_WORD != m_lookahead.m_id) 	SYNTAX_ERROR(_T("expected a column name"));
-
-		//NextToken(m_lookahead);
 		break;	}
 
 	default:
@@ -1425,9 +1414,28 @@ void CSyntaxParser::OnError(LPCTSTR msg, ...)
 	throw err;
 }
 
-bool CSyntaxParser::CreateVarOp(jcparam::IValue * val, IAtomOperate * &op)
+///////////////////////////////////////////////////////////////////////////////
+// -- export functions
+bool jcscript::CreateVarOp(jcparam::IValue * val, IAtomOperate * &op)
 {
 	JCASSERT(NULL == op);
 	op = static_cast<IAtomOperate*>(new CVariableOp(val));
 	return true;
 }
+
+bool jcscript::Parse(IPluginContainer * plugin_container, LSyntaxErrorHandler * err_handler, LPCTSTR &str, LPCTSTR last, IAtomOperate * & script)
+{
+	CSyntaxParser	syntax_parser(plugin_container, err_handler);
+	syntax_parser.Parse(str, last);
+	syntax_parser.MatchScript(script);
+	return syntax_parser.GetError();
+}
+
+bool jcscript::Parse(IPluginContainer * plugin_container, LSyntaxErrorHandler * err_handler, FILE * file, IAtomOperate * & script)
+{
+	CSyntaxParser	syntax_parser(plugin_container, err_handler);
+	syntax_parser.Source(file);
+	syntax_parser.MatchScript(script);
+	return syntax_parser.GetError();
+}
+	//void Parse(jcparam::IStream * stream);
