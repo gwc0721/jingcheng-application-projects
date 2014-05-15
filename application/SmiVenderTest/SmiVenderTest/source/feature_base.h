@@ -73,10 +73,6 @@ public:
 	virtual void SetValue(BYTE * base, jcparam::IValue * val) const
 	{
 		CJCStringT str_val;
-		//jcparam::IValueConvertor * conv = dynamic_cast<
-		//	jcparam::IValueConvertor *>(val);
-		//if (!conv) THROW_ERROR(ERR_PARAMETER, _T("failure on converting parameter."));
-		//conv->GetValueText(str_val);
 		val->GetValueText(str_val);
 
 		VAL_TYPE * ptr = (VAL_TYPE*)( base + m_offset);
@@ -127,8 +123,6 @@ public:
 		return true;
 	}
 	
-	//virtual UINT GetProperty(void) const {return m_property;};
-
 	virtual LPCTSTR GetFeatureName(void) const {return m_feature_name;}
 
 	virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const {};
@@ -137,59 +131,7 @@ public:
 protected:
 	static CParamDefTab	m_param_def_tab;
 	static LPCTSTR m_feature_name;
-	static const UINT	m_property;
-
 	P_TYPE		* m_plugin;
-};
-
-///////////////////////////////////////////////////////////////////////////////
-// -- loop feature base
-template <
-	class ITEM_TYPE, class ROW_TYPE = jcparam::CTableRowBase<ITEM_TYPE>, 
-	class TABLE_TYPE = jcparam::CTypedTable<ITEM_TYPE> >
-class CLoopFeatureBase
-	: virtual public jcscript::ILoopOperate
-{
-public:
-	CLoopFeatureBase(void)
-		: m_output(NULL)
-	{
-	};
-
-	~CLoopFeatureBase(void)
-	{
-		if (m_output) m_output->Release();
-	}
-public:
-	virtual bool GetResult(jcparam::IValue * & val)
-	{
-		JCASSERT(NULL == val);
-		if (m_output)
-		{
-			val = m_output;
-			val->AddRef();
-		}
-		return true;
-	}
-
-	virtual bool Invoke(void)
-	{
-		Init();
-		stdext::auto_interface<TABLE_TYPE> tab;
-		TABLE_TYPE::Create(100, tab);
-		while ( InvokeOnce() )
-		{
-			ROW_TYPE * row = dynamic_cast<ROW_TYPE*>(m_output);
-			if (! row) continue;;
-			tab->push_back(*row);
-		}
-		if (m_output) m_output->Release(), m_output= NULL;
-		tab.detach(m_output);
-		return true;
-	}
-
-protected:
-	jcparam::IValue * m_output;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
