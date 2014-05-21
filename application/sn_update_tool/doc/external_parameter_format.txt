@@ -1,0 +1,6 @@
+%D: Device name (\\.\D:)
+%L: Device Letter 
+%N: s/n
+%T:	test mode : VERIFY or UPDATE
+%M: model name
+%F: firmware version (exp. M1107N)

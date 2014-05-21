@@ -1,0 +1,17 @@
+How to install
+
+$WORKSPASE=C:\Users\jingcheng\workspace\syntax_parser_dev\application\sn_update_tool\
+$TARGET=C:\Users\jingcheng\smi\issue\NECi\SATA_BB\sn_update_tool\sn_update_tool_BB_N0418\
+
+cp $WORKSPASE\Release\sm22XMPTool.exe $TARGET\UpdateSnTool.exe
+cp $WORKSPASE\SMIDLL.dll $TARGET\
+
+Setting folder
+external_test folder
+
+model_list.txt
+
+create config
+	- firmware
+	- flash id
+	
