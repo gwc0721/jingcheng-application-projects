@@ -15,6 +15,7 @@ static char THIS_FILE[] = __FILE__;
 
 LOCAL_LOGGER_ENABLE(_T("upsn"), LOGGER_LEVEL_DEBUGINFO);
 
+/*
 #if 0
 LOGGER_TO_DEBUG(0, 0
 		| CJCLogger::COL_TIME_STAMP
@@ -27,7 +28,7 @@ LOGGER_TO_FILE(0, _T("update_sn_tool.log"),
 		CJCLogger::COL_FUNCTION_NAME | 
 		CJCLogger::COL_REAL_TIME, 0);
 #endif
-
+*/
 
 /////////////////////////////////////////////////////////////////////////////
 // CSm320testBApp
@@ -43,6 +44,13 @@ CSM224testBApp::CSM224testBApp()
 {
 	// TODO: add construction code here,
 	// Place all significant initialization in InitInstance
+	//LOGGER_INIT(_T("FILE"), _T("update_sn_tool.log"), 0);
+	LOGGER_SELECT_COL( 0
+		| CJCLogger::COL_TIME_STAMP
+		| CJCLogger::COL_FUNCTION_NAME
+		| CJCLogger::COL_REAL_TIME
+		);
+	LOGGER_CONFIG(_T("jclog.cfg"));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -73,13 +81,13 @@ BOOL CSM224testBApp::InitInstance()
 	Enable3dControlsStatic();	// Call this when linking to MFC statically
 #endif
 
-	FILE * config_file = NULL;
-	_tfopen_s(&config_file, _T("jclog.cfg"), _T("r"));
-	if (config_file)
-	{
-		CJCLogger::Instance()->Configurate(config_file);
-		fclose(config_file);
-	}
+	//FILE * config_file = NULL;
+	//_tfopen_s(&config_file, _T("jclog.cfg"), _T("r"));
+	//if (config_file)
+	//{
+	//	CJCLogger::Instance()->Configurate(config_file);
+	//	fclose(config_file);
+	//}
 
 	LOG_RELEASE(_T("Update Serial Number Tool"));
 	ReadVersionInfo();
@@ -143,6 +151,8 @@ bool CSM224testBApp::ReadVersionInfo(void)
 	br = VerQueryValue(ver_buf, str_prod_ver.GetBuffer(), &p_prod_ver, &length);
 	if ( 0==br) return false;
 	
+	LOG_RELEASE(_T("File Ver. %s"), reinterpret_cast<TCHAR *>(p_prod_ver) );
+
 	UINT main_ver, sub_ver;
 	_stscanf_s(reinterpret_cast<TCHAR *>(p_prod_ver), _T("%d, %d"), &main_ver, &sub_ver);
 	m_str_ver.Format(_T("%d.%d"), main_ver, sub_ver);

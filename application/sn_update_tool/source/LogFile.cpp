@@ -69,7 +69,7 @@ bool CLogFile::WriteLog1(const DEVICE_INFO & info, const CTime &start_time)
 	if ( UPSN_PASS == info.m_error_code )	fprintf_s(file, "Good,");
 	else			fprintf_s(file, "NG- 0x%X", info.m_error_code); 
 	// program_version, mode, device_type, 
-	fprintf_s(file, "%S,Test,%d,", m_tool_ver, m_device_type);
+	fprintf_s(file, "%S,Test,%S,", m_tool_ver, m_device_type);
 	// option(init bad), option2(new bad), option3(f/w ver)/
 	fprintf_s(file, "%d,%d,%S\n", info.m_init_bad, info.m_new_bad, info.m_fw_version);
 	fclose(file);
@@ -104,8 +104,9 @@ bool CLogFile::WriteLog2(const DEVICE_INFO & info, const CTime &start_time)
 		(UPSN_PASS == info.m_error_code)?(1):(0) );
 
 	// line 2: 
-	fprintf_s(file, "%S,%s,%d,%S,%d,%S\n",
-		m_tool_ver, LOG_TEST_MODE, m_device_type, m_test_machine, info.m_init_bad, info.m_fw_version);
+	fprintf_s(file, "%S,%s,%S,%S,%d,%S\n",
+		m_tool_ver, LOG_TEST_MODE, m_device_type, m_test_machine, 
+		info.m_init_bad, info.m_fw_version);
 
 	fclose(file);
 	return true;

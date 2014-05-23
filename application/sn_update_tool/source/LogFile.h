@@ -25,7 +25,7 @@ public:
 	bool WriteLog2(const DEVICE_INFO & info, const CTime &start_time);
 
 	void SetDeviceName(LPCTSTR str)	{m_device_name = str;}
-	void SetDeviceType(int ii)	{m_device_type = ii;}
+	void SetDeviceType(LPCTSTR str)	{m_device_type = str;}
 	void SetTestMachine(LPCTSTR str)	{m_test_machine = str;}
 	void SetToolVer(LPCTSTR str)	{m_tool_ver = str;}
 
@@ -34,7 +34,7 @@ protected:
 	CString		m_path_log2;
 
 	CString		m_device_name;
-	int			m_device_type;
+	CString		m_device_type;
 	CString		m_test_machine;
 	CString		m_tool_ver;
 };

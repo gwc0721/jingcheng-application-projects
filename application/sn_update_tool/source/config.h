@@ -27,10 +27,14 @@
 #define	KEY_ISP				_T("ISP")
 #define	KEY_FLASHID			_T("FLASHID")
 #define KEY_DIS_ISP_CHECK	_T("DisableISPcheckversion")
-#define KEY_ISP_CHECK_SUM	_T("ISPchecksum")
+// checksum for isp file
+#define KEY_ISP_CHECKSUM	_T("ISPchecksum")
 #define KEY_SN_PREFIX		_T("SNPREFIX")
+// checksum for mpisp file
+#define KEY_MPISP_CHECKSUM	_T("MPISP_CHECKSUM")
 // verify firmware version in ID table
 #define KEY_FW_VER			_T("FW_VER")
+#define KEY_FLASHID_CHECKSUM	_T("FLASHID_CHECKSUM")
 
 #define SEC_PARAMETER		_T("PARAMETER")
 
@@ -46,7 +50,8 @@
 #define	KEY_TEST_MACHINE	_T("TestMachineNo")
 #define FILE_TEST_MACHINE_NO	_T("Setting\\TestMachineNo.dat")
 
-#define KEY_DEVICE_TYPE		_T("PATA_SATA")
+#define KEY_PATA_SATA		_T("PATA_SATA")
+#define KEY_DEVICE_TYPE		_T("DeviceType")
 #define FILE_DEVICE_TYPE	_T("Setting\\DeviceType.dat")
 
 #define FILE_LOG1_PATH		_T("Setting\\SaveLOG1Path.dat")

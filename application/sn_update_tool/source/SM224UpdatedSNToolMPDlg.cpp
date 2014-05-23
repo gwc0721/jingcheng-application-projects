@@ -108,8 +108,6 @@ BEGIN_MESSAGE_MAP(CSM224UpdatedSNToolMPDlg, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON_SetSN, OnBUTTONSetSN)
 	ON_BN_CLICKED(IDC_BUTTON_ClearCnt, OnBUTTONClearCnt)
 	ON_WM_CTLCOLOR()
-//	ON_STN_CLICKED(IDC_TESTMODULE, &CSM224UpdatedSNToolMPDlg::OnStnClickedTestmodule)
-//ON_STN_CLICKED(IDC_TESTMODULE, &CSM224UpdatedSNToolMPDlg::M)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -238,6 +236,7 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 		char drive_letter = 0;
 		CString drive_name;
 		bool br = false;
+		LOG_DEBUG(_T("Test Mode: %d"), m_test_mode); 
 		if (!dummy_test)
 		{
 			br = ScanDrive(drive_letter, drive_name, device);
@@ -254,6 +253,9 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 			LOG_WARNING(_T("dummy sacn..."));
 			info.m_drive_letter = _T('Z');
 			info.m_drive_name = _T("\\.\Z:");
+			if (m_test_mode == MODE_UPDATE_VERIFY)	info.m_error_code = UPSN_PASS;
+			else if (m_test_mode == MODE_VERIFY_ONLY)	info.m_error_code = UPSN_VERIFYSN_PASS;
+			
 		}
 		SetStatus(COLOR_BLUE, _T("Loading...") );
 
@@ -313,11 +315,11 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 			}
 			// header of inputted serial number (prefix)
 			ir = UpdatedSNtoDevice(device, verify_sn);
+			info.m_error_code = ir;
 			// close device before run external cmd
 			TestClose(device); 
 			device = NULL;
 		}
-
 
 		SetStatus(COLOR_BLUE, _T("External test..."));
 		DWORD exit_code = ExcuseExternalProcess(info);
@@ -332,11 +334,13 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 				throw new CUpsnWarning();
 			}
 			info.m_new_bad = GetRunTimeBad(device);
+			TestClose(device);
+			device = NULL;
 		}
 		if ( 0 != exit_code ) throw new CUpsnError(exit_code);
 
 		SetStatus(COLOR_BLUE, _T("Complete"));
-		info.m_error_code = UPSN_PASS;
+		//info.m_error_code = UPSN_PASS;
 		UPSN_MessageBox.DoModal( &info );
 
 		// log1
@@ -922,9 +926,12 @@ DWORD CSM224UpdatedSNToolMPDlg::UpsnLoadIspFile(HANDLE device, BYTE * isp_buf, D
 	if (0 == isplength)		throw new CUpsnError(UPSN_OPENFILE_FAIL);
 
 	// check sum
-	DWORD check_sum=0;
-	for(DWORD ii=0; ii< isplength; ii++)	check_sum += isp_buf[ii];
-	if(m_isp_check_sum != check_sum) throw new CUpsnError(UPSN_CheckSumNoMatch_FAIL);
+	DWORD check_sum=CheckSum(isp_buf, isplength);
+	LOG_DEBUG(_T("isp checksum=:0x%08X"), check_sum);
+	LOG_DEBUG(_T("checksum in config=:0x%08X"), m_isp_check_sum);
+	//for(DWORD ii=0; ii< isplength; ii++)	check_sum += isp_buf[ii];
+
+	if(m_isp_check_sum != check_sum )		throw new CUpsnError(UPSN_CheckSumNoMatch_FAIL);
 
 	// check isp version
 	if (!m_disable_isp_check_version)
@@ -1138,33 +1145,46 @@ bool CSM224UpdatedSNToolMPDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, CString
 	return true;
 }
 
-bool CSM224UpdatedSNToolMPDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, BYTE * buf, DWORD &len)
+bool CSM224UpdatedSNToolMPDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, BYTE * buf, DWORD &len, int checksum)
 {
-	TCHAR str[MAX_STRING_LEN];
-	DWORD ir = GetPrivateProfileString(sec, key, NULL, str, MAX_STRING_LEN, m_config_file);
+	TCHAR filename[MAX_STRING_LEN];
+	DWORD ir = GetPrivateProfileString(sec, key, NULL, filename, MAX_STRING_LEN, m_config_file);
 	if (ir == 0) THROW_ERROR(ERR_PARAMETER, _T("failure on loading local config %s/%s"), sec, key);
 
 	FILE * ffile = NULL;
-	_tfopen_s(&ffile, str, _T("rb"));
-	if ( NULL == ffile )	THROW_ERROR(ERR_PARAMETER, _T("failure on openning file %s"), str);
+	_tfopen_s(&ffile, filename, _T("rb"));
+	if ( NULL == ffile )	THROW_ERROR(ERR_PARAMETER, _T("failure on openning file %s"), filename);
 	ir = fread(buf, 1, len, ffile);
 	fclose(ffile);
 	len = ir;
+	DWORD file_checksum = CheckSum(buf, len);
 
-	LOG_DEBUG(_T("load bin file %s, length=%d"), str, len);
+	LOG_DEBUG(_T("load bin file %s, length=%d, checksum=0x%08X"), filename, len, file_checksum);
+	LOG_DEBUG(_T("input checksum=0x%08X"), checksum)
 
+	if (checksum && (DWORD)(checksum) != file_checksum)
+	{
+		LOG_ERROR(_T("checksum failed, input:0x%08X, file:0x%08X"), checksum, file_checksum);
+		THROW_ERROR(ERR_PARAMETER, _T("%s checksum do not match"), filename);
+	}
 	//file_name = str;
 	return true;
 }
 
-bool CSM224UpdatedSNToolMPDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, int & val)
+bool CSM224UpdatedSNToolMPDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, int & val, int def_val)
 {
-	val = GetPrivateProfileInt(sec, key, -1, m_config_file);
+	val = GetPrivateProfileInt(sec, key, def_val, m_config_file);
 	if (-1 == val) THROW_ERROR(ERR_PARAMETER, _T("failure on loading local config %s/%s"), sec, key);
 	LOG_DEBUG(_T("local config %s/%s=%d"), sec, key, val);
 	return true;
 }
 
+DWORD CSM224UpdatedSNToolMPDlg::CheckSum(BYTE * buf, DWORD len)
+{
+	DWORD check_sum=0;
+	for(DWORD ii=0; ii< len; ii++)	check_sum += buf[ii];
+	return check_sum;
+}
 
 bool CSM224UpdatedSNToolMPDlg::LoadConfig(void)
 {
@@ -1200,12 +1220,17 @@ bool CSM224UpdatedSNToolMPDlg::LoadConfig(void)
 	DWORD vendor_len = VENDOR_LENGTH;
 	DWORD fid_len = SECTOR_SIZE;
 	m_mpisp_len = MPISP_LENGTH;
+	int mpisp_checksum = 0;
+	int flashid_checksum = 0;
 
 	LoadLocalConfig(SEC_SOURCE,		KEY_VENDOR,			m_vendor_specific,	vendor_len);
-	LoadLocalConfig(SEC_SOURCE,		KEY_FLASHID,		m_flash_id,			fid_len);
-	LoadLocalConfig(SEC_SOURCE,		KEY_MPISP,			m_mpisp,			m_mpisp_len);
+
+	LoadLocalConfig(SEC_SOURCE,		KEY_FLASHID_CHECKSUM,flashid_checksum,	0);
+	LoadLocalConfig(SEC_SOURCE,		KEY_FLASHID,		m_flash_id,			fid_len,	flashid_checksum);
+	LoadLocalConfig(SEC_SOURCE,		KEY_MPISP_CHECKSUM,	mpisp_checksum,		0);
+	LoadLocalConfig(SEC_SOURCE,		KEY_MPISP,			m_mpisp,			m_mpisp_len, mpisp_checksum);
+	LoadLocalConfig(SEC_SOURCE,		KEY_ISP_CHECKSUM,	m_isp_check_sum);
 	LoadLocalConfig(SEC_SOURCE,		KEY_ISP,			m_isp_file_name);
-	LoadLocalConfig(SEC_SOURCE,		KEY_ISP_CHECK_SUM,	m_isp_check_sum);
 
 	LoadLocalConfig(SEC_CONFIGURE,	KEY_OEM_MODEL_NAME,	m_oem_model_name);
 	LoadLocalConfig(SEC_CONFIGURE,	KEY_SN_PREFIX,		m_sn_prefix);		// serial number prefix, ex. EMBZ1
@@ -1224,9 +1249,12 @@ bool CSM224UpdatedSNToolMPDlg::LoadConfig(void)
 	m_log_file.SetDeviceName(str);
 	ir = GetPrivateProfileString(SEC_PARAMETER, KEY_TEST_MACHINE, _T(""), str, MAX_STRING_LEN, app->GetRunFolder() + FILE_TEST_MACHINE_NO);
 	m_log_file.SetTestMachine(str);
-	ir = GetPrivateProfileInt(SEC_PARAMETER, KEY_DEVICE_TYPE, 0, app->GetRunFolder() + FILE_DEVICE_TYPE);
-	m_log_file.SetDeviceType(ir);
+
+	ir = GetPrivateProfileInt(SEC_PARAMETER, KEY_PATA_SATA, 0, app->GetRunFolder() + FILE_DEVICE_TYPE);
 	if (ir ==0)	m_controller_ver = SM631GXx;		// (SATA) SM2244LT;
+
+	ir = GetPrivateProfileString(SEC_PARAMETER, KEY_DEVICE_TYPE, _T(""), str, MAX_STRING_LEN, app->GetRunFolder() + FILE_DEVICE_TYPE);
+	m_log_file.SetDeviceType(str);
 	m_log_file.SetToolVer(app->GetVer());
 
 	CString log1;
