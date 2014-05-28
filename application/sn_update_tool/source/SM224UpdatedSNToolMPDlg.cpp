@@ -229,6 +229,7 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 	info.m_capacity = m_capacity;
 	info.m_fw_version = m_fw_ver;
 	info.m_error_code = UPSN_UNKNOW_FAIL;
+	info.m_pass_fail = false;
 
 	try
 	{
@@ -338,6 +339,7 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 			device = NULL;
 		}
 		if ( 0 != exit_code ) throw new CUpsnError(exit_code);
+		info.m_pass_fail = true;
 
 		SetStatus(COLOR_BLUE, _T("Complete"));
 		//info.m_error_code = UPSN_PASS;

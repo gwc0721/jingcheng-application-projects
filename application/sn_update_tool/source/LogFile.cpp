@@ -66,8 +66,9 @@ bool CLogFile::WriteLog1(const DEVICE_INFO & info, const CTime &start_time)
 		iStartHour, iStartMinute, iStartSecond, 
 		iEndHour, iEndMinute, iEndSecond);
 	// result_code
-	if ( UPSN_PASS == info.m_error_code )	fprintf_s(file, "Good,");
-	else			fprintf_s(file, "NG- 0x%X", info.m_error_code); 
+	//if ( (UPSN_PASS == info.m_error_code )	|| (UPSN_VERIFYSN_PASS == info.m_error_code) )
+	if (info.m_pass_fail)		fprintf_s(file, "Good,");
+	else						fprintf_s(file, "NG- 0x%X,", info.m_error_code); 
 	// program_version, mode, device_type, 
 	fprintf_s(file, "%S,Test,%S,", m_tool_ver, m_device_type);
 	// option(init bad), option2(new bad), option3(f/w ver)/

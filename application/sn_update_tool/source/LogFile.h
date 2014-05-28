@@ -12,6 +12,7 @@ struct DEVICE_INFO
 	int		m_init_bad;
 	int		m_new_bad;
 	int		m_error_code;
+	bool	m_pass_fail;
 };
 
 class CLogFile
