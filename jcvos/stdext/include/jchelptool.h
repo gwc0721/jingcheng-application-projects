@@ -24,7 +24,7 @@ namespace stdext
 	//	[IN]	len :	Digitals to convert
 	//	[IN]	d :		Data to be converted
 	void itohex(LPTSTR str, JCSIZE dig, UINT d);
-	UINT64 str2hex(LPCTSTR str, JCSIZE dig = 0xFFFFFFFF);
+	INT64 str2hex(LPCTSTR str, JCSIZE dig = 0xFFFFFFFF);
 
 	inline UINT char2hex(TCHAR ch)
 	{

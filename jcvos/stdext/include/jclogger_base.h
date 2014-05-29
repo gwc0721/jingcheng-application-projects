@@ -223,7 +223,7 @@ public:
 #define _LOGGER_WARNING( ... )
 #define _LOGGER_NOTICE( ... )
 #define _LOGGER_TRACE( ... )
-#define _LOGGER_DEBUG( ... )
+#define _LOGGER_DEBUG( ... )	{}
 #define _LOGGER_TRACE( ... )
 #define LOG_STACK_TRACE( ... )
 #define LOG_STACK_TRACE_P( ... )
@@ -357,7 +357,7 @@ public:
 #define LOG_WARNING(...)				_LOGGER_WARNING(_local_logger, __VA_ARGS__);
 #define LOG_NOTICE(...)					_LOGGER_NOTICE(_local_logger, __VA_ARGS__);
 #define LOG_TRACE(...)					_LOGGER_TRACE(_local_logger, __VA_ARGS__);
-#define LOG_DEBUG(...)					_LOGGER_DEBUG(_local_logger, __VA_ARGS__);
+#define LOG_DEBUG(...)					_LOGGER_DEBUG(_local_logger, __VA_ARGS__)
 #define CLSLOG_DEBUG(classname, ...)    _LOGGER_DEBUG(_m_logger, __VA_ARGS__);
 
 //#define THROW_WIN32_ERROR

@@ -191,10 +191,10 @@ JCSIZE stdext::Utf8ToUnicode(wchar_t *strDest, JCSIZE nDestLen, const char *szSr
 
 
 
-UINT64 stdext::str2hex(LPCTSTR str, JCSIZE dig)
+INT64 stdext::str2hex(LPCTSTR str, JCSIZE dig)
 {
 	LPTSTR str_end = NULL;
-	return _tcstol(str, &str_end, 16);
+	return _tcstoi64(str, &str_end, 16);
 }
 
 void stdext::itohex(LPTSTR str, JCSIZE dig, UINT d)

@@ -110,9 +110,11 @@ namespace stdext
 	public:
 		static void DoCloseHandle(HANDLE handle)
 		{
-			FindClose(handle);
+			if (handle) FindClose(handle);
 		}
 	};
+
+	typedef auto_handle<HANDLE, stdext::CCloseHandleFileFind>	auto_ff_handle;
 
 	#endif // WIN32
 

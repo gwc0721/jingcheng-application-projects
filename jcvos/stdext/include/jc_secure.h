@@ -63,6 +63,12 @@ namespace stdext
 	}
 
 	inline int jc_str2ul(LPCTSTR str, LPTSTR * str_end, int base = 10);
+	inline int jc_str2ul(LPCTSTR str, int base = 10)
+	{
+		LPTSTR str_end = NULL;
+		return jc_str2ul(str, &str_end, base);
+	}
+
 
 	inline jcerrno jc_int2str(INT64 val, LPTSTR str, JCSIZE buf_size, int base = 10);
 

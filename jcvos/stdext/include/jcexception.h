@@ -70,11 +70,11 @@ extern "C"
 	void LogException(LPCSTR function, int line, stdext::CJCException & err);
 }
 
-#define THROW_ERROR(level, ...)   {		\
-		LPTSTR __temp_str = new TCHAR[512];		\
+#define THROW_ERROR(level, ...)   {					\
+		LPTSTR __temp_str = new TCHAR[512];			\
 		stdext::jc_sprintf(__temp_str, 512, __VA_ARGS__);	\
 		stdext::CJCException err(__temp_str, stdext::CJCException::level); \
-		delete [] __temp_str;					\
+		delete [] __temp_str;						\
         LogException(__FUNCTION__, __LINE__, err);	\
         throw err; }
 
