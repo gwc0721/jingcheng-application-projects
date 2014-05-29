@@ -52,10 +52,10 @@ void CColumn::PushBack(IValue * row)
 	THROW_ERROR(ERR_UNSUPPORT, _T("Nor support"));
 }
 	
-void CColumn::Append(IValue * source)
-{
-	THROW_ERROR(ERR_UNSUPPORT, _T("Nor support"));
-}
+//void CColumn::Append(IValue * source)
+//{
+//	THROW_ERROR(ERR_UNSUPPORT, _T("Nor support"));
+//}
 
 void CColumn::GetSubValue(LPCTSTR name, IValue * & val)
 {

@@ -28,9 +28,7 @@ namespace jcparam
 
 	template <typename DATATYPE, typename CONVERTOR = CConvertor<DATATYPE> >
 	class CTypedValue 
-		: virtual public IValue
-		, virtual public IValueFormat
-		//, virtual public IValueConvertor
+		: virtual public IValueFormat
 		, public CJCInterfaceBase
 		, public CTypedValueBase
 	{
@@ -138,46 +136,6 @@ namespace jcparam
 	protected:
 		PARAM_MAP m_param_map;
 	};
-
-	//template <typename DATATYPE>
-	//class CSimpleArray :
-	//	virtual public IValue, public CJCInterfaceBase, public CTypedValueBase
-	//{
-	//protected:
-	//	CSimpleArray(JCSIZE count) : m_size(count) { m_array = new DATATYPE[count]; };
-	//	virtual ~CSimpleArray(void) { delete[] m_array; };
-
-	//public:
-	//	DATATYPE* Lock(void)	{ return m_array; }
-	//	const DATATYPE* Lock(void) const {return m_array;}
-	//	void Unlock(void) const {};
-	//	operator const DATATYPE * () const {return m_array;}
-	//	JCSIZE GetSize(void) const { return m_size; }
-
-	//protected:
-	//	DATATYPE *	 m_array;
-	//	JCSIZE		m_size;
-	//};
-
-	// 元素不能为NULL
-	//class CValueArray : virtual public IValue, public CJCInterfaceBase, public CTypedValueBase
-	//{
-	//protected:
-	//	typedef std::vector<IValue *> VALUE_VECTOR;
-	//	typedef VALUE_VECTOR::iterator VALUE_ITERATOR;
-
-	//public:
-	//	CValueArray(void) {};
-	//	virtual ~CValueArray(void);
-
-	//public:
-	//	virtual bool GetValueAt(int index, IValue * &value);
-	//	virtual bool PushBack(IValue * value);
-	//	JCSIZE GetSize()	{ return (JCSIZE)m_value_vector.size(); }
-
-	//	VALUE_VECTOR	m_value_vector;
-	//};
-	
 
 	typedef std::vector<IValue *> VALUE_VECTOR;
 	typedef VALUE_VECTOR::iterator VALUE_ITERATOR;

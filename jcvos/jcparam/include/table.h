@@ -4,8 +4,6 @@
 
 namespace jcparam
 {
-
-
 	template <typename VAL_TYPE, class CONVERTOR = CConvertor<VAL_TYPE> >
 	class CTypedColInfo : public COLUMN_INFO_BASE
 	{
@@ -54,11 +52,5 @@ namespace jcparam
 			val = CTypedValue<CJCStringT>::Create(*(reinterpret_cast<CJCStringT*>(p)));
 		}
 	};	
-	
-	//class ITableRow;
-	//class ITableColumn;
-
-
-
 
 };

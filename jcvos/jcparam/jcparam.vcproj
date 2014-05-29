@@ -470,11 +470,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\dynamic_table.cpp"
+				RelativePath=".\source\general_table.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\source\huge_table.cpp"
+				RelativePath=".\source\jcstream.cpp"
 				>
 			</File>
 			<File
@@ -500,11 +500,7 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\include\dynamic_table.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\huge_table.h"
+				RelativePath=".\include\general_table.h"
 				>
 			</File>
 			<File
@@ -513,6 +509,10 @@
 			</File>
 			<File
 				RelativePath=".\jcparam.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\jcstream.h"
 				>
 			</File>
 			<File

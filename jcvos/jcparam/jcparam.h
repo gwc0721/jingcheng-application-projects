@@ -9,4 +9,6 @@
 #include "include/param_define.h"
 #include "include/string_table.h"
 #include "include/table_base.h"
-#include "include/dynamic_table.h"
+#include "include/jcstream.h"
+#include "include/general_table.h"
+//#include "include/dynamic_table.h"

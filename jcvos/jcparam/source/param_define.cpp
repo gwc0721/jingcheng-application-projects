@@ -5,7 +5,7 @@
 
 using namespace jcparam;
 
-int CCmdLineParser::m_command_index = 0;
+//int CCmdLineParser::m_command_index = 0;
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -15,8 +15,6 @@ bool CArguSet::GetCommand(JCSIZE index, CJCStringT & str_cmd)
 	stdext::auto_interface<IValue> cmd;
 	bool br = GetCommand(index, cmd);
 	if ( !br ) return false;
-	//IValueConvertor * conv = cmd.d_cast<IValueConvertor*>();
-	//if ( conv ) conv->GetValueText(str_cmd);
 	cmd->GetValueText(str_cmd);
 	return true;
 }
@@ -43,58 +41,87 @@ bool CArguSet::Exist(const CJCStringT & name)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-//-- CParameterDefinition::RULE
-CParameterDefinition::RULE::RULE()
+//-- CArguDefList::RULE
+CArguDefList::RULE::RULE()
 	: m_param_map(NULL)
 	, m_abbr_map(NULL)
 {
 	m_param_map = new PARAM_MAP;
 	m_abbr_map = new PTR_ARG_DESC[128];
-	memset(m_abbr_map, 0, sizeof(CArguDesc*)*128);
+	memset(m_abbr_map, 0, sizeof(CArguDescBase*)*128);
 }
 
-CParameterDefinition::RULE & CParameterDefinition::RULE::operator() (
+CArguDefList::RULE & CArguDefList::RULE::operator() (
 	LPCTSTR name, TCHAR abbrev, jcparam::VALUE_TYPE vt, LPCTSTR desc)
 {
 	JCASSERT(m_param_map);
 	JCASSERT(m_abbr_map);
 
 	// add descriptions to map
-	stdext::auto_ptr<CArguDesc> ptr_arg( new CArguDesc(name, abbrev, vt, desc) );
-	const CArguDesc * & _arg = m_abbr_map[abbrev];
+	stdext::auto_ptr<CArguDescBase> ptr_arg( new CArguDescBase(name, abbrev, vt, desc) );
+	CArguDefList::RULE & rule = operator() (ptr_arg);
+	ptr_arg.detatch();
+	return rule;
+
+	//const CArguDescBase * & _arg = m_abbr_map[abbrev];
+	//
+	//if (abbrev) 
+	//{
+	//	if (_arg)  THROW_ERROR( ERR_PARAMETER, 		// 略称重复定义
+	//			_T("Abbreviation %c has already been used by argument %s"), abbrev, 
+	//			_arg->mName.c_str());
+	//	_arg = ptr_arg;
+	//}
+
+	//std::pair<PARAM_ITERATOR, bool> rs = m_param_map->insert(ARG_DESC_PAIR(name, ptr_arg));
+	//if (!rs.second)
+	//{	// 重复定义
+	//	_arg = NULL;
+	//	THROW_ERROR(ERR_PARAMETER, _T("Argument %s has already defined"), ptr_arg->mName.c_str());
+	//}
+	//ptr_arg.detatch();
+
+	//return *this;
+}
+
+CArguDefList::RULE & CArguDefList::RULE::operator () (CArguDescBase * def)
+{
+	JCASSERT(def);
+
+	TCHAR abbrev = def->mAbbrev;
+	const CArguDescBase * & _arg = m_abbr_map[abbrev];
 	
 	if (abbrev) 
 	{
 		if (_arg)  THROW_ERROR( ERR_PARAMETER, 		// 略称重复定义
 				_T("Abbreviation %c has already been used by argument %s"), abbrev, 
 				_arg->mName.c_str());
-		_arg = ptr_arg;
+		_arg = def;
 	}
 
-	std::pair<PARAM_ITERATOR, bool> rs = m_param_map->insert(ARG_DESC_PAIR(name, ptr_arg));
+	std::pair<PARAM_ITERATOR, bool> rs = m_param_map->insert(ARG_DESC_PAIR(def->mName, def));
 	if (!rs.second)
 	{	// 重复定义
 		_arg = NULL;
-		THROW_ERROR(ERR_PARAMETER, _T("Argument %s has already defined"), ptr_arg->mName.c_str());
+		THROW_ERROR(ERR_PARAMETER, _T("Argument %s has already defined"), def->mName.c_str());
 	}
-	ptr_arg.detatch();
-
 	return *this;
 }
 
+
 ///////////////////////////////////////////////////////////////////////////////
-//-- CParameterDefinition
-CParameterDefinition::CParameterDefinition(void)
+//-- CArguDefList
+CArguDefList::CArguDefList(void)
 	: m_properties(0)
 	, m_param_map(NULL)
 	, m_abbr_map(NULL)
 {
 	m_param_map = new PARAM_MAP;
 	m_abbr_map = new PTR_ARG_DESC[128];
-	memset(m_abbr_map, 0, sizeof(CArguDesc*)*128);
+	memset(m_abbr_map, 0, sizeof(CArguDescBase*)*128);
 }
 
-CParameterDefinition::CParameterDefinition(const RULE & rule, DWORD properties)
+CArguDefList::CArguDefList(const RULE & rule, DWORD properties)
 	: m_properties(properties)
 	, m_param_map(rule.m_param_map)
 	, m_abbr_map(rule.m_abbr_map)
@@ -103,7 +130,7 @@ CParameterDefinition::CParameterDefinition(const RULE & rule, DWORD properties)
 	JCASSERT(m_abbr_map);
 }
 		
-CParameterDefinition::~CParameterDefinition(void)
+CArguDefList::~CArguDefList(void)
 {
 	JCASSERT(m_param_map);
 
@@ -117,7 +144,7 @@ CParameterDefinition::~CParameterDefinition(void)
 	delete [] m_abbr_map;
 }
 
-bool CParameterDefinition::AddParamDefine(const CArguDesc * arg_desc)
+bool CArguDefList::AddParamDefine(const CArguDescBase * arg_desc)
 {
 	JCASSERT(arg_desc);
 
@@ -138,7 +165,7 @@ bool CParameterDefinition::AddParamDefine(const CArguDesc * arg_desc)
 	return true;
 }
 
-void CParameterDefinition::OutputHelpString(FILE * output) const
+void CArguDefList::OutputHelpString(FILE * output) const
 {
 	JCASSERT(m_param_map);
 
@@ -147,7 +174,7 @@ void CParameterDefinition::OutputHelpString(FILE * output) const
 
 	for ( it = m_param_map->begin(); it != endit; ++it)
 	{
-		const CArguDesc* desc = it->second;
+		const CArguDescBase* desc = it->second;
 		stdext::jc_fprintf(output, _T("\t"));
 		if ( desc->mAbbrev )	stdext::jc_fprintf(output, _T("-%c "), desc->mAbbrev);
 		else					stdext::jc_fprintf(output, _T("   "));
@@ -160,7 +187,7 @@ void CParameterDefinition::OutputHelpString(FILE * output) const
 	}
 }
 
-bool CParameterDefinition::CheckParameterName(const CJCStringT & param_name) const
+bool CArguDefList::CheckParameterName(const CJCStringT & param_name) const
 {
 	JCASSERT(m_param_map);
 
@@ -174,10 +201,10 @@ bool CParameterDefinition::CheckParameterName(const CJCStringT & param_name) con
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- CCmdLineParser
-bool CCmdLineParser::ParseCommandLine(const CParameterDefinition & param_def, LPCTSTR cmd, CArguSet & arg)
+bool CArguDefList::Parse(LPCTSTR cmd, BYTE * base) 
 {
-	if (NULL == cmd || 0 == *cmd ) return true;
 	m_command_index = 0;
+	if (NULL == cmd || 0 == *cmd ) return true;
 	enum STATUS
 	{
 		WHITE_SPACE,
@@ -215,7 +242,7 @@ bool CCmdLineParser::ParseCommandLine(const CParameterDefinition & param_def, LP
 			{
 				// end of token
 				if (start && str > start)		token += CJCStringT(start, 0, (str - start));
-				ParseToken(param_def, token.c_str(), 0, arg);
+				ParseToken(token.c_str(), 0, base);
 				token.clear();
 				ss = WHITE_SPACE;
 			}
@@ -239,7 +266,9 @@ bool CCmdLineParser::ParseCommandLine(const CParameterDefinition & param_def, LP
 	return true;
 }
 
-bool CCmdLineParser::ParseToken(const CParameterDefinition & param_def, LPCTSTR token, JCSIZE len, CArguSet & argset)
+// 根据Defination的指示，如果base!=NULL，并且arg_def的offset！=0，
+//	将parse到的argument填入base结构中。无法填入的argument填入argset中
+bool CArguDefList::ParseToken(LPCTSTR token, JCSIZE len, /*CArguSet & argset,*/ BYTE * base)
 {
 	//			如果有，这是一个以全名定义的parameter
 	//			否则，这是一个以全名定义的swich
@@ -250,6 +279,8 @@ bool CCmdLineParser::ParseToken(const CParameterDefinition & param_def, LPCTSTR 
 
 	CJCStringT param_name;
 	LPCTSTR arg = token;
+	const CArguDescBase * arg_desc = NULL;
+
 	// 检查第一个字符，
 	if (_T('-') == arg[0])
 	{
@@ -264,9 +295,17 @@ bool CCmdLineParser::ParseToken(const CParameterDefinition & param_def, LPCTSTR 
 			else		len = (JCSIZE)(_tcslen(arg)-2);
 
 			if (!len)	THROW_ERROR(ERR_PARAMETER, _T("Uncorrect argument %s."), arg);
-
 			param_name = CJCStringT(arg+2, 0, len);
-			arg = str_val;
+			OnToken(param_name, str_val, base);
+			//PARAM_MAP::const_iterator it = m_param_map->find(param_name);
+			//if ( it != m_param_map->end() )
+			//{
+			//	if (base && arg_desc->m_offset > 0)
+			//	{
+			//		arg_desc->SetValue(base, 
+			//	}
+			//}
+			//else arg = str_val;
 		}
 		else
 		{
@@ -274,39 +313,74 @@ bool CCmdLineParser::ParseToken(const CParameterDefinition & param_def, LPCTSTR 
 			LPCTSTR org = arg;
 			while (*arg)
 			{
-				const CArguDesc * arg_desc = param_def.GetParamDef(*arg);
+				const CArguDescBase * arg_desc = GetParamDef(*arg);
 				if (!arg_desc) THROW_ERROR(ERR_PARAMETER, 
 					_T("Unknow abbreviate option: -%c at %s"), (char)(*arg), org);
 
 				++arg;
 				if (jcparam::VT_BOOL == arg_desc->mValueType)
 				{
-					IValue * val = static_cast<IValue*>(CTypedValue<bool>::Create(true));
-					argset.SetSubValue(arg_desc->mName.c_str(), val);
-					val->Release();
+					OnToken(arg_desc->mName, _T("true"), base);
+					//if (base && arg_desc->m_offset > 0)
+					//{
+					//	arg_desc->SetValue(base, _T("true"));
+					//}
+					//else
+					//{
+					//	IValue * val = static_cast<IValue*>(CTypedValue<bool>::Create(true));
+					//	argset.SetSubValue(arg_desc->mName.c_str(), val);
+					//	val->Release();
+					//}
 				}
 				else
 				{
-					param_name = arg_desc->mName;
+					//param_name = arg_desc->mName;
+					OnToken(arg_desc->mName, arg, base);
 					break;
 				}
 			}
-			//arg = NULL;
 		}
 	}
 	else
 	{
 		// No name parameter
-		CConvertor<int>::T2S(m_command_index++, param_name);
+		//CConvertor<int>::T2S(m_command_index++, param_name);
+		TCHAR _name[16];
+		stdext::jc_sprintf(_name, _T("#%02d"), m_command_index);
+		OnToken(_name, arg, base);
 	}
 
-	if (arg && !param_name.empty() )
-	{
-		IValue * val = NULL;
-		val = static_cast<IValue*>(CTypedValue<CJCStringT>::Create(arg));
-		argset.SetSubValue(param_name.c_str(), val);
-		val->Release();
-	}
+	//if (arg && !param_name.empty() )
+	//{
+	//	IValue * val = NULL;
+	//	val = static_cast<IValue*>(CTypedValue<CJCStringT>::Create(arg));
+	//	argset.SetSubValue(param_name.c_str(), val);
+	//	val->Release();
+	//}
 	return false;
+}
+
+bool CArguDefList::OnToken(const CJCStringT & argu_name, LPCTSTR argu_val, BYTE * base)
+{
+	PARAM_MAP::const_iterator it = m_param_map->find(argu_name);
+	IValue * pval = NULL;
+	if ( it == m_param_map->end() )
+	{
+		if ( m_properties & PROP_MATCH_PARAM_NAME)	THROW_ERROR(ERR_PARAMETER, _T("unknown argument name &s."), argu_name)
+		else	pval = static_cast<IValue*>(CTypedValue<CJCStringT>::Create(argu_val));
+	}
+	else
+	{
+		const CArguDescBase * argu_def = it->second;
+		if (base && argu_def->m_offset > 0)	argu_def->SetValue(base, argu_val);
+		else	pval = static_cast<IValue*>(CTypedValue<CJCStringT>::Create(argu_val));
+	}
+
+	if (pval)
+	{
+		m_remain.SetSubValue(argu_name.c_str(), pval);
+		pval->Release();
+	}
+	return true;
 }
 

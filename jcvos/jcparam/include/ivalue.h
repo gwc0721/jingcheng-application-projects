@@ -4,6 +4,7 @@
 
 namespace jcparam
 {
+
 	// VALUE_TYPE的值表示类型的宽度，用于判断拓展转换的方向
 	// bit 7~4表示长度（字节），bit 3~0：类型区分
 	enum VALUE_TYPE
@@ -15,7 +16,8 @@ namespace jcparam
 		VT_INT =  6,		VT_UINT =  7,
 		VT_INT64 =8,		VT_UINT64 =9,
 		VT_FLOAT =10,		VT_DOUBLE =11,
-		VT_STRING =12,		VT_MAXNUM,
+		VT_STRING =12,		VT_ENUM = 13, 
+		VT_MAXNUM,
 		VT_HEX, VT_OTHERS,
 	};
 
@@ -24,8 +26,37 @@ namespace jcparam
 	const TCHAR PROP_CLASS[] = _T("class");
 	const TCHAR PROP_PLUGIN[] = _T("plugin");
 
-	class IValue;
+	enum READ_WRITE
+	{
+		WRITE = 0, READ = 1,
+	};
 
+///////////////////////////////////////////////////////////////////////////////
+// -- stream
+	class IIterator : virtual public IJCInterface
+	{
+	public:
+		virtual IIterator& operator ++ (void) = 0;
+		virtual wchar_t & operator * (void) = 0;
+		virtual bool operator == (const IIterator *) = 0;
+	};
+	
+	class IStream : virtual public IJCInterface
+	{
+	public:
+		//virtual void GetCurIterator(READ_WRITE rd, IIterator * & it) = 0;
+		//virtual void GetLastIterator(READ_WRITE rd, IIterator * & it) = 0;
+		virtual void Put(wchar_t)	= 0;
+		virtual wchar_t Get(void)	= 0;
+
+		virtual void Put(const wchar_t * str, JCSIZE len) = 0;
+		virtual JCSIZE Get(wchar_t * str, JCSIZE len) = 0;
+		virtual void Format(LPCTSTR f, ...) = 0;
+		virtual bool IsEof(void) = 0;
+	};
+
+///////////////////////////////////////////////////////////////////////////////
+// -- Interfaces
 	class IValue : virtual public IJCInterface 
 	{
 	public:
@@ -54,14 +85,20 @@ namespace jcparam
 		virtual void WriteHeader(FILE * file) = 0;
 	};
 
-	class IVector : virtual public IValue
+	enum VAL_FORMAT
 	{
-	public:
-		virtual void PushBack(IValue * val) = 0;
-		virtual void GetRow(JCSIZE index, IValue * & val) = 0;
-		virtual JCSIZE GetRowSize() const = 0;
+		VF_DEFAULT, VF_TEXT, VF_BINARY,
 	};
 
+	class IVisibalValue : public IValue
+	{
+	public:
+		virtual void ToStream(IStream * str, VAL_FORMAT) const = 0;
+		virtual void FromStream(IStream * str, VAL_FORMAT) = 0;
+	};
+
+///////////////////////////////////////////////////////////////////////////////
+// -- tables
 	struct COLUMN_INFO_BASE
 	{
 	public:
@@ -82,7 +119,24 @@ namespace jcparam
 		CJCStringT	m_name;
 	};
 
-	class ITable : virtual public IVector
+	class IColInfoList	: virtual public IJCInterface
+	{
+	public:
+		virtual void AddInfo(const COLUMN_INFO_BASE* info) = 0;
+		virtual const COLUMN_INFO_BASE * GetInfo(const CJCStringT & key) const = 0;
+		virtual const COLUMN_INFO_BASE * GetInfo(JCSIZE index) const = 0;
+		virtual JCSIZE GetColNum(void) const =0;
+	};
+
+	class IVector : /*virtual*/ public IValue
+	{
+	public:
+		virtual void PushBack(IValue * val) = 0;
+		virtual void GetRow(JCSIZE index, IValue * & val) = 0;
+		virtual JCSIZE GetRowSize() const = 0;
+	};
+
+	class ITable : /*virtual*/ public IVector
 	{
 		// for column access
 	public:
@@ -91,11 +145,12 @@ namespace jcparam
 		//virtual const COLUMN_INFO_BASE * GetColumnInfo(LPCTSTR field_name) const = 0;
 		//virtual const COLUMN_INFO_BASE * GetColumnInfo(int field) const = 0;
 
-	public:
-		virtual void Append(IValue * source) = 0;
+	//public:
+	//	virtual void Append(IValue * source) = 0;
 	};
 
-	class ITableRow : virtual public IValue
+	class ITableRow : /*virtual*/ public IValue
+		//, public CJCInterfaceBase
 	{
 		// for column(field) access
 	public:
@@ -105,14 +160,18 @@ namespace jcparam
 		// 从一个通用的行中取得通用的列数据
 		virtual void GetColumnData(int field, IValue * &)	const = 0;
 
-		virtual void GetColVal(int field, void *) const = 0;
+		//virtual void GetColVal(int field, void *) const = 0;
 
 	public:
-		virtual JCSIZE GetRowID(void) const = 0;
+		//virtual JCSIZE GetRowID(void) const = 0;
 		// 从row的类型创建一个表格
 		virtual bool CreateTable(ITable * & tab) = 0;
 	};
 
+///////////////////////////////////////////////////////////////////////////////
+// -- Factory
+	void CreateColumnInfoList(IColInfoList * & list);
+	void CreateGeneralTable(IColInfoList * info, ITable * & table);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // CConvertor<T>

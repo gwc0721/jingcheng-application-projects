@@ -6,9 +6,9 @@
 #include "string_table.h"
 
 #define BEGIN_COLUMN_TABLE()	\
-	const jcparam::CColumnInfoTable jcparam::	\
+	const jcparam::CColumnInfoList jcparam::	\
 	CTableRowBase<__COL_CLASS_NAME>::m_column_info(	\
-	jcparam::CColumnInfoTable::RULE()
+	jcparam::CColumnInfoList::RULE()
 
 #define COLINFO(var_typ, cov, id, var_name, col_name)	\
 	( new jcparam::CTypedColInfo<var_typ, cov >(id, offsetof(__COL_CLASS_NAME, \
@@ -45,13 +45,13 @@
 
 namespace jcparam
 {
-	typedef jcparam::CStringTable<COLUMN_INFO_BASE, std::vector<const COLUMN_INFO_BASE*> > CColumnInfoTable;
+	typedef CStringTable<COLUMN_INFO_BASE, std::vector<const COLUMN_INFO_BASE*> > CColumnInfoList;
 
 	template <class ROW_BASE_TYPE>
 	class CTableRowBase 
 		: public ROW_BASE_TYPE, public CJCInterfaceBase
-		, virtual public ITableRow
-		, virtual public IValueFormat
+		, /*virtual*/ public ITableRow
+		//, virtual public IValueFormat
 	{
 	public:
 		virtual void GetValueText(CJCStringT & str) const {};
@@ -89,12 +89,12 @@ namespace jcparam
 			GetColumnData(col_info, val);
 		}
 
-		virtual void GetColVal(int field, void * val) const
-		{
-			JCASSERT((JCSIZE)(field) < m_column_info.GetSize() );
-			const COLUMN_INFO_BASE * col_info = m_column_info.GetItem(field);
-			col_info->GetColVal( (BYTE*)(static_cast<const ROW_BASE_TYPE*>(this)), val );
-		}
+		//virtual void GetColVal(int field, void * val) const
+		//{
+		//	JCASSERT((JCSIZE)(field) < m_column_info.GetSize() );
+		//	const COLUMN_INFO_BASE * col_info = m_column_info.GetItem(field);
+		//	col_info->GetColVal( (BYTE*)(static_cast<const ROW_BASE_TYPE*>(this)), val );
+		//}
 
 		virtual const COLUMN_INFO_BASE * GetColumnInfo(LPCTSTR field_name) const
 		{
@@ -133,7 +133,7 @@ namespace jcparam
 			return col_info->m_name.c_str();
 		}
 
-		static const CColumnInfoTable * GetColumnInfo(void) { return &m_column_info; }
+		static const CColumnInfoList * GetColumnInfo(void) { return &m_column_info; }
 
 		virtual void WriteHeader(FILE * file)
 		{
@@ -194,7 +194,7 @@ namespace jcparam
 		}
 
 	protected:
-		static const CColumnInfoTable		m_column_info;
+		static const CColumnInfoList		m_column_info;
 	};
 
 
@@ -225,7 +225,7 @@ namespace jcparam
 		// 列存取
 		virtual void GetSubValue(LPCTSTR name, IValue * & val)
 		{
-			const CColumnInfoTable * col_list = ROW_TYPE::GetColumnInfo();
+			const CColumnInfoList * col_list = ROW_TYPE::GetColumnInfo();
 			const COLUMN_INFO_BASE * col_info = col_list->GetItem(name);
 
 			CColumn * col = new CColumn(this, col_info);
@@ -251,7 +251,7 @@ namespace jcparam
 
 		virtual JCSIZE GetColumnSize() const
 		{
-			const CColumnInfoTable * col_list = ROW_TYPE::GetColumnInfo();
+			const CColumnInfoList * col_list = ROW_TYPE::GetColumnInfo();
 			JCASSERT(col_list);
 			return col_list->GetSize();
 		}
@@ -262,7 +262,7 @@ namespace jcparam
 		{
 			// default : csv
 			// output head
-			const CColumnInfoTable * col_list = ROW_TYPE::GetColumnInfo();
+			const CColumnInfoList * col_list = ROW_TYPE::GetColumnInfo();
 			JCASSERT(col_list);
 			JCSIZE col_size = col_list->GetSize();
 			for (JCSIZE ii = 0; ii < col_size; ++ii)
@@ -306,12 +306,12 @@ namespace jcparam
 			return br;
 		}
 
-		void Append(IValue * source)
-		{
-			THIS_TABLE_TYPE * _source = dynamic_cast<THIS_TABLE_TYPE *>(source);
-			if (!_source) THROW_ERROR(ERR_PARAMETER, _T("Table type is different"));
-			m_table.insert(m_table.end(), _source->m_table.begin(), _source->m_table.end());
-		}
+		//void Append(IValue * source)
+		//{
+		//	THIS_TABLE_TYPE * _source = dynamic_cast<THIS_TABLE_TYPE *>(source);
+		//	if (!_source) THROW_ERROR(ERR_PARAMETER, _T("Table type is different"));
+		//	m_table.insert(m_table.end(), _source->m_table.begin(), _source->m_table.end());
+		//}
 
 		virtual void PushBack(IValue * row)
 		{
@@ -345,7 +345,7 @@ namespace jcparam
 		virtual JCSIZE GetRowSize() const;
 		virtual void GetRow(JCSIZE index, IValue * & row);
 		virtual JCSIZE GetColumnSize() const;
-		virtual void Append(IValue * source);
+		//virtual void Append(IValue * source);
 		virtual void GetSubValue(LPCTSTR name, IValue * & val);
 		// 如果name不存在，则插入，否则修改name的值
 		virtual void SetSubValue(LPCTSTR name, IValue * val);

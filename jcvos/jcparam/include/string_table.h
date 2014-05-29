@@ -88,7 +88,7 @@ namespace jcparam
 			: m_item_map(NULL)
 			, m_sub_index(NULL)
 		{
-			LOG_STACK_TRACE();
+			//LOG_STACK_TRACE();
 			m_item_map = new ITEM_MAP;
 			m_sub_index = new SECOND_INDEX;
 		}
@@ -116,7 +116,7 @@ namespace jcparam
 		const JCSIZE GetSize() const
 		{
 			JCASSERT(m_item_map);
-			return m_item_map->size();
+			return (JCSIZE) m_item_map->size();
 		}
 
 		const BASE_ITEM_TYPE * GetItem(const CJCStringT & key) const

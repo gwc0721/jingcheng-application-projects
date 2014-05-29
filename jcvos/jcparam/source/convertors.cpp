@@ -69,6 +69,17 @@ template <> void CConvertor<unsigned char>::S2T(LPCTSTR str, unsigned char & typ
 	else  typ = (unsigned char)stdext::jc_str2l(str, &end);
 }
 
+//-- wchar --
+template <> void CConvertor<wchar_t>::T2S(const wchar_t & typ, CJCStringT & str)
+{
+	str = typ;
+}
+
+template <> void CConvertor<wchar_t>::S2T(LPCTSTR str, wchar_t & typ)
+{
+	typ = str[0];
+}
+
 //-- short --
 template <> void CConvertor<short>::T2S(const short & typ, CJCStringT & str)
 {
@@ -122,7 +133,8 @@ template <> void CConvertor<unsigned int>::S2T(LPCTSTR str, unsigned int & typ)
 {
 	if ( _T('0') == str[0] && (_T('x') == str[1] || _T('X') == str[1]) )
 		typ = (unsigned int)stdext::str2hex(str+2);
-	else  typ = (unsigned int)stdext::jc_str2l(str);
+	else  typ = (unsigned int)stdext::jc_str2ul(str);
+	//else  typ = _tcstoul(str, NULL, 10);
 }
 
 template <> void CConvertor<unsigned long>::T2S(const unsigned long & typ, CJCStringT & str)
@@ -136,7 +148,7 @@ template <> void CConvertor<unsigned long>::S2T(LPCTSTR str, unsigned long & typ
 {
 	if ( _T('0') == str[0] && (_T('x') == str[1] || _T('X') == str[1]) )
 		typ = (unsigned long)stdext::str2hex(str+2);
-	else  typ = (unsigned long)stdext::jc_str2l(str);
+	else  typ = (unsigned long)stdext::jc_str2ul(str);
 }
 
 
