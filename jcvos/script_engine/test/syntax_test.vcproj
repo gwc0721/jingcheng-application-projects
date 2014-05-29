@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\vld_10;C:\library\boost_1_46_1;..\..\..\jcvos\comm;..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\"
+				AdditionalIncludeDirectories="$(VLD_INC_DIR);$(BOOST_INC_DIR);..\..\..\jcvos\comm;..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_SYNTAX_TEST"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -62,7 +62,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="..\..\..\extlib\vld;"
+				AdditionalLibraryDirectories="$(VLD_LIB_DIR);"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -262,7 +262,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\vld_10;C:\library\boost_1_46_1;..\..\..\jcvos\comm;..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\"
+				AdditionalIncludeDirectories="$(VLD_INC_DIR);$(BOOST_INC_DIR);..\..\..\jcvos\comm;..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_SYNTAX_TEST"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -283,7 +283,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="..\..\..\extlib\vld;"
+				AdditionalLibraryDirectories="$(VLD_LIB_DIR);"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -409,7 +409,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\vld_10;C:\library\boost_1_46_1;..\..\..\jcvos\comm;..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\"
+				AdditionalIncludeDirectories="$(VLD_INC_DIR);$(BOOST_INC_DIR);..\..\..\jcvos\comm;..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_SYNTAX_TEST"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -430,7 +430,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="..\..\..\extlib\vld;"
+				AdditionalLibraryDirectories="$(VLD_LIB_DIR);"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -482,7 +482,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\vld_10;C:\library\boost_1_46_1;..\..\..\jcvos\comm;..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\"
+				AdditionalIncludeDirectories="$(VLD_INC_DIR);$(BOOST_INC_DIR);..\..\..\jcvos\comm;..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_SYNTAX_TEST"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -503,7 +503,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="..\..\..\extlib\vld;"
+				AdditionalLibraryDirectories="$(VLD_LIB_DIR);"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"

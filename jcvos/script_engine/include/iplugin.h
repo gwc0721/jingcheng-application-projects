@@ -90,6 +90,7 @@ namespace jcscript
 	public:
 		virtual bool GetPlugin(const CJCStringT & name, IPlugin * & plugin) = 0;
 		virtual void GetVarOp(IAtomOperate * & op) = 0;
+		virtual bool RegistPlugin(IPlugin * plugin) = 0;
 	};
 };
 

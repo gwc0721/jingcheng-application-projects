@@ -151,7 +151,7 @@ public:
 			break;}
 
 		case ID_HEX:
-			m_property->m_val = (UINT)stdext::str2hex(t_begin+2);
+			m_property->m_val = stdext::str2hex(t_begin+2);
 			m_property->m_id = ID_NUMERAL;
 			break;
 

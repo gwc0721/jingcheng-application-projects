@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\boost_1_46_1;..\stdext;..\jcparam"
+				AdditionalIncludeDirectories="$(BOOST_INC_DIR);..\stdext;..\jcparam"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -105,7 +105,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="C:\library\boost_1_46_1;..\stdext;..\jcparam"
+				AdditionalIncludeDirectories="$(BOOST_INC_DIR);..\stdext;..\jcparam"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -169,7 +169,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="C:\library\boost_1_46_1;..\stdext;..\jcparam"
+				AdditionalIncludeDirectories="$(BOOST_INC_DIR);..\stdext;..\jcparam"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -231,7 +231,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\boost_1_46_1;..\stdext;..\jcparam"
+				AdditionalIncludeDirectories="$(BOOST_INC_DIR);..\stdext;..\jcparam"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -295,7 +295,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="C:\library\boost_1_46_1;..\stdext;..\jcparam"
+				AdditionalIncludeDirectories="$(BOOST_INC_DIR);..\stdext;..\jcparam"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -356,7 +356,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\boost_1_46_1;..\stdext;..\jcparam"
+				AdditionalIncludeDirectories="$(BOOST_INC_DIR);..\stdext;..\jcparam"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -418,7 +418,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\boost_1_46_1;..\stdext;..\jcparam"
+				AdditionalIncludeDirectories="$(BOOST_INC_DIR);..\stdext;..\jcparam"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -469,6 +469,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source\category_comm.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\source\combost_op.cpp"
 				>
 			</File>
@@ -504,6 +508,10 @@
 			</File>
 			<File
 				RelativePath=".\source\expression_op.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\feature_base.h"
 				>
 			</File>
 			<File
