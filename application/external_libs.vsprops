@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="shift_jis"?>
+<VisualStudioPropertySheet
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="external_libs"
+	>
+	<UserMacro
+		Name="BOOST_INC_DIR"
+		Value=""
+	/>
+	<UserMacro
+		Name="VLD_INC_DIR"
+		Value=""
+	/>
+	<UserMacro
+		Name="BOOST_LIB_DIR"
+		Value=""
+	/>
+	<UserMacro
+		Name="VLD_LIB_DIR"
+		Value=""
+	/>
+	<UserMacro
+		Name="CRYPTOPP_LIBD_DIR"
+		Value=""
+	/>
+	<UserMacro
+		Name="CRYPTOPP_INC_DIR"
+		Value=""
+	/>	
+</VisualStudioPropertySheet>
