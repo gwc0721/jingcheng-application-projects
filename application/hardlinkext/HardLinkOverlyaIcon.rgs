@@ -1,0 +1,25 @@
+HKCR
+{
+	hardlinkext.HardLinkOverlyaIcon.1 = s 'HardLinkOverlyaIcon Class'
+	{
+		CLSID = s '{95C1E3BB-99D3-4A21-BFD3-1034F0F50C49}'
+	}
+	hardlinkext.HardLinkOverlyaIcon = s 'HardLinkOverlyaIcon Class'
+	{
+		CLSID = s '{95C1E3BB-99D3-4A21-BFD3-1034F0F50C49}'
+		CurVer = s 'hardlinkext.HardLinkOverlyaIcon.1'
+	}
+	NoRemove CLSID
+	{
+		ForceRemove {95C1E3BB-99D3-4A21-BFD3-1034F0F50C49} = s 'HardLinkOverlyaIcon Class'
+		{
+			ProgID = s 'hardlinkext.HardLinkOverlyaIcon.1'
+			VersionIndependentProgID = s 'hardlinkext.HardLinkOverlyaIcon'
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+			'TypeLib' = s '{F1D5DA78-CB25-4989-9387-38D3A22720F6}'
+		}
+	}
+}
