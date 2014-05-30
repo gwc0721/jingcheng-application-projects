@@ -11,10 +11,10 @@ LOCAL_LOGGER_ENABLE(_T("CSvtApp"), LOGGER_LEVEL_DEBUGINFO);
 
 #include "application.h"
 
-
-#include "category_comm.h"
 #include "feature_2246_readcount.h"
 #include "plugin_device_comm.h"
+
+#include <feature_codec.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- application
@@ -69,6 +69,9 @@ void CSvtApplication::RegisterPlugins(void)
 	cat = new CCategoryComm(_T("debug"));
 	m_plugin_manager->RegistPlugin(cat);
 	cat->Release(), cat = NULL;
+
+	feature_codec_register(static_cast<jcscript::IPluginContainer*>(m_plugin_manager));
+	
 }
 
 
@@ -165,22 +168,37 @@ bool CSvtApplication::RunScript(LPCTSTR file_name)
 
 		LOG_DEBUG(_T("Processing script %s"), file_name);
 		stdext::jc_printf(_T("Running script %s ...\n"), file_name);
-		
-		if ( _tfopen_s(&script_file, file_name, _T("r") ) != 0)
-			THROW_ERROR(ERR_PARAMETER, _T("failure on openning script %s"), file_name);
+		if (m_cur_script)	m_cur_script->Release(), m_cur_script= NULL;
+
+#if USING_STREAM
+		stdext::auto_interface<jcparam::IStream>	stream;
+		CreateStreamFile(file_name, jcparam::READ, stream);
 
 		jcscript::CSyntaxParser	syntax_parser(
 			static_cast<jcscript::IPluginContainer*>(m_plugin_manager),
 			static_cast<jcscript::LSyntaxErrorHandler*>(this) );
-		syntax_parser.Source(script_file);
 
-		if (m_cur_script)	m_cur_script->Release(), m_cur_script= NULL;
+		syntax_parser.Parse(stream);
+#else
+		if ( _tfopen_s(&script_file, file_name, _T("r") ) != 0)
+			THROW_ERROR(ERR_PARAMETER, _T("failure on openning script %s"), file_name);
+		//jcscript::CSyntaxParser	syntax_parser(
+		//	static_cast<jcscript::IPluginContainer*>(m_plugin_manager),
+		//	static_cast<jcscript::LSyntaxErrorHandler*>(this) );
+		//syntax_parser.Source(script_file);
+		bool br = jcscript::Parse(
+			static_cast<jcscript::IPluginContainer*>(m_plugin_manager),
+			static_cast<jcscript::LSyntaxErrorHandler*>(this),
+			script_file, m_cur_script);
+#endif	// USING_STREAM
 
-		syntax_parser.MatchScript(m_cur_script);
+
+		//syntax_parser.MatchScript(m_cur_script);
 
 		OutCompileLog(m_cur_script);
 
-		if ( (!m_compile_only) && (!syntax_parser.GetError()) )
+		//if ( (!m_compile_only) && (!syntax_parser.GetError()) )
+		if ( (!m_compile_only) && (!br) )
 		{
 			LOG_DEBUG(_T("Start invoking script") );
 			m_cur_script->Invoke();
@@ -255,16 +273,22 @@ bool CSvtApplication::ParseCommand(LPCTSTR first, LPCTSTR last)
 	LOG_STACK_TRACE();
 	try
 	{
-		jcscript::CSyntaxParser	syntax_parser(
-			static_cast<jcscript::IPluginContainer*>(m_plugin_manager),
-			static_cast<jcscript::LSyntaxErrorHandler*>(this) );
-		syntax_parser.Parse(first, last);
-
 		if (m_cur_script)	m_cur_script->Release(),	m_cur_script= NULL;
-		syntax_parser.MatchScript(m_cur_script);
+
+		//jcscript::CSyntaxParser	syntax_parser(
+		//	static_cast<jcscript::IPluginContainer*>(m_plugin_manager),
+		//	static_cast<jcscript::LSyntaxErrorHandler*>(this) );
+		//syntax_parser.Parse(first, last);
+		//syntax_parser.MatchScript(m_cur_script);
+		bool br = jcscript::Parse(
+			static_cast<jcscript::IPluginContainer*>(m_plugin_manager),
+			static_cast<jcscript::LSyntaxErrorHandler*>(this),
+			first, last, m_cur_script);
+
 		OutCompileLog(m_cur_script);
 
-		if ( !syntax_parser.GetError() )
+		//if ( !syntax_parser.GetError() )
+		if ( !br )
 		{
 			LOG_DEBUG(_T("Start invoking command") );
 			m_cur_script->Invoke();
@@ -435,7 +459,7 @@ void CSvtApplication::GetDevice(ISmiDevice * & dev)
 	if (dev) dev->AddRef();
 }
 
-const jcparam::CParameterDefinition CSvtApplication::m_cmd_line_parser( jcparam::CParameterDefinition::RULE()
+/*const*/ jcparam::CArguDefList CSvtApplication::m_cmd_line_parser( jcparam::CArguDefList::RULE()
 	(_T("list"),		_T('l'), jcparam::VT_STRING, _T("Give a scan list, like C~Z0~9. Pass this argument to scandev.") )
 	(_T("driver"),		_T('d'), jcparam::VT_STRING, _T("Force using specified driver. Pass this argument to scandev.") )
 	(_T("controller"),	_T('c'), jcparam::VT_STRING, _T("Force using specified controller. Pass this argument to scandev.") )

@@ -2,7 +2,6 @@
 
 #include <jcparam.h>
 
-#include "plugin_default.h"
 #include "ata_trace.h"
 
 #define TRACE_QUEUE		(16)
@@ -16,17 +15,16 @@ class CPluginTrace::BusDoctor
 	, public CJCInterfaceBase
 {
 public:
-	typedef CFeatureBase<CPluginTrace::BusDoctor, CPluginTrace> _BASE;
+	//typedef CFeatureBase<CPluginTrace::BusDoctor, CPluginTrace> _BASE;
 
 public:
 	BusDoctor(void);
 	virtual ~BusDoctor(void);
 
-	// IAtomOperate
+	// IFeature
 public:
 	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
 	bool InvokeOnce(jcscript::IOutPort * outport);
-	//virtual bool IsRunning(void);
 
 protected:
 	void Init(void);
@@ -92,8 +90,6 @@ public:
 	virtual void Init(void);
 	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
 	bool InvokeOnce(jcscript::IOutPort * outport);
-
-	//virtual bool IsRunning(void);
 
 protected:
 	bool ReadPhase(bus_hound_phase * &);
@@ -172,7 +168,7 @@ class CPluginTrace::LeCory
 	, public CJCInterfaceBase
 {
 public:
-	typedef CFeatureBase<CPluginTrace::LeCory, CPluginTrace> _BASE;
+	//typedef CFeatureBase<CPluginTrace::LeCory, CPluginTrace> _BASE;
 
 	enum PARSE_SM {
 		PSM_BEGIN, PSM_CONTENT, PSM_END,
@@ -183,8 +179,6 @@ public:
 
 public:
 	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
-	//virtual bool IsRunning(void);
-
 protected:
 	void Init(jcscript::IOutPort * outport);
 
@@ -196,8 +190,33 @@ protected:
 	FILE * m_src_file;
 	bool	m_inited;
 	char * m_line_buf;
-	//bool	m_running;
-
 	JCSIZE m_line_num;
 	CAtaTraceRow * m_trace;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// 用于读取lecory sata suite文件，转换成SATA FIS
+class CPluginTrace::LeCoryFis
+	: virtual public jcscript::IFeature
+	, public CFeatureBase<CPluginTrace::LeCoryFis, CPluginTrace>
+	, public CJCInterfaceBase
+{
+public:
+	LeCoryFis(void);
+	virtual ~LeCoryFis(void);
+
+public:
+	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
+protected:
+	void Init(void);
+	bool ParseLine(CFis & fis);
+
+public:
+	CJCStringT m_file_name;
+
+protected:
+	bool m_init;
+	FILE * m_src_file;
+	char * m_line_buf;
+	jcparam::CColInfoList * m_col_info;
 };

@@ -71,7 +71,7 @@ CParamDefTab CPluginTrace::ParserTrace::_BASE::m_param_def_tab(
 	(new CTypedParamDef<CJCStringT>(_T("#filename"), 0, offsetof(CPluginTrace::ParserTrace, m_file_name) ) )
 	);
 
-const UINT CPluginTrace::ParserTrace::_BASE::m_property = jcscript::OPP_LOOP_SOURCE;
+//const UINT CPluginTrace::ParserTrace::_BASE::m_property = jcscript::OPP_LOOP_SOURCE;
 
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;

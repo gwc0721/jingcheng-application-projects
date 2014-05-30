@@ -1,7 +1,8 @@
 ﻿#pragma once
 
 #include <SmiDevice.h>
-#include "feature_base.h"
+#include <script_engine.h>
+//#include "feature_base.h"
 
 #include <list>
 #include "ata_trace.h"
@@ -28,8 +29,7 @@ public:
 // -- cache page
 
 class CPluginDebug::CachePage
-	: virtual public jcscript::ILoopOperate
-	, public CLoopFeatureBase<CFBlockInfo>
+	: public virtual jcscript::IFeature
 	, public CFeatureBase<CPluginDebug::CachePage, CPluginDebug>
 	, public CJCInterfaceBase
 {
@@ -71,13 +71,6 @@ protected:
 ///////////////////////////////////////////////////////////////////////////////
 // -- convert h-address to lba 
 
-//class CPluginDebug::CachePage
-//	: public CFeatureBase<CPluginDebug::CachePage, CPluginDebug>
-//	, public CJCInterfaceBase
-//{
-//	// f-block id
-//};
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- convert lba to h-address
@@ -113,8 +106,7 @@ protected:
 ///////////////////////////////////////////////////////////////////////////////
 // -- delay pattern
 class CPluginDebug::DelayPattern
-	: virtual public jcscript::ILoopOperate
-	, public CLoopFeatureBase<CAtaTrace>
+	: public virtual jcscript::IFeature
 	, public CFeatureBase<CPluginDebug::DelayPattern, CPluginDebug>
 	, public CJCInterfaceBase
 {

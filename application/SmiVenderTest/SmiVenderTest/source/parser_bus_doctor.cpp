@@ -16,7 +16,7 @@ CParamDefTab CFeatureBase<CPluginTrace::BusDoctor, CPluginTrace>::m_param_def_ta
 	(new CTypedParamDef<bool>(_T("diff_time"), _T('d'), offsetof(CPluginTrace::BusDoctor, m_diff_time) ) )
 	);
 
-const UINT CPluginTrace::BusDoctor::_BASE::m_property = jcscript::OPP_LOOP_SOURCE;
+//const UINT CPluginTrace::BusDoctor::_BASE::m_property = jcscript::OPP_LOOP_SOURCE;
 
 CPluginTrace::BusDoctor::BusDoctor()
 	: m_src_file(NULL)

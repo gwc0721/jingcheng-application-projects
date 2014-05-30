@@ -3,7 +3,7 @@
 #include <jcparam.h>
 
 #include "plugin_trace.h"
-#include "feature_base.h"
+//#include "feature_base.h"
 #include <SmiDevice.h>
 
 #define CMD_WRITE_DMA		(0xCA)
@@ -16,6 +16,31 @@
 #define MAX_COLUMN			(20)
 
 class CTracePayload;	// 用于格式化输出IN/OUT的data
+///////////////////////////////////////////////////////////////////////////////
+// Ata Trace
+class CFis
+{
+public:
+public:
+	JCSIZE	m_id;	// store
+	BYTE	m_type;	// fis type id
+	double	m_time_stamp;
+	union
+	{
+		struct _cmd
+		{
+			BYTE	m_code;
+			JCSIZE	m_lba;
+			JCSIZE	m_sectors;
+		} m_cmd;
+
+		struct _status
+		{
+			BYTE	m_status;
+			BYTE	m_error;
+		} m_status;
+	};
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Ata Trace
@@ -71,7 +96,6 @@ public:
 
 typedef jcparam::CTableRowBase<CAtaTrace>	CAtaTraceRow;
 typedef jcparam::CTypedTable<CAtaTrace>		CAtaTraceTable;
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // vender command

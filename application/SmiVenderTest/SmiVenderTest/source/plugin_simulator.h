@@ -2,8 +2,8 @@
 
 #include <jcparam.h>
 #include <FerriSimulator.h>
-
-#include "feature_base.h"
+#include <script_engine.h>
+//#include "feature_base.h"
 #include "ata_trace.h"
 
 class CPluginSimulator 
@@ -53,8 +53,9 @@ public:
 };
 
 class CPluginSimulator::RandomPatten
-	: virtual public jcscript::ILoopOperate
-	, public CLoopFeatureBase<CAtaTrace>
+	: public virtual jcscript::IFeature
+	//, virtual public jcscript::ILoopOperate
+	//, public CLoopFeatureBase<CAtaTrace>
 	, public CFeatureBase<CPluginSimulator::RandomPatten, CPluginSimulator>
 	, public CJCInterfaceBase
 {

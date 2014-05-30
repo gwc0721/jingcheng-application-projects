@@ -148,7 +148,8 @@ void CPluginManager::GetVarOp(jcscript::IAtomOperate * & op)
 {
 	LOG_STACK_TRACE();
 	JCASSERT(NULL == op);
-	jcscript::CSyntaxParser::CreateVarOp(m_vars, op);
+	//jcscript::CSyntaxParser::CreateVarOp(m_vars, op);
+	jcscript::CreateVarOp(m_vars, op);
 }
 
 bool CPluginManager::ReadFileOp(LPCTSTR type, const CJCStringT & filename, jcscript::IAtomOperate *& op)

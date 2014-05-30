@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <jcparam.h>
 #include <map>
 #include <stdext.h>
 #include <script_engine.h>
@@ -72,7 +73,6 @@ public:
 
 public:
 	bool RegistPlugin(const CJCStringT & name, CDynamicModule * module, DWORD _property, PLUGIN_CREATOR creator);
-	bool RegistPlugin(jcscript::IPlugin * plugin);
 
 	bool ReleasePlugin(jcscript::IPlugin* plugin);
 	bool RegistDefaultPlugin(jcscript::IPlugin * plugin);
@@ -87,6 +87,7 @@ public:
 	virtual bool GetPlugin(const CJCStringT & name, jcscript::IPlugin * & plugin);
 	virtual void GetVarOp(jcscript::IAtomOperate * & op);
 	virtual bool ReadFileOp(LPCTSTR type, const CJCStringT & filename, jcscript::IAtomOperate *& op);
+	virtual bool RegistPlugin(jcscript::IPlugin * plugin);
 
 protected:
 

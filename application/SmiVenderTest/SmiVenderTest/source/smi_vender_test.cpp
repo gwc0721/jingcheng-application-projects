@@ -14,14 +14,14 @@ LOCAL_LOGGER_ENABLE(_T("SmiVenderTest"), LOGGER_LEVEL_ERROR);
 
 static CSvtApplication the_app;
 
-#include "plugin_test.h"
+//#include "plugin_test.h"
 //#include "plugin_device.h"
-#include "plugin_ata_device.h"
-#include "plugin_debug.h"
-#include "plugin_isp.h"
-#include "plugin_overprgm.h"
-#include "plugin_performance.h"
-#include "plugin_scsi_device.h"
+//#include "plugin_ata_device.h"
+//#include "plugin_debug.h"
+//#include "plugin_isp.h"
+//#include "plugin_overprgm.h"
+//#include "plugin_performance.h"
+//#include "plugin_scsi_device.h"
 
 #include "plugin_simulator.h"
 #include "plugin_trace.h"

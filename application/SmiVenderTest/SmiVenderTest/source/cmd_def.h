@@ -103,9 +103,9 @@ protected:
 
 #define END_COMMAND_DEFINATION );
 
-#define PARAM_PROP(prop)	jcparam::CParameterDefinition::prop
+#define PARAM_PROP(prop)	jcparam::CArguDefList::prop
 
-typedef jcparam::CParameterDefinition::RULE	PARAM_RULE;
+typedef jcparam::CArguDefList::RULE	PARAM_RULE;
 
 class CCmdDefBase
 {
@@ -121,7 +121,7 @@ public:
 
 public:
 	//jcparam::CCmdLineParser * GetParser();
-	const jcparam::CParameterDefinition & GetParamDefine(void) const {return m_parser;}
+	const jcparam::CArguDefList & GetParamDefine(void) const {return m_parser;}
 
 	const CJCStringT & GetCommandName() const { return m_cmd_name; }
 	virtual bool CreateProxy(jcscript::IPlugin * plugin, jcscript::IFeature * & cmd_obj) const = 0;
@@ -129,7 +129,7 @@ public:
 	LPCTSTR name(void) const {return m_cmd_name.c_str(); }
 
 protected:
-	jcparam::CParameterDefinition		m_parser;
+	jcparam::CArguDefList		m_parser;
 	CJCStringT					m_cmd_name;
 	LPCTSTR						m_description;
 	DWORD						m_prop;

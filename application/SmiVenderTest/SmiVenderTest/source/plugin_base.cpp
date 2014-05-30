@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include <stdext.h>
 #include "plugin_base.h"
-#include "cmd_def.h"
+//#include "cmd_def.h"
 
 LOCAL_LOGGER_ENABLE(_T("plugin"), LOGGER_LEVEL_DEBUGINFO);
 

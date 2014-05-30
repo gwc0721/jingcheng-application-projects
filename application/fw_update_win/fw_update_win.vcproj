@@ -47,7 +47,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="C:\library\vld_10;..\..\jcvos\stdext"
+				AdditionalIncludeDirectories="$(VLD_INC_DIR);..\..\jcvos\stdext"
 				PreprocessorDefinitions="WIN32;_WINDOWS;NDEBUG"
 				MinimalRebuild="false"
 				RuntimeLibrary="0"
@@ -129,7 +129,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\vld_10;..\..\jcvos\stdext"
+				AdditionalIncludeDirectories="$(VLD_INC_DIR);..\..\jcvos\stdext"
 				PreprocessorDefinitions="WIN32;_WINDOWS;_DEBUG"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -153,7 +153,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="C:\library\vld_10;"
+				AdditionalLibraryDirectories="$(VLD_LIB_DIR);"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				TargetMachine="1"

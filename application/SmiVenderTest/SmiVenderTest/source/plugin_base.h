@@ -1,7 +1,7 @@
 #pragma once
 #include <jcparam.h>
 #include <script_engine.h>
-#include "cmd_def.h"
+//#include "cmd_def.h"
 
 
 class CPluginManager;

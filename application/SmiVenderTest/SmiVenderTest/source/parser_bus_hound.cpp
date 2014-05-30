@@ -18,7 +18,7 @@ CParamDefTab CFeatureBase<CPluginTrace::BusHound, CPluginTrace>::m_param_def_tab
 	//(new CTypedParamDef<bool>(_T("diff_time"), _T('d'), offsetof(CPluginTrace::BusHound, m_diff_time) ) )
 	);
 
-const UINT CPluginTrace::BusHound::_BASE::m_property = jcscript::OPP_LOOP_SOURCE;
+//const UINT CPluginTrace::BusHound::_BASE::m_property = jcscript::OPP_LOOP_SOURCE;
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- parser

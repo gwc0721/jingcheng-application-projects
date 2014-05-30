@@ -4,9 +4,6 @@
 #include <SmiDevice.h>
 #include <jcparam.h>
 
-#include "cmd_def.h"
-#include "plugin_base.h"
-
 class CSvtApplication;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -26,7 +23,7 @@ public:
 
 protected:
 	// 命令行解释
-	static const jcparam::CParameterDefinition m_cmd_line_parser;	// parser for process command line
+	static jcparam::CArguDefList m_cmd_line_parser;	// parser for process command line
 	static CSvtApplication * m_app;
 
 //-- Plugin 管理

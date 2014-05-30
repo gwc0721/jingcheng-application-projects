@@ -147,7 +147,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\vld_10;..\..\jcvos\stdext"
+				AdditionalIncludeDirectories="$(VLD_INC_DIR);..\..\jcvos\stdext"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				RuntimeLibrary="3"
 				UsePrecompiledHeader="2"
@@ -244,7 +244,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="C:\library\vld_10;..\..\jcvos\stdext"
+				AdditionalIncludeDirectories="$(VLD_INC_DIR);..\..\jcvos\stdext"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;NECI"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
@@ -342,7 +342,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\vld_10;..\..\jcvos\stdext"
+				AdditionalIncludeDirectories="$(VLD_INC_DIR);..\..\jcvos\stdext"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;NECI"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
@@ -374,7 +374,7 @@
 				OutputFile="$(OutDir)\UpdateSnTool.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="C:\library\vld_10;D:\WINDDK\3790\lib\wnet\i386"
+				AdditionalLibraryDirectories="$(VLD_LIB_DIR);D:\WINDDK\3790\lib\wnet\i386"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(TargetDir)$(TargetName).pdb"
 				SubSystem="2"
@@ -537,7 +537,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\vld_10;..\..\jcvos\stdext"
+				AdditionalIncludeDirectories="$(VLD_INC_DIR);..\..\jcvos\stdext"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				RuntimeLibrary="3"
 				UsePrecompiledHeader="2"
@@ -635,7 +635,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\library\vld_10;..\..\jcvos\stdext"
+				AdditionalIncludeDirectories="$(VLD_INC_DIR);..\..\jcvos\stdext"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				RuntimeLibrary="3"
 				UsePrecompiledHeader="2"
