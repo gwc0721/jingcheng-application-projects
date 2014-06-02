@@ -33,7 +33,7 @@ FileAppender::FileAppender(LPCTSTR file_name, DWORD prop)
 				GENERIC_READ|GENERIC_WRITE, 
 				FILE_SHARE_READ | FILE_SHARE_WRITE, 
 				NULL, 
-				CREATE_ALWAYS, 
+				OPEN_ALWAYS, 
 				flag,					//如果使用NO_BUFFERING选项，文件操作必须sector对齐。
 				NULL );
 
