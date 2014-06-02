@@ -7,12 +7,7 @@
 #include <vld.h>
 
 // Test for jclogger
-LOCAL_LOGGER_ENABLE(_T("test.stdext"), LOGGER_LEVEL_DEBUGINFO);
-
-//LOGGER_TO_FILE(0, _T("test_stdext.log"), 
-//		CJCLogger::COL_TIME_STAMP |
-//		CJCLogger::COL_FUNCTION_NAME | 
-//		CJCLogger::COL_REAL_TIME, 0);
+LOCAL_LOGGER_ENABLE(_T("test.stdext"), LOGGER_LEVEL_ERROR);
 
 // Test for LOG_CLASS_SIZE
 class jclogger_class_size_test
@@ -79,34 +74,54 @@ void test_secure_functions()
 	LOG_DEBUG(_T("Test function stdext::jc_int2str(16) : src = %llx, dst = %ls"), x05, str);
 }
 
-class CStdTestApp
+void log_test(void)
+{
+	LOG_DEBUG(_T("test"));
+}
+
+class CStdTestApp : public jcapp::CJCAppBase<jcapp::AppArguSupport>
 {
 public:
-	CStdTestApp(void) {};
+	CStdTestApp(void);
 	virtual ~CStdTestApp(void) {};
 
 public:
-	bool Initialize(jcparam::CArguSet & argu_set) { return true; };
+	bool Initialize(void) { return true; };
 	virtual int Run(void);
 	void CleanUp(void) {};
 
 protected:
 	CStdTestApp * m_app;
+public:
+	CJCStringT	m_algorithm;
 };
 
 int CStdTestApp::Run(void)
 {
 	//test_jclogger();
 	//test_secure_functions();
-	interface_test();
+	//interface_test();
+	log_test();
 	return 0;
 }
 
 typedef jcapp::CJCApp<CStdTestApp>	CApplication;
 static CApplication the_app;
-const jcparam::CArguDefList CApplication::m_cmd_line_parser( jcparam::CArguDefList::RULE() 
-	(_T("algorithm"),	_T('a'), jcparam::VT_STRING, _T("select an algorithm") )
-);
+
+#define _class_name_	CApplication
+BEGIN_ARGU_DEF_TABLE()
+	ARGU_DEF_ITEM(_T("algorithm"),		_T('a'), CJCStringT,	m_algorithm, _T("folder for check.") )
+	//ARGU_DEF_ITEM(_T("length"),		_T('l'), int,		m_length, _T("set length.") )
+END_ARGU_DEF_TABLE()
+
+//const jcparam::CArguDefList CApplication::m_cmd_line_parser( jcparam::CArguDefList::RULE() 
+//	(_T("algorithm"),	_T('a'), jcparam::VT_STRING, _T("select an algorithm") )
+//);
+
+CStdTestApp::CStdTestApp(void) 
+{
+	LOGGER_CONFIG(_T("jclog.cfg"));
+}
 
 int _tmain(int argc, TCHAR* argv[])
 {
