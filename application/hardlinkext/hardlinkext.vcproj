@@ -108,7 +108,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release|Win32"
+			Name="RELEASE_WINAPI|Win32"
 			OutputDirectory="$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
@@ -168,6 +168,7 @@
 				Name="VCLinkerTool"
 				RegisterOutput="true"
 				IgnoreImportLibrary="true"
+				AdditionalOptions="/NODEFAULTLIB:LIBCMT.lib"
 				LinkIncremental="1"
 				ModuleDefinitionFile=".\hardlinkext.def"
 				GenerateDebugInformation="true"
@@ -275,10 +276,6 @@
 				RelativePath=".\HardLinkOverlyaIcon.rgs"
 				>
 			</File>
-			<File
-				RelativePath=".\icon1.ico"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="¶¬“I•¶Œ"
@@ -297,7 +294,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release|Win32"
+					Name="RELEASE_WINAPI|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"

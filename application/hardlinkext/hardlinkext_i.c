@@ -6,7 +6,7 @@
 
 
  /* File created by MIDL compiler version 7.00.0500 */
-/* at Fri May 30 19:19:11 2014
+/* at Mon Jun 02 12:42:20 2014
  */
 /* Compiler settings for .\hardlinkext.idl:
     Oicf, W1, Zp8, env=Win32 (32b run)
