@@ -96,7 +96,8 @@ public:
 		COL_COMPNENT_NAME =	0x20000000,
 		COL_FUNCTION_NAME = 0x10000000,
 		COL_REAL_TIME =		0x08000000,
-		COL_REAL_DATE =		0x04000000,
+		COL_REAL_DATE =		0x04000000,		
+		COL_SIGNATURE =		0x02000000,		// <JC>
 	};
 
 	enum PROPERTY
@@ -138,7 +139,7 @@ public:
 protected:
 	void ParseAppender(LPTSTR line);
 	void ParseNode(LPTSTR line);
-
+	void ParseColumn(LPTSTR line);
 
 protected:
     LoggerCategoryMap m_logger_category;

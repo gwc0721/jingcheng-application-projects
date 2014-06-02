@@ -20,6 +20,12 @@ CJCLogger * CJCLogger::Instance(void)
 CJCLogger::CJCLogger(CJCLoggerAppender * appender)
     : m_appender(appender)
 	, m_ts_cycle(0)
+	, m_column_select( 0
+		//| COL_TIME_STAMP 
+		//| COL_REAL_TIME 
+		| COL_SIGNATURE
+		| COL_FUNCTION_NAME 
+		)
 {
 #ifdef WIN32
 	LARGE_INTEGER freq;
@@ -90,6 +96,23 @@ bool CJCLogger::Configurate(LPCTSTR file_name)
 		fclose(config_file);
 	}
 	return br;
+}
+
+void CJCLogger::ParseColumn(LPTSTR line_buf)
+{
+	DWORD col = 0;
+	if		( 0 == _tcscmp(line_buf + 1, _T("THREAD_ID")) )		col = COL_THREAD_ID;
+	else if ( 0 == _tcscmp(line_buf + 1, _T("TIME_STAMP")) )	col = COL_TIME_STAMP;
+	else if ( 0 == _tcscmp(line_buf + 1, _T("COMPNENT_NAME")) )	col = COL_COMPNENT_NAME;
+	else if ( 0 == _tcscmp(line_buf + 1, _T("FUNCTION_NAME")) )	col = COL_FUNCTION_NAME;
+	else if ( 0 == _tcscmp(line_buf + 1, _T("REAL_TIME")) )		col = COL_REAL_TIME;
+	else if ( 0 == _tcscmp(line_buf + 1, _T("REAL_DATE")) )		col = COL_REAL_DATE;
+	else if ( 0 == _tcscmp(line_buf + 1, _T("SIGNATURE")) )		col = COL_SIGNATURE;
+
+	if (_T('+') == line_buf[0])		m_column_select |= col;
+	else if (_T('-') == line_buf[0] ) m_column_select &= (~col);
+	//else if ( 0 == _tcscmp(line_buf + 1, _T("")) )	col = 
+	//else if ( 0 == _tcscmp(line_buf + 1, _T("")) )	col = 
 }
 
 void CJCLogger::ParseAppender(LPTSTR line_buf)
@@ -164,43 +187,8 @@ bool CJCLogger::Configurate(FILE * config)
 
 		if ( _T('#') == line_buf[0] ) continue;
 		else if ( _T('>') == line_buf[0] )	ParseAppender(line_buf);
-		//else if ( line_buf == _tcsstr(line_buf, _T("COL|") )	ParseColumn(line_buf);
+		else if ( (_T('+') == line_buf[0]) || (_T('-') == line_buf[0]) ) ParseColumn(line_buf);
 		else ParseNode(line_buf);
-
-/*
-		wchar_t * sep = _tcschr(line_buf, _T('\n'));
-		if (sep) *sep = 0;
-		
-		sep = _tcschr(line_buf, _T(','));
-		if (NULL == sep) continue;
-		*sep = 0;
-
-		const wchar_t * str_level = sep + 1;
-		int level = 0;
-		if		( 0 == _tcscmp(_T("NONE"), str_level) )			level = LOGGER_LEVEL_NONE;
-		else if ( 0 == _tcscmp(_T("ALERT"), str_level) )		level = LOGGER_LEVEL_ALERT;
-		else if ( 0 == _tcscmp(_T("CRITICAL"), str_level) )		level = LOGGER_LEVEL_CRITICAL;
-		else if ( 0 == _tcscmp(_T("RELEASEINFO"), str_level) )	level = LOGGER_LEVEL_RELEASEINFO;
-		else if ( 0 == _tcscmp(_T("ERROR"), str_level) )		level = LOGGER_LEVEL_ERROR;
-		else if ( 0 == _tcscmp(_T("WARNING"), str_level) )		level = LOGGER_LEVEL_WARNING;
-		else if ( 0 == _tcscmp(_T("NOTICE"), str_level) )		level = LOGGER_LEVEL_NOTICE;
-		else if ( 0 == _tcscmp(_T("TRACE"), str_level) )		level = LOGGER_LEVEL_TRACE;
-		else if ( 0 == _tcscmp(_T("DEBUGINFO"), str_level) )	level = LOGGER_LEVEL_DEBUGINFO;
-		else if ( 0 == _tcscmp(_T("ALL"), str_level) )			level = LOGGER_LEVEL_ALL;
-		else if ( _T('0') == str_level[0])						level = stdext::jc_str2l(str_level);
-			
-		const wchar_t * name = line_buf;
-		LoggerCategoryMap::iterator it = m_logger_category.find(name);
-		if (it == m_logger_category.end() )
-		{
-			// Create new logger
-			CJCLoggerNode * logger = CJCLoggerNode::CreateLoggerNode(name, level);
-			std::pair<LoggerCategoryMap::iterator, bool> rc;
-			rc = m_logger_category.insert(LoggerCategoryMap::value_type(name, logger) );
-			it = rc.first;
-		}
-		it->second->SetLevel(level);
-*/
 	}
 	delete [] line_buf;
 	return true;
@@ -286,6 +274,11 @@ void CJCLoggerNode::LogMessageFuncV(LPCSTR function, LPCTSTR format, va_list arg
 	LPTSTR str = str_msg;
 	int ir = 0, remain = LOGGER_MSG_BUF_SIZE;
 
+	if (col_sel & CJCLogger::COL_SIGNATURE)
+	{
+		ir = stdext::jc_sprintf(str, remain, _T("<JC>"));
+		if (ir >=0 )  str+=ir, remain-=ir;
+	}
 
 #if defined(WIN32)
 	if (col_sel & CJCLogger::COL_THREAD_ID)
@@ -309,9 +302,10 @@ void CJCLoggerNode::LogMessageFuncV(LPCSTR function, LPCTSTR format, va_list arg
 	{
 		TCHAR strtime[32];
 		time_t now = time(NULL);
-		struct tm * now_t = localtime(&now);
+		struct tm now_t;
+		localtime_s(&now_t, &now);
 
-		stdext::jc_strftime(strtime, 32, _T("%H:%M:%S"), now_t);
+		stdext::jc_strftime(strtime, 32, _T("%H:%M:%S"), &now_t);
 		strtime[24] = 0;
 		ir = stdext::jc_sprintf(str, remain, _T("<%ls> "), strtime);
 		if (ir >=0 )  str+=ir, remain-=ir;
