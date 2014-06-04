@@ -1,0 +1,25 @@
+HKCR
+{
+	hardlinkext.HardLinkList.1 = s 'HardLinkList Class'
+	{
+		CLSID = s '{A5332B1C-AB0B-43E0-83B7-9201D0EFFFB8}'
+	}
+	hardlinkext.HardLinkList = s 'HardLinkList Class'
+	{
+		CLSID = s '{A5332B1C-AB0B-43E0-83B7-9201D0EFFFB8}'
+		CurVer = s 'hardlinkext.HardLinkList.1'
+	}
+	NoRemove CLSID
+	{
+		ForceRemove {A5332B1C-AB0B-43E0-83B7-9201D0EFFFB8} = s 'HardLinkList Class'
+		{
+			ProgID = s 'hardlinkext.HardLinkList.1'
+			VersionIndependentProgID = s 'hardlinkext.HardLinkList'
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+			'TypeLib' = s '{}'
+		}
+	}
+}
