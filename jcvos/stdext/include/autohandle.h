@@ -18,45 +18,19 @@ namespace stdext
 		static inline void DoCloseHandle(HANDLE_TYPE file);
 	};
 
-	template <> void CCloseHandle<FILE*>::DoCloseHandle(FILE* file)
-	{
-		if (file) fclose(file);
-	}
 
 	template <typename HANDLE_TYPE, typename CLOSE_HANDLE_FUNCS = CCloseHandle<HANDLE_TYPE> >
 	class auto_handle
 	{
 	public:
 		explicit auto_handle(const HANDLE_TYPE & handle)
-			: m_handle(handle)
-		{
-			//JCASSERT(handle);
-		};
+			: m_handle(handle)	{ };
 
-		~auto_handle(void)
-		{
-			CLOSE_HANDLE_FUNCS::DoCloseHandle(m_handle);
-		};
+		~auto_handle(void)	{ CLOSE_HANDLE_FUNCS::DoCloseHandle(m_handle);	};
 
-		operator HANDLE_TYPE() const
-		{
-			return m_handle;
-		};
-
-		HANDLE_TYPE operator ->()
-		{
-			return m_handle;
-		};
-
-		HANDLE_TYPE * operator &()
-		{
-			return &m_handle;
-		};
-
-		//HANDLE_TYPE & operator ()
-		//{
-		//	return m_handle;
-		//}
+		operator HANDLE_TYPE() const	{	return m_handle;	};
+		HANDLE_TYPE operator ->()		{	return m_handle;	};
+		HANDLE_TYPE * operator &()		{	return &m_handle;	};
 
 		void detatch(HANDLE_TYPE & type)
 		{
@@ -69,23 +43,24 @@ namespace stdext
 			CLOSE_HANDLE_FUNCS::DoCloseHandle(m_handle);
 			m_handle = NULL;
 		}
-	    
 
 	protected:
 		HANDLE_TYPE m_handle;
 	};
 
+///////////////////////////////////////////////////////////////////////////////
+// -- implementation of auto handle
+	template <> void CCloseHandle<FILE*>::DoCloseHandle(FILE* file)
+	{
+		if (file) fclose(file);
+	}
 
+	template <> void CCloseHandle<IJCInterface*>::DoCloseHandle(IJCInterface * ptr)
+	{
+		if (ptr) ptr->Release();
+	}
 
-
-
-
-	//***************************************************************************//
-	///////////////////////////////////////////////////////////////////////////////
-	// Following implementations are for windows only
-	//#include "windows.h"
-	#ifdef WIN32
-
+#ifdef WIN32
 	template <> void CCloseHandle<HANDLE>::DoCloseHandle(HANDLE handle)
 	{
 		if (handle)	    ::CloseHandle(handle);
@@ -115,13 +90,8 @@ namespace stdext
 	};
 
 	typedef auto_handle<HANDLE, stdext::CCloseHandleFileFind>	auto_ff_handle;
+#endif
 
-	#endif // WIN32
-
-	template <> void CCloseHandle<IJCInterface*>::DoCloseHandle(IJCInterface * ptr)
-	{
-		if (ptr) ptr->Release();
-	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// -- Close handle for pointer and array
