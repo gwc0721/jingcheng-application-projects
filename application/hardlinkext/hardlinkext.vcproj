@@ -78,7 +78,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				RegisterOutput="true"
+				RegisterOutput="false"
 				IgnoreImportLibrary="true"
 				LinkIncremental="1"
 				ModuleDefinitionFile=".\hardlinkext.def"
@@ -226,6 +226,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source\HardLinkList.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\source\HardLinkOverlyaIcon.cpp"
 				>
 			</File>
@@ -241,6 +245,10 @@
 			>
 			<File
 				RelativePath=".\source\dllmain.h"
+				>
+			</File>
+			<File
+				RelativePath=".\source\HardLinkList.h"
 				>
 			</File>
 			<File
@@ -271,6 +279,10 @@
 			</File>
 			<File
 				RelativePath=".\hardlinkext.rgs"
+				>
+			</File>
+			<File
+				RelativePath=".\HardLinkList.rgs"
 				>
 			</File>
 			<File
