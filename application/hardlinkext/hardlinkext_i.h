@@ -4,7 +4,7 @@
 
 
  /* File created by MIDL compiler version 7.00.0500 */
-/* at Mon Jun 02 12:42:20 2014
+/* at Wed Jun 04 17:00:26 2014
  */
 /* Compiler settings for .\hardlinkext.idl:
     Oicf, W1, Zp8, env=Win32 (32b run)
@@ -31,10 +31,6 @@
 #error this stub requires an updated version of <rpcndr.h>
 #endif // __RPCNDR_H_VERSION__
 
-#ifndef COM_NO_WINDOWS_H
-#include "windows.h"
-#include "ole2.h"
-#endif /*COM_NO_WINDOWS_H*/
 
 #ifndef __hardlinkext_i_h__
 #define __hardlinkext_i_h__
@@ -44,12 +40,6 @@
 #endif
 
 /* Forward Declarations */ 
-
-#ifndef __IHardLinkOverlyaIcon_FWD_DEFINED__
-#define __IHardLinkOverlyaIcon_FWD_DEFINED__
-typedef interface IHardLinkOverlyaIcon IHardLinkOverlyaIcon;
-#endif 	/* __IHardLinkOverlyaIcon_FWD_DEFINED__ */
-
 
 #ifndef __HardLinkOverlyaIcon_FWD_DEFINED__
 #define __HardLinkOverlyaIcon_FWD_DEFINED__
@@ -63,82 +53,26 @@ typedef struct HardLinkOverlyaIcon HardLinkOverlyaIcon;
 #endif 	/* __HardLinkOverlyaIcon_FWD_DEFINED__ */
 
 
+#ifndef __HardLinkList_FWD_DEFINED__
+#define __HardLinkList_FWD_DEFINED__
+
+#ifdef __cplusplus
+typedef class HardLinkList HardLinkList;
+#else
+typedef struct HardLinkList HardLinkList;
+#endif /* __cplusplus */
+
+#endif 	/* __HardLinkList_FWD_DEFINED__ */
+
+
 /* header files for imported files */
 #include "oaidl.h"
 #include "ocidl.h"
+#include "Shobjidl.h"
 
 #ifdef __cplusplus
 extern "C"{
 #endif 
-
-
-#ifndef __IHardLinkOverlyaIcon_INTERFACE_DEFINED__
-#define __IHardLinkOverlyaIcon_INTERFACE_DEFINED__
-
-/* interface IHardLinkOverlyaIcon */
-/* [unique][helpstring][uuid][object] */ 
-
-
-EXTERN_C const IID IID_IHardLinkOverlyaIcon;
-
-#if defined(__cplusplus) && !defined(CINTERFACE)
-    
-    MIDL_INTERFACE("CFC6FF0C-76EA-4384-9465-84F695D6DA23")
-    IHardLinkOverlyaIcon : public IUnknown
-    {
-    public:
-    };
-    
-#else 	/* C style interface */
-
-    typedef struct IHardLinkOverlyaIconVtbl
-    {
-        BEGIN_INTERFACE
-        
-        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
-            IHardLinkOverlyaIcon * This,
-            /* [in] */ REFIID riid,
-            /* [iid_is][out] */ 
-            __RPC__deref_out  void **ppvObject);
-        
-        ULONG ( STDMETHODCALLTYPE *AddRef )( 
-            IHardLinkOverlyaIcon * This);
-        
-        ULONG ( STDMETHODCALLTYPE *Release )( 
-            IHardLinkOverlyaIcon * This);
-        
-        END_INTERFACE
-    } IHardLinkOverlyaIconVtbl;
-
-    interface IHardLinkOverlyaIcon
-    {
-        CONST_VTBL struct IHardLinkOverlyaIconVtbl *lpVtbl;
-    };
-
-    
-
-#ifdef COBJMACROS
-
-
-#define IHardLinkOverlyaIcon_QueryInterface(This,riid,ppvObject)	\
-    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
-
-#define IHardLinkOverlyaIcon_AddRef(This)	\
-    ( (This)->lpVtbl -> AddRef(This) ) 
-
-#define IHardLinkOverlyaIcon_Release(This)	\
-    ( (This)->lpVtbl -> Release(This) ) 
-
-
-#endif /* COBJMACROS */
-
-
-#endif 	/* C style interface */
-
-
-
-
-#endif 	/* __IHardLinkOverlyaIcon_INTERFACE_DEFINED__ */
 
 
 
@@ -157,6 +91,14 @@ EXTERN_C const CLSID CLSID_HardLinkOverlyaIcon;
 
 class DECLSPEC_UUID("95C1E3BB-99D3-4A21-BFD3-1034F0F50C49")
 HardLinkOverlyaIcon;
+#endif
+
+EXTERN_C const CLSID CLSID_HardLinkList;
+
+#ifdef __cplusplus
+
+class DECLSPEC_UUID("A5332B1C-AB0B-43E0-83B7-9201D0EFFFB8")
+HardLinkList;
 #endif
 #endif /* __hardlinkextLib_LIBRARY_DEFINED__ */
 

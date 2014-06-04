@@ -2,9 +2,10 @@
 
 #pragma once
 
-#include "resource.h"       // 主符号
+#include "../resource.h"       // 主符号
 
 #include <atlhost.h>
+#include <Commctrl.h>
 
 
 // CHardLinkListDlg
@@ -39,6 +40,18 @@ END_MSG_MAP()
 	{
 		CAxDialogImpl<CHardLinkListDlg>::OnInitDialog(uMsg, wParam, lParam, bHandled);
 		bHandled = TRUE;
+		HWND hwnd = GetDlgItem(IDC_HARDLINK_LIST);
+		if (hwnd)
+		{
+			LVCOLUMN col;
+			memset(&col, 0, sizeof(col));
+			col.mask = LVCF_TEXT | LVCF_WIDTH;
+			col.cx = 120;
+			col.pszText = _T("file name");
+
+			ListView_InsertColumn(hwnd,0, &col );
+		}
+
 		return 1;  // 使系统设置焦点
 	}
 
@@ -52,6 +65,27 @@ END_MSG_MAP()
 	{
 		EndDialog(wID);
 		return 0;
+	}
+
+	void InsertItem(LPCTSTR str)
+	{
+		HWND hwnd = GetDlgItem(IDC_HARDLINK_LIST);
+		if (hwnd)
+		{
+			LVITEM item;
+			memset(&item, 0, sizeof(item));
+
+			item.mask = LVIF_TEXT;
+			//TCHAR _str[256];
+			item.pszText = new TCHAR[256];
+			_tcscpy_s(item.pszText, 256, str);
+
+			item.iSubItem = 0;
+			item.iItem = 0;
+
+			ListView_InsertItem(hwnd, &item);
+		}
+
 	}
 };
 

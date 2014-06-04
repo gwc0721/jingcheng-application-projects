@@ -226,7 +226,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source.\HardLinkListDlg.cpp"
+				RelativePath=".\source\HardLinkListDlg.cpp"
 				>
 			</File>
 			<File
@@ -252,7 +252,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source.\HardLinkListDlg.h"
+				RelativePath=".\source\HardLinkListDlg.h"
 				>
 			</File>
 			<File
