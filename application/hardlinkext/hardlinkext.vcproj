@@ -226,6 +226,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source.\HardLinkListDlg.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\source\HardLinkList.cpp"
 				>
 			</File>
@@ -245,6 +249,10 @@
 			>
 			<File
 				RelativePath=".\source\dllmain.h"
+				>
+			</File>
+			<File
+				RelativePath=".\source.\HardLinkListDlg.h"
 				>
 			</File>
 			<File
@@ -269,7 +277,7 @@
 			</File>
 		</Filter>
 		<Filter
-			Name="&#36164;Œ¹•¶Œ"
+			Name="Resource Files"
 			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav"
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
@@ -291,7 +299,7 @@
 			</File>
 		</Filter>
 		<Filter
-			Name="¶¬“I•¶Œ"
+			Name="Generated Files"
 			SourceControlFiles="false"
 			>
 			<File
