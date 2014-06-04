@@ -1,8 +1,8 @@
-// HardLinkListDlg.h : CHardLinkListDlg µÄÉùÃ÷
+ï»¿// HardLinkListDlg.h : CHardLinkListDlg çš„å£°æ˜
 
 #pragma once
 
-#include "resource.h"       // Ö÷·ûºÅ
+#include "resource.h"       // ä¸»ç¬¦å·
 
 #include <atlhost.h>
 
@@ -30,7 +30,7 @@ BEGIN_MSG_MAP(CHardLinkListDlg)
 	CHAIN_MSG_MAP(CAxDialogImpl<CHardLinkListDlg>)
 END_MSG_MAP()
 
-// ´¦Àí³ÌĞòÔ­ĞÍ:
+// å¤„ç†ç¨‹åºåŸå‹:
 //  LRESULT MessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 //  LRESULT CommandHandler(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 //  LRESULT NotifyHandler(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
@@ -39,7 +39,7 @@ END_MSG_MAP()
 	{
 		CAxDialogImpl<CHardLinkListDlg>::OnInitDialog(uMsg, wParam, lParam, bHandled);
 		bHandled = TRUE;
-		return 1;  // Ê¹ÏµÍ³ÉèÖÃ½¹µã
+		return 1;  // ä½¿ç³»ç»Ÿè®¾ç½®ç„¦ç‚¹
 	}
 
 	LRESULT OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)

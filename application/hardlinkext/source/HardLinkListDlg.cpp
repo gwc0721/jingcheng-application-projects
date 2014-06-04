@@ -1,4 +1,4 @@
-// HardLinkListDlg.cpp : CHardLinkListDlg µÄÊµÏÖ
+ï»¿// HardLinkListDlg.cpp : CHardLinkListDlg çš„å®ç°
 
 #include "stdafx.h"
 #include "HardLinkListDlg.h"
