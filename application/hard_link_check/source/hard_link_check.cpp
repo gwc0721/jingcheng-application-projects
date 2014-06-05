@@ -9,6 +9,7 @@
 #include <jcapp.h>
 
 #include <windows.h>
+#include <set>
 
 LOCAL_LOGGER_ENABLE(_T("hlchk"), LOGGER_LEVEL_DEBUGINFO);
 
@@ -29,6 +30,16 @@ protected:
 
 public:
 	CJCStringT	m_folder;
+
+protected:
+	typedef std::set<UINT64> FILE_ID_SET;
+	FILE_ID_SET	m_file_id_set;
+
+	FILESIZE	m_total_size;
+	FILESIZE	m_saved_size;
+	JCSIZE		m_total_groups;
+	JCSIZE		m_total_files;
+
 };
 
 typedef jcapp::CJCApp<CHardLinkCheckApp>	CApplication;
@@ -47,10 +58,16 @@ bool CHardLinkCheckApp::Initialize(void)
 	return true;
 }
 
-void CHardLinkCheckApp::OnFileFound(/*const WIN32_FIND_DATA & find_data*/LPCTSTR fn)
+inline UINT64 MakeUint64(UINT lo, UINT hi)
+{
+	return 	((UINT64)hi) << 32 | (((UINT64)lo) & 0xFFFFFFFF);
+
+}
+
+void CHardLinkCheckApp::OnFileFound(LPCTSTR fn)
 {
 	LOG_DEBUG(_T("openning file %s"), fn);
-	stdext::auto_handle<HANDLE> file (CreateFile(/*find_data.cFileName*/ fn, 
+	stdext::auto_handle<HANDLE> file (CreateFile(fn, 
 		FILE_READ_ATTRIBUTES | FILE_READ_EA,
 		FILE_SHARE_READ | FILE_SHARE_WRITE,
 		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL) );
@@ -60,20 +77,36 @@ void CHardLinkCheckApp::OnFileFound(/*const WIN32_FIND_DATA & find_data*/LPCTSTR
 		LOG_ERROR(_T("failed on openning file %s"), fn);
 		return;
 	}
-		//THROW_WIN32_ERROR(_T(""), fn);
 
 	BY_HANDLE_FILE_INFORMATION info;
 	BOOL br = GetFileInformationByHandle(file,
 		& info);
 
-	if (!br) THROW_WIN32_ERROR(_T("failed on getting attribute from %s"), /*find_data.cFileName*/fn);
+	if (!br) THROW_WIN32_ERROR(_T("failed on getting attribute from %s"), fn);
 
 	if (info.nNumberOfLinks > 1)
 	{
+		UINT64 file_id = MakeUint64(info.nFileIndexLow, info.nFileIndexHigh);
+
+		FILE_ID_SET::iterator it = m_file_id_set.find(file_id);
+		// group has alread searched, skip
+		if ( it != m_file_id_set.end() ) return;
+
+		FILESIZE file_size = MakeUint64(info.nFileSizeLow, info.nFileSizeHigh);
+		m_saved_size += file_size;
+		m_total_size += file_size * info.nNumberOfLinks;
+		m_total_groups ++;
+		m_total_files += info.nNumberOfLinks;
+
+		m_file_id_set.insert(file_id);
+
 		TCHAR hdlink[MAX_PATH];
-		_ftprintf(m_dst_file, _T("hard linked file 0x%08X%08X, link(%d)\n"), info.nFileIndexHigh, info.nFileIndexLow, info.nNumberOfLinks);
+		_ftprintf(m_dst_file, _T("group %d: id=0x%08X%08X, size=%I64d, link(%d)\n"), 
+			m_total_groups, info.nFileIndexHigh, info.nFileIndexLow, 
+			file_size, info.nNumberOfLinks);
+
 		DWORD len = MAX_PATH;
-		HANDLE find = FindFirstFileNameW(/*find_data.cFileName*/fn, 0, &len, hdlink);
+		HANDLE find = FindFirstFileNameW(fn, 0, &len, hdlink);
 		if (!find) return;
 		do
 		{
@@ -89,7 +122,9 @@ void CHardLinkCheckApp::FindAllFiles(LPCTSTR fn)
 {
 	LOG_DEBUG(_T("searching %s"), fn);
 	CJCStringT dir = fn;
-	if (dir.at(dir.length()-1) == _T('\\'))	dir += _T("*.*");
+	//if (dir.at(dir.length()-1) == _T('\\'))	
+	dir += _T("*.*");
+
 	WIN32_FIND_DATA		find_data;
 	memset(&find_data, 0, sizeof(WIN32_FIND_DATA) );
 	stdext::auto_handle<HANDLE, stdext::CCloseHandleFileFind>	find(FindFirstFile(dir.c_str(), &find_data));
@@ -131,7 +166,24 @@ void CHardLinkCheckApp::FindAllFiles(LPCTSTR fn)
 
 int CHardLinkCheckApp::Run(void)
 {
+	m_total_size = 0;
+	m_saved_size = 0;
+	m_total_groups = 0;
+	m_total_files = 0;
+
+	if ( m_folder.empty() )	THROW_ERROR(ERR_USER, _T("missing folder"));
+	if (m_folder.at(m_folder.length()-1) != _T('\\') )	m_folder += _T("\\");
 	FindAllFiles(m_folder.c_str());
+
+	_ftprintf(m_dst_file, _T("summary: \n"));
+	double total_size_mb = (double)m_total_size / (1024 * 1024);
+	double saved_size_mb = (double)m_saved_size / (1024 * 1024);
+	_ftprintf(m_dst_file, _T("\t total size: %.1fMiB,\t saved size: %.1fMiB,\t save %.1f %%\n"),
+		total_size_mb, saved_size_mb, saved_size_mb / total_size_mb * 100);
+
+	_ftprintf(m_dst_file, _T("\t files: %d,\t groups: %d,\t save %.1f %%\n"),
+		m_total_files, m_total_groups, (double)m_total_groups / (double)m_total_files * 100);
+
 	return 0;
 }
 
