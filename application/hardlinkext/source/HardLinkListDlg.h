@@ -14,13 +14,9 @@ class CHardLinkListDlg :
 	public CAxDialogImpl<CHardLinkListDlg>
 {
 public:
-	CHardLinkListDlg()
-	{
-	}
+	CHardLinkListDlg();
 
-	~CHardLinkListDlg()
-	{
-	}
+	~CHardLinkListDlg();
 
 	enum { IDD = IDD_HARDLINKLISTDLG };
 
@@ -46,7 +42,7 @@ END_MSG_MAP()
 			LVCOLUMN col;
 			memset(&col, 0, sizeof(col));
 			col.mask = LVCF_TEXT | LVCF_WIDTH;
-			col.cx = 120;
+			col.cx = 500;
 			col.pszText = _T("file name");
 
 			ListView_InsertColumn(hwnd,0, &col );
@@ -55,15 +51,12 @@ END_MSG_MAP()
 		return 1;  // 使系统设置焦点
 	}
 
-	LRESULT OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
-	{
-		EndDialog(wID);
-		return 0;
-	}
+	LRESULT OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 
 	LRESULT OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 	{
-		EndDialog(wID);
+		DestroyWindow();
+		//EndDialog(wID);
 		return 0;
 	}
 
@@ -76,9 +69,9 @@ END_MSG_MAP()
 			memset(&item, 0, sizeof(item));
 
 			item.mask = LVIF_TEXT;
-			//TCHAR _str[256];
-			item.pszText = new TCHAR[256];
-			_tcscpy_s(item.pszText, 256, str);
+			//item.pszText = new TCHAR[256];
+			//_tcscpy_s(item.pszText, 256, str);
+			item.pszText = (LPTSTR) str;
 
 			item.iSubItem = 0;
 			item.iItem = 0;
