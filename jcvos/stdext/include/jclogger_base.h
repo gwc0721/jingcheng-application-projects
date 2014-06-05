@@ -334,8 +334,8 @@ public:
 #if LOGGER_LEVEL >= LOGGER_LEVEL_DEBUGINFO
 
 #undef  _LOGGER_DEBUG
-#define _LOGGER_DEBUG( _logger, ... ) {  \
-    if (_logger && _logger->GetLevel()>= LOGGER_LEVEL_DEBUGINFO)    \
+#define _LOGGER_DEBUG( _logger, lv_adj, ... ) {  \
+    if (_logger && _logger->GetLevel()>= (LOGGER_LEVEL_DEBUGINFO + lv_adj) )    \
         _logger->LogMessageFunc((__FUNCTION__), __VA_ARGS__);   \
     }
 
@@ -358,7 +358,8 @@ public:
 #define LOG_WARNING(...)				_LOGGER_WARNING(_local_logger, __VA_ARGS__);
 #define LOG_NOTICE(...)					_LOGGER_NOTICE(_local_logger, __VA_ARGS__);
 #define LOG_TRACE(...)					_LOGGER_TRACE(_local_logger, __VA_ARGS__);
-#define LOG_DEBUG(...)					_LOGGER_DEBUG(_local_logger, __VA_ARGS__)
+#define LOG_DEBUG(...)					_LOGGER_DEBUG(_local_logger, 0, __VA_ARGS__)
+#define LOG_DEBUG_(lv, ...)					_LOGGER_DEBUG(_local_logger,lv, __VA_ARGS__)
 #define CLSLOG_DEBUG(classname, ...)    _LOGGER_DEBUG(_m_logger, __VA_ARGS__);
 
 //#define THROW_WIN32_ERROR
