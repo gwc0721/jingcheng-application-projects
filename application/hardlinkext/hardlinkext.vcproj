@@ -265,7 +265,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\resource.h"
+				RelativePath=".\resource\resource.h"
 				>
 			</File>
 			<File
@@ -283,23 +283,23 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
-				RelativePath=".\hardlinkext.rc"
+				RelativePath=".\resource\hardlinkext.rc"
 				>
 			</File>
 			<File
-				RelativePath=".\hardlinkext.rgs"
+				RelativePath=".\resource\hardlinkext.rgs"
 				>
 			</File>
 			<File
-				RelativePath=".\HardLinkList.rgs"
+				RelativePath=".\resource\HardLinkList.rgs"
 				>
 			</File>
 			<File
-				RelativePath=".\HardLinkOverlyaIcon.rgs"
+				RelativePath=".\resource\HardLinkOverlyaIcon.rgs"
 				>
 			</File>
 			<File
-				RelativePath=".\registry.bin"
+				RelativePath=".\resource\link.ico"
 				>
 			</File>
 		</Filter>

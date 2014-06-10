@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "../resource.h"       // 主符号
+#include "../resource/resource.h"       // 主符号
 
 #include <atlhost.h>
 #include <Commctrl.h>
