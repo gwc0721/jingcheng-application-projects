@@ -299,7 +299,7 @@ void CSyntaxParser::Parse(LPCTSTR &first, LPCTSTR last)
 	NextToken(m_lookahead);
 }
 
-void CSyntaxParser::Parse(jcparam::IStream * stream)
+void CSyntaxParser::Parse(jcparam::IJCStream * stream)
 {
 	JCASSERT(stream);
 	m_first_it = new CReadIterator(stream);
@@ -1438,4 +1438,4 @@ bool jcscript::Parse(IPluginContainer * plugin_container, LSyntaxErrorHandler * 
 	syntax_parser.MatchScript(script);
 	return syntax_parser.GetError();
 }
-	//void Parse(jcparam::IStream * stream);
+	//void Parse(jcparam::IJCStream * stream);

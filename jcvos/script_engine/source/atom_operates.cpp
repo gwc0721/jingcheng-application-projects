@@ -164,22 +164,31 @@ bool CSaveToFileOp::Invoke(void)
 	if ( !val) return false; // !! warning
 
 	// try for IValueFormat if
-	jcparam::IVisibalValue * vval = NULL;
+	jcparam::IVisibleValue * vval = NULL;
 
-	//stdext::auto_cif<jcparam::IValueFormat>	format;
-	//val->QueryInterface(jcparam::IF_NAME_VALUE_FORMAT, format);
-	//if ( !format )
-	//{
-		vval = val.d_cast<jcparam::IVisibalValue*>();
-		if (!vval) return false;
+	vval = val.d_cast<jcparam::IVisibleValue*>();
+	if (!vval)
+	{
+		LOG_ERROR(_T("value do not support IVisiblaValue"));
+		return false;
+	}
 
-	//}
+	if (NULL == m_stream)
+	{
+		CreateStreamFile(m_file_name.c_str(), jcparam::WRITE, m_stream);
+		// output header if it is a row
+		jcparam::ITableRow * row = val.d_cast<jcparam::ITableRow*>();
+		if (row)
+		{
+			jcparam::ITable * tab = NULL;
+			row->CreateTable(tab);
+			tab->ToStream(m_stream, jcparam::VF_HEAD);
+			tab->Release();
+		}
+	}
+	vval->ToStream(m_stream, jcparam::VF_DEFAULT);
+	m_stream->Put(_T('\n'));
 
-	//if (vval)
-	//{
-		if (NULL == m_stream)	CreateStreamFile(m_file_name.c_str(), jcparam::WRITE, m_stream);
-		vval->ToStream(m_stream, jcparam::VF_DEFAULT);
-		m_stream->Put(_T('\n'));
 	//}
 	//else if (format)
 	//{
