@@ -1,0 +1,44 @@
+﻿///////////////////////////////////////////////////////////////////////////////
+// -- 如何安装:
+  (1) 从svn上check out到本地目录
+  (2) 编辑external_libs.vsprops
+  (3) 填写依赖库的路径(include和lib)
+      目前需要的库有:
+	  vld： vs版本的内存泄露检查
+	  boost： 用于语法分析及其他，v1.46以上
+	  cryptopp: 用于MD5, CRC计算等
+  (4) 用vs打开相应的解决方案
+  (5) 编译运行
+	
+///////////////////////////////////////////////////////////////////////////////
+// -- 项目管理:
+  级别：
+	test tool: 语言，系统测试工具。最低限度参数检查。基本上不提供release版本。
+	application: 一般应用工具，适度参数检查。适度测试。无崩溃性bug。提供release版本。
+	customer app: 提供给客户的程序。全面参数检查，严格测试。原则上要求bug free。
+	
+SmiVenderTest:
+	console, application
+	Ferri调试综合工具
+	解决方案：./application/SmiVenderTest/SmiVenderTest.sln
+	
+sn_update_tool:
+	MFC，customer app
+	简易的f/w update, id set工具。
+	解决方案：./application/SmiVenderTest/SmiVenderTest.sln
+	
+fw_update_win：
+	MFC, customer app
+	用于windows的feild update。通过修改MBR启动比依赖于SSD执行的OS，让后更新SSD的F/W
+	解决方案：./application/SmiVenderTest/SmiVenderTest.sln
+	
+hardlinkext:
+	COM DLL, application
+	硬连接的shell扩展。显示硬连接文件的图标。。。
+	解决方案：./application/jingcheng_all_projects.sln
+	
+wqlcl:
+	console, test tool,
+	测试工具，支持COM客户端。
+	解决方案：./application/jingcheng_all_projects.sln
+	
