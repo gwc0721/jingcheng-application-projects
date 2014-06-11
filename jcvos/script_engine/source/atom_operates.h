@@ -178,7 +178,7 @@ namespace jcscript
 		CJCStringT m_file_name;
 		FILE * m_file;
 
-		jcparam::IStream * m_stream;
+		jcparam::IJCStream * m_stream;
 	};
 
 	///////////////////////////////////////////////////////////////////////////////

@@ -115,7 +115,7 @@ public:
 public:
 	void SetVariableManager(IAtomOperate * val_op);
 	void Parse(LPCTSTR &str, LPCTSTR last);
-	void Parse(jcparam::IStream * stream);
+	void Parse(jcparam::IJCStream * stream);
 	void StreamToken(CTokenProperty & prop);
 
 	void Source(FILE * file);
