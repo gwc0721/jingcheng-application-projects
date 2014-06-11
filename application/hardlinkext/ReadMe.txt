@@ -18,6 +18,21 @@
 
 本文件概要介绍组成项目的每个文件的内容。
 
+/////////////////////////////////////////////////////////////////////////////
+// -- How To Install：
+(1) 编译并生成.dll
+(2) 将生成的.dll文件复制到目标目录
+	- 如果旧版本的.dll正在运行，需要执行以下命令终止explorer
+	taskkill /f /im explorer.exe
+(3) 复制resource/link.ico到目标目录
+(4) 注册COM
+	- regsvr32 /s hlchk.dll
+(5) 注册SHELL EXT
+	- 双击install_com.reg
+(6) 重新启动explorer
+	- start /b explorer
+
+
 hardlinkext.vcproj
     这是使用应用程序向导生成的 VC++ 项目的主项目文件，
     其中包含生成该文件的 Visual C++ 的版本信息，以及有关使用应用程序向导选择的平台、配置和项目功能的信息。
