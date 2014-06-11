@@ -7,7 +7,6 @@
 
 namespace jcparam
 {
-	//void CreateColumnInfoList(IColInfoList * & list);
 	class CColInfoList : public IColInfoList
 		, public CJCInterfaceBase
 		, CStringTable<COLUMN_INFO_BASE, std::vector<const COLUMN_INFO_BASE*> >
@@ -16,13 +15,14 @@ namespace jcparam
 		CColInfoList(void) {};
 		virtual ~CColInfoList(void) {};
 		typedef CStringTable<COLUMN_INFO_BASE, std::vector<const COLUMN_INFO_BASE*> >	LIST_BASE;
-	public:
-		//friend void CreateColumnInfoList(IColInfoList * & list);
+
 	public:
 		virtual void AddInfo(const COLUMN_INFO_BASE* info);
 		virtual const COLUMN_INFO_BASE * GetInfo(const CJCStringT & key) const;
 		virtual const COLUMN_INFO_BASE * GetInfo(JCSIZE index) const;
 		virtual JCSIZE GetColNum(void) const {return LIST_BASE::GetSize();}
+
+		virtual void OutputHead(IJCStream * stream) const;
 	};
 
 	// CGeneralRow: 用逗号分开的字符串存储行。CGeneralRow管理一个动态的COLUMN_INFO数组。
@@ -31,7 +31,6 @@ namespace jcparam
 	class CGeneralTable;
 
 	class CGeneralRow : public ITableRow
-		, public virtual IVisibalValue
 		, public CJCInterfaceBase
 	{
 	protected:
@@ -53,12 +52,12 @@ namespace jcparam
 		virtual const COLUMN_INFO_BASE * GetColumnInfo(int field) const;
 		// 从一个通用的行中取得通用的列数据
 		virtual void GetColumnData(int field, IValue * &)	const;
-		//virtual JCSIZE GetRowID(void) const = 0;
 		// 从row的类型创建一个表格
 		virtual bool CreateTable(ITable * & tab);
 
-		virtual void ToStream(IStream * str, VAL_FORMAT) const;
-		virtual void FromStream(IStream * str, VAL_FORMAT);
+		// IVisibleValue
+		virtual void ToStream(IJCStream * str, VAL_FORMAT) const;
+		virtual void FromStream(IJCStream * str, VAL_FORMAT);
 
 	protected:
 		void GetColumnData(const COLUMN_INFO_BASE *info, IValue * &)	const;
@@ -76,9 +75,6 @@ namespace jcparam
 		FIELDS	*m_fields;
 
 		IColInfoList	* m_col_info;
-
-		//CJCStringT	m_data;
-		//CGeneralTable * m_table;
 	};
 
 	class CGeneralTable : virtual public ITable
@@ -110,6 +106,11 @@ namespace jcparam
 		//virtual const COLUMN_INFO_BASE * GetColumnInfo(int field) const = 0;
 
 		//virtual void Append(IValue * source) {};
+
+		// IVisibleValue
+		virtual void ToStream(IJCStream * str, VAL_FORMAT) const;
+		virtual void FromStream(IJCStream * str, VAL_FORMAT);
+
 	public:
 		bool AddColumnInfo(COLUMN_INFO_BASE * col);
 		bool CloseColumnInfo(void);
@@ -122,26 +123,26 @@ namespace jcparam
 		ROWS	m_rows;
 	};
 
-	class CGeneralColumn : virtual public IVector
-				, public CJCInterfaceBase
-	{
-	public:
-		CGeneralColumn(CGeneralTable *, const COLUMN_INFO_BASE *);
-		~CGeneralColumn(void);
+	//class CGeneralColumn : virtual public IVector
+	//			, public CJCInterfaceBase
+	//{
+	//public:
+	//	CGeneralColumn(CGeneralTable *, const COLUMN_INFO_BASE *);
+	//	~CGeneralColumn(void);
 
-	public:
-		virtual void GetSubValue(LPCTSTR name, IValue * & val) {};
-		// 如果name不存在，则插入，否则修改name的值
-		virtual void SetSubValue(LPCTSTR name, IValue * val) {};
-		virtual void GetValueText(CJCStringT & str) const{};
-		virtual void SetValueText(LPCTSTR str) {};
-		// read only
-		virtual void PushBack(IValue * val){};
-		virtual void GetRow(JCSIZE index, IValue * & val);
-		virtual JCSIZE GetRowSize() const;
+	//public:
+	//	virtual void GetSubValue(LPCTSTR name, IValue * & val) {/* DO NOT SUPPORT*/};
+	//	// 如果name不存在，则插入，否则修改name的值
+	//	virtual void SetSubValue(LPCTSTR name, IValue * val) {/* DO NOT SUPPORT*/};
+	//	virtual void GetValueText(CJCStringT & str) const{/* DO NOT SUPPORT*/};
+	//	virtual void SetValueText(LPCTSTR str) {/* DO NOT SUPPORT*/};
+	//	// read only
+	//	virtual void PushBack(IValue * val){/* DO NOT SUPPORT*/};
+	//	virtual void GetRow(JCSIZE index, IValue * & val);
+	//	virtual JCSIZE GetRowSize() const;
 
-	protected:
-		CGeneralTable * m_table;
-		const COLUMN_INFO_BASE * m_col_info;
-	};
+	//protected:
+	//	CGeneralTable * m_table;
+	//	const COLUMN_INFO_BASE * m_col_info;
+	//};
 };

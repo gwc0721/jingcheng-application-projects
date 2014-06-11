@@ -41,7 +41,7 @@ namespace jcparam
 		virtual bool operator == (const IIterator *) = 0;
 	};
 	
-	class IStream : virtual public IJCInterface
+	class IJCStream : virtual public IJCInterface
 	{
 	public:
 		//virtual void GetCurIterator(READ_WRITE rd, IIterator * & it) = 0;
@@ -78,7 +78,7 @@ namespace jcparam
 
 	const char IF_NAME_VALUE_FORMAT[] = "IValueFormat";
 
-	class IValueFormat : virtual public IValue
+	class IValueFormat/* : virtual public IValue*/
 	{
 	public:
 		virtual void Format(FILE * file, LPCTSTR format) = 0;
@@ -87,14 +87,16 @@ namespace jcparam
 
 	enum VAL_FORMAT
 	{
-		VF_DEFAULT, VF_TEXT, VF_BINARY,
+		VF_DEFAULT = 0, 
+		VF_TEXT, VF_BINARY,
+		VF_HEAD = 0x80000000,
 	};
 
-	class IVisibalValue : public IValue
+	class IVisibleValue : /*virtual*/ public IValue
 	{
 	public:
-		virtual void ToStream(IStream * str, VAL_FORMAT) const = 0;
-		virtual void FromStream(IStream * str, VAL_FORMAT) = 0;
+		virtual void ToStream(IJCStream * str, VAL_FORMAT) const = 0;
+		virtual void FromStream(IJCStream * str, VAL_FORMAT) = 0;
 	};
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -126,6 +128,7 @@ namespace jcparam
 		virtual const COLUMN_INFO_BASE * GetInfo(const CJCStringT & key) const = 0;
 		virtual const COLUMN_INFO_BASE * GetInfo(JCSIZE index) const = 0;
 		virtual JCSIZE GetColNum(void) const =0;
+		virtual void OutputHead(IJCStream * stream) const = 0;
 	};
 
 	class IVector : /*virtual*/ public IValue
@@ -136,7 +139,8 @@ namespace jcparam
 		virtual JCSIZE GetRowSize() const = 0;
 	};
 
-	class ITable : /*virtual*/ public IVector
+	class ITable : virtual public IVector, virtual public IVisibleValue
+	//class ITable : public IVisibleValue
 	{
 		// for column access
 	public:
@@ -149,8 +153,8 @@ namespace jcparam
 	//	virtual void Append(IValue * source) = 0;
 	};
 
-	class ITableRow : /*virtual*/ public IValue
-		//, public CJCInterfaceBase
+	//class ITableRow : virtual public IValue
+	class ITableRow : public IVisibleValue
 	{
 		// for column(field) access
 	public:

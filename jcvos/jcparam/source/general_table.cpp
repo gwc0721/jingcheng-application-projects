@@ -1,8 +1,6 @@
 ﻿#include "stdafx.h"
 
-//#include "../../stdext/stdext.h"
 #include "../include/general_table.h"
-//#include "../incl
 
 LOCAL_LOGGER_ENABLE(_T("jcparam.gtable"), LOGGER_LEVEL_WARNING);
 
@@ -29,6 +27,20 @@ const COLUMN_INFO_BASE * CColInfoList::GetInfo(JCSIZE index) const
 {
 	return LIST_BASE::GetItem(index);
 }
+
+void CColInfoList::OutputHead(IJCStream * stream) const
+{
+	CONST_ITERATOR it = m_item_map->begin();
+	CONST_ITERATOR endit = m_item_map->end();
+
+	for ( ; it!=endit; ++it)
+	{
+		const CJCStringT & name = it->first;
+		stream->Put(name.c_str(), name.length() );
+		stream->Put(_T(','));
+	}
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- CGeneralRow
@@ -127,17 +139,18 @@ bool CGeneralRow::CreateTable(ITable * & tab)
 	return true;
 }
 
-void CGeneralRow::ToStream(jcparam::IStream * str, VAL_FORMAT) const
+void CGeneralRow::ToStream(jcparam::IJCStream * str, VAL_FORMAT) const
 {
 	str->Put(m_data, m_data_len);
 }
 
-void CGeneralRow::FromStream(jcparam::IStream * str, VAL_FORMAT)
+void CGeneralRow::FromStream(jcparam::IJCStream * str, VAL_FORMAT)
 {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- CGeneralColumn
+/*
 CGeneralColumn::CGeneralColumn(CGeneralTable * table, const COLUMN_INFO_BASE *info)
 	: m_table(table), m_col_info(info)
 {
@@ -160,6 +173,7 @@ JCSIZE CGeneralColumn::GetRowSize() const
 	JCASSERT(m_table);
 	return m_table->GetRowSize();
 }
+*/
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- CGeneralTable
@@ -196,7 +210,7 @@ void CGeneralTable::GetSubValue(LPCTSTR name, IValue * & val)
 	const COLUMN_INFO_BASE * info = m_col_info->GetInfo(name);
 	if (!info) return;
 
-	val = static_cast<IValue*>(new CGeneralColumn(this, info));
+	val = static_cast<IValue*>(new CColumn(static_cast<ITable*>(this), info));
 }
 
 void CGeneralTable::PushBack(IValue * val)
@@ -225,6 +239,22 @@ JCSIZE CGeneralTable::GetColumnSize() const
 	return m_col_info->GetColNum();
 }
 
+void CGeneralTable::ToStream(IJCStream * stream, VAL_FORMAT fmt) const
+{
+	JCASSERT(m_col_info);
+	m_col_info->OutputHead(stream);
+	ROWS::const_iterator it = m_rows.begin();
+	ROWS::const_iterator endit = m_rows.end();
 
+	for ( ; it != endit; ++it)
+	{
+		(*it)->ToStream(stream, fmt);
+	}
+
+}
+
+void CGeneralTable::FromStream(IJCStream * str, VAL_FORMAT)
+{
+}
 
 

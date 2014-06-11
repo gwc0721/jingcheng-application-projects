@@ -49,9 +49,9 @@ namespace jcparam
 
 	template <class ROW_BASE_TYPE>
 	class CTableRowBase 
-		: public ROW_BASE_TYPE, public CJCInterfaceBase
+		: public ROW_BASE_TYPE
 		, /*virtual*/ public ITableRow
-		//, virtual public IValueFormat
+		, public CJCInterfaceBase
 	{
 	public:
 		virtual void GetValueText(CJCStringT & str) const {};
@@ -79,22 +79,12 @@ namespace jcparam
 		virtual int GetColumnSize() const {return m_column_info.GetSize();}
 
 		// 从一个通用的行中取得通用的列数据
-
-
-	
 		virtual void GetColumnData(int field, IValue * & val)	const
 		{
 			JCASSERT(NULL == val);
 			const COLUMN_INFO_BASE * col_info = m_column_info.GetItem(field);
 			GetColumnData(col_info, val);
 		}
-
-		//virtual void GetColVal(int field, void * val) const
-		//{
-		//	JCASSERT((JCSIZE)(field) < m_column_info.GetSize() );
-		//	const COLUMN_INFO_BASE * col_info = m_column_info.GetItem(field);
-		//	col_info->GetColVal( (BYTE*)(static_cast<const ROW_BASE_TYPE*>(this)), val );
-		//}
 
 		virtual const COLUMN_INFO_BASE * GetColumnInfo(LPCTSTR field_name) const
 		{
@@ -135,48 +125,24 @@ namespace jcparam
 
 		static const CColumnInfoList * GetColumnInfo(void) { return &m_column_info; }
 
-		virtual void WriteHeader(FILE * file)
-		{
-			// output head
-			JCSIZE col_size = GetColumnSize();
-			for (JCSIZE ii = 0; ii < col_size; ++ii)
-			{
-				const COLUMN_INFO_BASE * col_info = GetColumnInfo(ii);
-				JCASSERT(col_info);
-				fprintf_s(file, "%S,", col_info->m_name.c_str());
-			}
-			fprintf_s(file, "\n");
-		}
-
-		virtual void Format(FILE * file, LPCTSTR format)
+		virtual void ToStream(IJCStream * stream, VAL_FORMAT) const
 		{
 			JCSIZE col_size = GetColumnSize();
-			ROW_BASE_TYPE * row = static_cast<ROW_BASE_TYPE*>(this);
+			const ROW_BASE_TYPE * row = static_cast<const ROW_BASE_TYPE*>(this);
 			CJCStringT str;
 
 			for (JCSIZE ii = 0; ii < col_size; ++ii)
 			{
 				CJCStringT str;
 				const COLUMN_INFO_BASE * col_info = GetColumnInfo(ii);
-				col_info->GetText(row, str);
-				fprintf_s(file, "%S,", str.c_str());
+				col_info->GetText((void*)(row), str);
+				stream->Put(str.c_str(), str.length());
+				stream->Put(_T(','));
 			}
-			fprintf_s(file, "\n");
 		}
 
-		virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr)
-		{
-			JCASSERT(NULL == if_ptr);
-			bool br = false;
-			if ( FastCmpA(IF_NAME_VALUE_FORMAT, if_name) )
-			{
-				if_ptr = static_cast<IJCInterface*>(this);
-				if_ptr->AddRef();
-				br = true;
-			}
-			else br = __super::QueryInterface(if_name, if_ptr);
-			return br;
-		}	
+		virtual void FromStream(IJCStream * str, VAL_FORMAT)
+		{/*DO NOT SUPPORT*/}
 	
 	protected:
 		void GetColumnData(const COLUMN_INFO_BASE * col, IValue * & val) const
@@ -187,17 +153,12 @@ namespace jcparam
 		
 		IValue * GetColumnData(const COLUMN_INFO_BASE * col_info) const
 		{
-			//JCASSERT(col_info);
-			//void * p = static_cast<const ROW_BASE_TYPE*>(this);
-			//return CreateTypedValue(col_info->m_type, p + m_offset);
 			return NULL;
 		}
 
 	protected:
 		static const CColumnInfoList		m_column_info;
 	};
-
-
 
 	template <class ROW_BASE_TYPE, class ROW_TYPE = CTableRowBase<ROW_BASE_TYPE> >
 	class CTypedTable 
@@ -256,6 +217,40 @@ namespace jcparam
 			return col_list->GetSize();
 		}
 
+		virtual void ToStream(IJCStream * stream, VAL_FORMAT) const
+		{
+			// output head
+			const CColumnInfoList * col_list = ROW_TYPE::GetColumnInfo();
+			JCASSERT(col_list);
+			JCSIZE col_size = col_list->GetSize();
+			for (JCSIZE ii = 0; ii < col_size; ++ii)
+			{
+				const COLUMN_INFO_BASE * col_info = col_list->GetItem(ii);
+				JCASSERT(col_info);
+				stream->Put(col_info->m_name.c_str(), col_info->m_name.length());
+				stream->Put(_T(','));
+			}
+			stream->Put(_T('\n'));
+
+			ROW_TABLE::const_iterator it = m_table.begin();
+			ROW_TABLE::const_iterator endit = m_table.end();
+			for ( ; it!=endit; ++it)
+			{
+				for (JCSIZE ii = 0; ii < col_size; ++ii)
+				{
+					CJCStringT str;
+					const COLUMN_INFO_BASE * col_info = col_list->GetItem(ii);
+					col_info->GetText( (void*)( &(*it) ), str);
+					stream->Put(str.c_str(), str.length());
+					stream->Put(_T(','));
+				}
+				stream->Put(_T('\n'));
+			}
+		}
+
+		virtual void FromStream(IJCStream * str, VAL_FORMAT)
+		{/*DO NOT SUPPORT*/}
+
 		virtual void WriteHeader(FILE * file) 		{}
 
 		virtual void Format(FILE * file, LPCTSTR format)
@@ -269,10 +264,8 @@ namespace jcparam
 			{
 				const COLUMN_INFO_BASE * col_info = col_list->GetItem(ii);
 				JCASSERT(col_info);
-				//stdext::jc_fprintf(file, _T("%s, "), col_info->m_name.c_str());
 				fprintf_s(file, "%S,", col_info->m_name.c_str());
 			}
-			//stdext::jc_fprintf(file, _T("\n"));
 			fprintf_s(file, "\n");
 
 			ROW_ITERATOR it = m_table.begin();
@@ -284,10 +277,8 @@ namespace jcparam
 					CJCStringT str;
 					const COLUMN_INFO_BASE * col_info = col_list->GetItem(ii);
 					col_info->GetText( &(*it), str);
-					//stdext::jc_fprintf(file, _T("%s, "), str.c_str());
 					fprintf_s(file, "%S,", str.c_str());
 				}
-				//stdext::jc_fprintf(file, _T("\n"));
 				fprintf_s(file, "\n");
 			}
 		}
@@ -305,13 +296,6 @@ namespace jcparam
 			else br = __super::QueryInterface(if_name, if_ptr);
 			return br;
 		}
-
-		//void Append(IValue * source)
-		//{
-		//	THIS_TABLE_TYPE * _source = dynamic_cast<THIS_TABLE_TYPE *>(source);
-		//	if (!_source) THROW_ERROR(ERR_PARAMETER, _T("Table type is different"));
-		//	m_table.insert(m_table.end(), _source->m_table.begin(), _source->m_table.end());
-		//}
 
 		virtual void PushBack(IValue * row)
 		{
@@ -332,24 +316,24 @@ namespace jcparam
 		//类型验证
 	};
 
-	class CColumn : virtual public ITable, public CJCInterfaceBase
+	class CColumn : virtual public IVector, public CJCInterfaceBase
 	{
 	public:
 		CColumn(ITable * tab, const COLUMN_INFO_BASE * col_info);
 		~CColumn(void);
 
 	public:
-		virtual void GetValueText(CJCStringT & str) const {};
-		virtual void SetValueText(LPCTSTR str)  {};
-
+		// IValue
+		virtual void GetValueText(CJCStringT & str) const {/* DO NOT SUPPORT*/};
+		virtual void SetValueText(LPCTSTR str)  {/* DO NOT SUPPORT*/};
+		// IVector
 		virtual JCSIZE GetRowSize() const;
 		virtual void GetRow(JCSIZE index, IValue * & row);
-		virtual JCSIZE GetColumnSize() const;
-		//virtual void Append(IValue * source);
-		virtual void GetSubValue(LPCTSTR name, IValue * & val);
+		virtual void PushBack(IValue * row) {/* DO NOT SUPPORT*/};
+
+		virtual void GetSubValue(LPCTSTR name, IValue * & val) {/* DO NOT SUPPORT*/};
 		// 如果name不存在，则插入，否则修改name的值
-		virtual void SetSubValue(LPCTSTR name, IValue * val);
-		virtual void PushBack(IValue * row);
+		virtual void SetSubValue(LPCTSTR name, IValue * val) {/* DO NOT SUPPORT*/};
 
 	protected:
 		ITable * m_parent_tab;
