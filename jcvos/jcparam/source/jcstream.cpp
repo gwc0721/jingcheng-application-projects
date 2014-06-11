@@ -1,13 +1,18 @@
+#include "stdafx.h"
 #include "../include/jcstream.h"
 
 
 #define		BUF_SIZE		4096
 #define		BUF_EXT			1024
 
+LOCAL_LOGGER_ENABLE(_T("jcparam.stream"), LOGGER_LEVEL_ERROR);
+
 ///////////////////////////////////////////////////////////////////////////////
 // -- CStreamFile
+LOG_CLASS_SIZE(CStreamFile)
+
 const wchar_t * CStreamFile::STREAM_EOF = (wchar_t*) -1;
-void CreateStreamFile(const CJCStringT & file_name, jcparam::READ_WRITE rd, jcparam::IStream * & stream)
+void CreateStreamFile(const CJCStringT & file_name, jcparam::READ_WRITE rd, jcparam::IJCStream * & stream)
 {
 	JCASSERT(NULL == stream);
 	FILE * file = NULL;
@@ -15,7 +20,7 @@ void CreateStreamFile(const CJCStringT & file_name, jcparam::READ_WRITE rd, jcpa
 	else						stdext::jc_fopen(&file, file_name.c_str(), _T("w+"));
 
 	if (NULL == file) THROW_ERROR(ERR_PARAMETER, _T("failure on openning file %s"), file_name.c_str() );
-	stream = static_cast<jcparam::IStream*>(new CStreamFile(rd, file));
+	stream = static_cast<jcparam::IJCStream*>(new CStreamFile(rd, file));
 }
 
 CStreamFile::CStreamFile(jcparam::READ_WRITE rd, FILE * file)
@@ -112,7 +117,7 @@ bool CStreamFile::ReadFromFile(void)
 ///////////////////////////////////////////////////////////////////////////////
 // -- CIteratorFile
 
-CReadIterator::CReadIterator(jcparam::IStream* stream)
+CReadIterator::CReadIterator(jcparam::IJCStream* stream)
 	: m_stream(stream)
 {
 	JCASSERT(m_stream);

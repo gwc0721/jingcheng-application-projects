@@ -26,7 +26,7 @@ public:
 	CReadIterator(const CReadIterator & it)	: m_stream(it.m_stream), m_cur(it.m_cur) {};
 	// EOF iterator
 	CReadIterator(void) : m_stream(NULL), m_cur(0) {};
-	CReadIterator(jcparam::IStream* stream);
+	CReadIterator(jcparam::IJCStream* stream);
 	~CReadIterator(void);
 
 public:
@@ -37,7 +37,7 @@ public:
 	operator const wchar_t*() const { return &m_cur; }
 
 protected:
-	jcparam::IStream * m_stream;
+	jcparam::IJCStream * m_stream;
 	wchar_t	m_cur;
 };
 
@@ -45,7 +45,7 @@ protected:
 ///////////////////////////////////////////////////////////////////////////////
 // -- streams
 
-class CStreamStdIn	: public jcparam::IStream
+class CStreamStdIn	: public jcparam::IJCStream
 {
 protected:
 	CStreamStdIn(void);
@@ -72,10 +72,10 @@ class CStreamFile;
 
 
 
-void CreateStreamFile(const CJCStringT & file_name, jcparam::READ_WRITE, jcparam::IStream * & stream);
+void CreateStreamFile(const CJCStringT & file_name, jcparam::READ_WRITE, jcparam::IJCStream * & stream);
 
 
-class CStreamFile : public jcparam::IStream
+class CStreamFile : public jcparam::IJCStream
 	, public CJCInterfaceBase
 {
 public:
