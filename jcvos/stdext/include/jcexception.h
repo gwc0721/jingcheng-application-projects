@@ -67,8 +67,20 @@ namespace stdext
 
 extern "C"
 {
-	void LogException(LPCSTR function, int line, stdext::CJCException & err);
+	void LogException(LPCSTR function, int line, stdext::CJCException & err); 
 }
+
+inline void _NOTSUPPORT(LPCSTR func)
+{
+	LPTSTR __temp_str = new TCHAR[128];
+	stdext::jc_sprintf(__temp_str, 128, _T("function : %S is not supported"), func);
+	stdext::CJCException err(__temp_str, stdext::CJCException::ERR_UNSUPPORT);
+	delete [] __temp_str;
+	throw err;
+}
+
+#define NOT_SUPPORT(T)		_NOTSUPPORT(__FUNCTION__); return T(0);
+#define NOT_SUPPORT0		_NOTSUPPORT(__FUNCTION__);
 
 #define THROW_ERROR(level, ...)   {					\
 		LPTSTR __temp_str = new TCHAR[512];			\
