@@ -52,8 +52,6 @@ protected:
 	~CStreamStdIn(void);
 
 public:
-	//virtual void GetCurIterator(jcparam::READ_WRITE rd, jcparam::IIterator * & it) = 0;
-	//virtual void GetLastIterator(jcparam::READ_WRITE rd, jcparam::IIterator * & it) = 0;
 	virtual void Put(wchar_t)	{};
 	virtual wchar_t Get(void)	{};
 	virtual void Put(const wchar_t * str, JCSIZE len) {};
@@ -65,13 +63,9 @@ protected:
 };
 
 
-class CStreamStdOut;
 
-class CStreamFile;
-
-
-
-
+///////////////////////////////////////////////////////////////////////////////
+// -- file stream
 void CreateStreamFile(const CJCStringT & file_name, jcparam::READ_WRITE, jcparam::IJCStream * & stream);
 
 
@@ -81,12 +75,10 @@ class CStreamFile : public jcparam::IJCStream
 public:
 	CStreamFile(const CJCStringT & file_name);
 	CStreamFile(jcparam::READ_WRITE, FILE * file);
-	~CStreamFile(void);
+	virtual ~CStreamFile(void);
 
 	static const wchar_t * STREAM_EOF;
 public:
-	//virtual void GetCurIterator(jcparam::READ_WRITE rd, jcparam::IIterator * & it);
-	//virtual void GetLastIterator(jcparam::READ_WRITE rd, jcparam::IIterator * & it);
 	virtual void Put(wchar_t);
 	virtual wchar_t Get(void);
 
@@ -109,6 +101,23 @@ protected:
 	char * m_f_last;
 
 	jcparam::READ_WRITE m_rd;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// -- std out stream
+void CreateStreamStdout(jcparam::IJCStream * & stream);
+
+class CStreamStdOut : public CStreamFile
+{
+public:
+	CStreamStdOut(void) : CStreamFile(jcparam::WRITE, stdout) {}
+	virtual ~CStreamStdOut(void) { m_file = NULL; }
+
+	//virtual void Put(wchar_t ch)	{ putwchar(ch); };
+	//virtual wchar_t Get(void)	{ NOT_SUPPORT(wchar_t); };
+	//virtual void Put(const wchar_t * str, JCSIZE len) { };
+	//virtual JCSIZE Get(wchar_t * str, JCSIZE len) { NOT_SUPPORT(JCSIZE); };
+	//virtual void Format(LPCTSTR f, ...) {};
 };
 
 class CStreamString;

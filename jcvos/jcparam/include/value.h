@@ -29,6 +29,7 @@ namespace jcparam
 	template <typename DATATYPE, typename CONVERTOR = CConvertor<DATATYPE> >
 	class CTypedValue 
 		: virtual public IValueFormat
+		, virtual public IVisibleValue
 		, public CJCInterfaceBase
 		, public CTypedValueBase
 	{
@@ -67,6 +68,16 @@ namespace jcparam
 		}
 		void SetData(DATATYPE * pdata) 	{ if (pdata) m_val = *pdata; }
 	public:
+		virtual void ToStream(IJCStream * stream, VAL_FORMAT fmt, DWORD param) const
+		{
+			CJCStringT str;
+			GetValueText(str);
+			stream->Put(str.c_str(), str.length() );
+			//stdext::jc_fprintf(file, _T("%s"), str.c_str());
+		}
+
+		virtual void FromStream(IJCStream * str, VAL_FORMAT) { NOT_SUPPORT0; };
+
 		virtual void WriteHeader(FILE *) {};
 		virtual void Format(FILE * file, LPCTSTR format)
 		{
