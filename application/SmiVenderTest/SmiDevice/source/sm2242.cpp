@@ -274,18 +274,10 @@ JCSIZE CSM2242::GetSystemBlockId(JCSIZE id)
 
 bool CSM2242::GetProperty(LPCTSTR prop_name, UINT & val)
 {
-	//JCASSERT(NULL == val);
-	//if (prop_name == _T("CACHE_BLOCK_NUM") )
-	//{
-	//	stdext::auto_array<BYTE> buf(SECTOR_SIZE);
-	//	ReadSRAM(0xDE00, buf);
-	//	return MAKEWORD(buf[0x10D], buf[0x10C]);
-	//}
 	if ( FastCmpT(CSmiDeviceBase::PROP_WPRO, prop_name) )
 	{
 		stdext::auto_array<BYTE> buf(SECTOR_SIZE);
 		ReadSRAM(0xEE00, buf);
-		//val = jcparam::CTypedValue<UINT>::Create( MAKEWORD(buf[0x39], buf[0x38]) );
 		val = MAKEWORD(buf[0x39], buf[0x38]);
 		return true;
 	}

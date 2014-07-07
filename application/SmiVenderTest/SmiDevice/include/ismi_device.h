@@ -134,3 +134,12 @@ typedef bool (* DEVICE_CREATOR)(IStorageDevice *, ISmiDevice *&);
 
 typedef bool (* DEVICE_RECOGNIZER)(IStorageDevice *, BYTE *);
 
+//namespace smi_dev
+//{
+//	static LPCTSTR PROP_WPRO;			// UINT
+//	static LPCTSTR PROP_CACHE_NUM;		// UINT
+//	static LPCTSTR PROP_INFO_BLOCK;		// UINT, hi word: info 1, lo word: info 2
+//	static LPCTSTR PROP_ISP_BLOCK;		// UINT, hi word: isp 1, lo word: isp 2
+//	static LPCTSTR PROP_INFO_PAGE;		// UINT, hi -> lo: info page, bit map page, orphan page, block index page
+//};
+

@@ -193,7 +193,6 @@ void CSmiDeviceComm::ReadFlashChunk(const CFlashAddress & add, CSpareData & spar
 	CCmdReadFlash	cmd;
 	FlashAddToPhysicalAdd(add, cmd, option);
 	cmd.size() = f_secs;
-	//cmd.mode() |= mode;
 	VendorCommand(cmd, read, buf, f_secs);
 
 	BYTE * spare_buf = buf + m_f_chunk_size * SECTOR_SIZE;
@@ -268,7 +267,6 @@ bool CSmiDeviceComm::GetCardInfo(CCardInfo & card_info)
 	card_info.m_plane = m_plane;
 
 	// physical parameter
-	//card_info.m_p_spp = m_p_page_size;		// sectors per physical page	
 	card_info.m_p_ppb = m_p_page_per_block;		// physical page per physical block
 
 	card_info.m_f_block_num = m_f_block_num;
@@ -293,7 +291,6 @@ void CSmiDeviceComm::SetCardInfo(const CCardInfo & cardinfo, UINT mask)
 
 	m_p_page_per_block = m_f_page_per_block / m_interleave;		// physical page per physical block
 	m_p_chunk_per_page = m_f_chunk_per_page / m_plane;		// (*) physical chunk per page = m_f_chunk_per_page / m_plane
-	//m_p_page_size = m_m_p_chunk_per_page * m_f_chunk_size / m_channel_num;			// (*) sectors per physical page	
 }
 
 
@@ -302,4 +299,21 @@ void CSmiDeviceComm::GetSpare(CSpareData & spare, BYTE * spare_buf)
 	spare.m_id = spare_buf[0];
 	spare.m_hblock = MAKEWORD(spare_buf[2], spare_buf[1]);
 	spare.m_hpage = spare_buf[3];
+}
+	
+bool CSmiDeviceComm::GetProperty(LPCTSTR prop_name, UINT & val)
+{
+	bool br = false;
+	if (  FastCmpT(prop_name, CSmiDeviceBase::PROP_INFO_BLOCK) )
+	{
+		val = MAKELONG(m_info_index[0], m_info_index[1]);
+		return true;
+	}
+	else if (  FastCmpT(prop_name, CSmiDeviceBase::PROP_ISP_BLOCK) )
+	{
+		val = MAKELONG(m_isp_index[0], m_isp_index[1]);
+		return true;
+	}
+	
+	return br;
 }

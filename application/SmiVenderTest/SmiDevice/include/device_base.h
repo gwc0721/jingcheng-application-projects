@@ -92,6 +92,14 @@ public:
 public:
 	static LPCTSTR PROP_WPRO;			// UINT
 	static LPCTSTR PROP_CACHE_NUM;		// UINT
+	static LPCTSTR PROP_INFO_BLOCK;		// UINT, hi word: info 1, lo word: info 2
+	static LPCTSTR PROP_ISP_BLOCK;		// UINT, hi word: isp 1, lo word: isp 2
+	static LPCTSTR PROP_INFO_PAGE;		// UINT
+	static LPCTSTR PROP_ORG_BAD_INFO;		// UINT
+
+	//// UINT, hi word: Combined Orphan Page, lo word: Block Index Page
+	//static LPCTSTR PROP_INFO_DIFFADD_PAGE;
+
 	//static LPCTSTR FBLOCK_NUM;			// UINT
 
 protected:

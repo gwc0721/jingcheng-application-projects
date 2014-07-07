@@ -1,6 +1,10 @@
 ﻿#pragma once
 #include <jcparam.h>
 
+#define SECTOR_SIZE	(512)
+
+#define MAX_CHANNEL		4
+#define MAX_CHUNK		32
 
 class CBinaryBuffer;
 class ISmiDevice;
@@ -156,12 +160,20 @@ public:
 	BYTE	m_erase_count;
 
 	BYTE	m_ecc_code;
-	BYTE	m_error_bit[8];		// error bits for each channel, 0xFF means uncorrectable
+	BYTE	m_error_bit[MAX_CHANNEL];		// error bits for each channel, 0xFF means uncorrectable
 
 	// cache block / mother child / cache info 的序列号
 	BYTE	m_serial_no;		
 };
 
+extern const TCHAR __SPACE[128];
+extern void _local_itohex(LPTSTR str, JCSIZE dig, UINT d);
+extern const TCHAR * SPACE;
+const JCSIZE STR_BUF_LEN  = 80;
+
+extern const JCSIZE ADD_DIGS; 
+extern const JCSIZE HEX_OFFSET;
+extern const JCSIZE ASCII_OFFSET;
 
 ///////////////////////////////////////////////////////////////////////////////
 //----  CBinaryBuffer  --------------------------------------------------------
@@ -174,7 +186,7 @@ public:
 //		- length	(read only)
 
 class CBinaryBuffer
-	: virtual public jcparam::IValueFormat, virtual public jcparam::IValue
+	: virtual public jcparam::IValueFormat, virtual public jcparam::IVisibleValue
 	, public CJCInterfaceBase
 	, public Factory1<JCSIZE, CBinaryBuffer>
 {
@@ -193,6 +205,16 @@ public:
 
 	virtual void GetSubValue(LPCTSTR name, jcparam::IValue * & val);
 	virtual void SetSubValue(LPCTSTR name, jcparam::IValue * val);
+
+	virtual void ToStream(jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt, DWORD param) const;
+	virtual void FromStream(jcparam::IJCStream * str, jcparam::VAL_FORMAT param) { NOT_SUPPORT0; };
+
+protected:
+	// 按照文本格式输出，
+	//  offset：输出偏移量，字节为单位，行对齐（仅16的整数倍有效）
+	//  len：输出长度，字节为单位，行对齐
+	void OutputText(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE len) const;
+	void OutputBinary(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE len) const;
 
 public:
 	BYTE* Lock(void)	{ return m_array; }
@@ -222,6 +244,52 @@ protected:
 };
 
 ///////////////////////////////////////////////////////////////////////////////
+//----  CSectorBuf  --------------------------------------------------------
+class CSectorBuf;
+
+
+class CSectorBuf
+	: virtual public jcparam::IVisibleValue
+	, public CJCInterfaceBase
+{
+	friend bool CreateSectorBuf(FILESIZE sec_add);
+// 固定512 byte
+public:
+	CSectorBuf(FILESIZE sec_add = 0);
+	~CSectorBuf();
+
+public:
+	virtual void GetValueText(CJCStringT & str) const { NOT_SUPPORT0; };
+	virtual void SetValueText(LPCTSTR str)  { NOT_SUPPORT0; };
+
+	virtual void GetSubValue(LPCTSTR name, jcparam::IValue * & val);
+	virtual void SetSubValue(LPCTSTR name, jcparam::IValue * val);
+
+	virtual void ToStream(jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt, DWORD param) const;
+	virtual void FromStream(jcparam::IJCStream * str, jcparam::VAL_FORMAT param) { NOT_SUPPORT0; };
+
+protected:
+	// 按照文本格式输出，
+	//  offset：输出偏移量，字节为单位，行对齐（仅16的整数倍有效）
+	//  len：输出长度，字节为单位，行对齐
+	void OutputText(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE len) const;
+	void OutputBinary(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE len) const;
+
+public:
+	BYTE* Lock(void)	{ return m_array; }
+	const BYTE* Lock(void) const {return m_array;}
+	void Unlock(void) const {};
+
+	//JCSIZE GetSize(void) const { return m_size; }
+
+protected:
+	BYTE 		m_array[SECTOR_SIZE];
+	FILESIZE	m_sec_add;		// always in byte
+};
+
+bool CreateSectorBuf(FILESIZE sec_add, CSectorBuf * & buf);
+
+///////////////////////////////////////////////////////////////////////////////
 //----    ----------------------------------------------------------
 class CAttributeItem
 {
@@ -241,6 +309,18 @@ public:
 typedef jcparam::CTypedTable<CAttributeItem>		CAttributeTable;
 
 
+
+///////////////////////////////////////////////////////////////////////////////
+//----  Error bit  ------------------------------------------------------------
+class CErrorBit
+{	// 每个Page的ErrorBit数
+public:
+	BYTE m_channel_num;
+	BYTE m_chunk_num;
+
+	BYTE m_error_bit[1];
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 //----  CFBlockInfo  ----------------------------------------------------------
 class CFBlockInfo
@@ -259,19 +339,22 @@ public:
 	};
 
 public:
-	CFBlockInfo(void) : m_f_add(), m_spare(), m_id(0)	{ }
+	CFBlockInfo(void);
+	CFBlockInfo(const CFlashAddress & fadd, const CSpareData &spare);
+	~CFBlockInfo(void);
 
-	CFBlockInfo(const CFlashAddress & fadd, const CSpareData &spare) 
-		: m_f_add(fadd), m_spare(spare), m_id(spare.m_id)
-	{}
 	void SetSpare(const CSpareData & spare) {m_spare = spare;}
 	void SetAddress(const CFlashAddress & add)	{m_f_add = add;}
+
+	void CreateErrorBit(BYTE channels, BYTE chunks);
+	void SetErrorBit(const CSpareData & spare, BYTE chunk);
 
 public:
 	WORD		m_id;
 	CFlashAddress	m_f_add;
 	CSpareData		m_spare;
-	static int		m_channel_num;
+	//static int		m_channel_num;
+	CErrorBit	* m_error_bit;
 };
 typedef jcparam::CTableRowBase<CFBlockInfo>		BLOCK_ROW;
 typedef jcparam::CTypedTable<CFBlockInfo>		CBlockTable;
@@ -282,23 +365,23 @@ public:
 	CBitErrColInfo(int id, LPCTSTR name)
 		: jcparam::COLUMN_INFO_BASE(id, jcparam::VT_OTHERS, 0, name) {}
 
-	virtual void GetText(void * row, CJCStringT & str) const
-	{
-		CFBlockInfo * block = reinterpret_cast<CFBlockInfo*>(row);
-		TCHAR _str[8];
-		for (int ii = 0; ii < CFBlockInfo::m_channel_num; ++ii)
-		{
-			stdext::jc_sprintf(_str, _T("%02X "), block->m_spare.m_error_bit[ii]);
-			str += _str;
-		}
-	}
+	virtual void GetText(void * row, CJCStringT & str) const;
+	//{
+	//	CFBlockInfo * block = reinterpret_cast<CFBlockInfo*>(row);
+	//	TCHAR _str[8];
+	//	for (int ii = 0; ii < CFBlockInfo::m_channel_num; ++ii)
+	//	{
+	//		stdext::jc_sprintf(_str, _T("%02X "), block->m_spare.m_error_bit[ii]);
+	//		str += _str;
+	//	}
+	//}
 
-	virtual void CreateValue(BYTE * src, jcparam::IValue * & val) const
-	{
-		CJCStringT str;
-		GetText(src, str);
-		val = jcparam::CTypedValue<CJCStringT>::Create(str);
-	}
+	virtual void CreateValue(BYTE * src, jcparam::IValue * & val) const;
+	//{
+	//	CJCStringT str;
+	//	GetText(src, str);
+	//	val = jcparam::CTypedValue<CJCStringT>::Create(str);
+	//}
 };
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -57,4 +57,6 @@ protected:
 
 protected:
 	static const CSmartAttrDefTab	m_smart_def_2244lt;
+	BYTE m_info_page, m_bitmap_page, m_orphan_page, m_blockindex_page;
+	WORD m_org_bad_info;
 };

@@ -1,7 +1,11 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 
 #include "../include/smi_data_type.h"
 #include "../include/ismi_device.h"
+
+LOCAL_LOGGER_ENABLE(_T("binary_buf"), LOGGER_LEVEL_DEBUGINFO);
+
+//LOG_CLASS_SIZE(CBinaryBuffer)
 
 CBinaryBuffer::CBinaryBuffer(JCSIZE count)
 	: m_array(NULL)
@@ -38,24 +42,26 @@ void _local_itohex(LPTSTR str, JCSIZE dig, UINT d)
 	JCSIZE ii = dig;
 	do
 	{
-		//--ii;
-		str[--ii] = stdext::hex2char(d);
+		str[--ii] = stdext::hex2char(d & 0x0F);
 		d >>= 4;
 	}
 	while (ii > 0);
 }
 
+const TCHAR __SPACE[128] = {
+	_T("        ")_T("        ")_T("        ")_T("        ")
+	_T("        ")_T("        ")_T("        ")_T("        ")
+	_T("        ")_T("        ")_T("        ")_T("        ")
+	_T("        ")_T("        ")_T("        ")_T("       ")
+};
+
+const TCHAR * SPACE = __SPACE + 127;
+//static const JCSIZE STR_BUF_LEN = 80;
+//static const JCSIZE ASCII_OFFSET = 57;
+//static const JCSIZE HEX_OFFSET = 8;
+
 void CBinaryBuffer::Format(FILE * file, LPCTSTR format)
 {
-	static const TCHAR __SPACE[128] = {
-		_T("        ")_T("        ")_T("        ")_T("        ")
-		_T("        ")_T("        ")_T("        ")_T("        ")
-		_T("        ")_T("        ")_T("        ")_T("        ")
-		_T("        ")_T("        ")_T("        ")_T("       ")
-	};
-
-	static const TCHAR * SPACE = __SPACE + 127;
-
 	if ( NULL == format || FastCmpT(EMPTY, format) )	format = _T("text");
 	if ( FastCmpT(_T("bin"), format) )
 	{
@@ -86,7 +92,6 @@ void CBinaryBuffer::Format(FILE * file, LPCTSTR format)
 
 		ii = 0;		// total count
 		JCSIZE  add = offset;
-		static const JCSIZE STR_BUF_LEN = 80;
 		TCHAR	str_buf[STR_BUF_LEN];
 
 		str_buf[STR_BUF_LEN - 3] = _T('\r');
@@ -94,8 +99,7 @@ void CBinaryBuffer::Format(FILE * file, LPCTSTR format)
 		str_buf[STR_BUF_LEN - 1] = 0;
 
 
-		static const JCSIZE ASCII_OFFSET = 57;
-		static const JCSIZE HEX_OFFSET = 6;
+
 		if ( column_offset != 0)
 		{		// Write first line
 			wmemset(str_buf, _T(' '), STR_BUF_LEN - 3);
@@ -112,8 +116,6 @@ void CBinaryBuffer::Format(FILE * file, LPCTSTR format)
 				str2++;
 			}
 			stdext::jc_fprintf(file, str_buf);
-			//stdext::jc_fprintf(file, _T("\n%04X "), (offset & 0xFFF0) );
-			//stdext::jc_fprintf(file, SPACE - column_offset * 3 );
 		}
 
 		while (ii < len)
@@ -132,18 +134,85 @@ void CBinaryBuffer::Format(FILE * file, LPCTSTR format)
 				str2++;
 			}
 			stdext::jc_fprintf(file, _T("%s"), str_buf);
-			//fwrite(str_buf, STR_BUF_LEN, 1, file);
-
-			//for (JCSIZE ii=0, add=offset; ii < len; ++ii, ++add)
-			//{
-			//	if ( (add & 0x0F) == 0x0 ) stdext::jc_fprintf(file, _T("\n%04X "), add);
-			//	stdext::jc_fprintf(file, _T(" %02X"), data[ii]);
-			//}
 		}
 		Unlock();
 		_ftprintf(file, _T("\n"));
 	}
 }
+
+void CBinaryBuffer::ToStream(jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt, DWORD param) const
+{
+	JCSIZE offset = 0, len = 0;
+	if ( fmt & jcparam::VF_PARTIAL )	len = HIWORD(param), offset = LOWORD(param);
+	switch ( fmt & jcparam::VF_FORMAT_MASK )
+	{
+	case jcparam::VF_TEXT:
+		OutputText(stream, offset, len);
+		break;
+	case jcparam::VF_BINARY:
+	case jcparam::VF_DEFAULT:
+		OutputBinary(stream, offset, len);
+		break;
+	}
+}
+
+void CBinaryBuffer::OutputBinary(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE out_len) const
+{
+	JCASSERT(m_array);
+	Lock();
+	JCSIZE len = GetSize();
+
+	stream->Put((const wchar_t*)(m_array), len /2 );
+	Unlock();
+}
+
+void CBinaryBuffer::OutputText(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE out_len) const
+{
+	JCASSERT(m_array);
+
+	// output head line
+	stream->Put(SPACE - HEX_OFFSET + 1, HEX_OFFSET - 1);
+	JCSIZE ii = 0;
+	for (ii=0; ii < 16; ++ii)	stream->Format(_T("--%01X"), ii);
+	stream->Put(_T('\n'));
+
+	// output data
+	Lock();
+
+	TCHAR	str_buf[STR_BUF_LEN];
+	str_buf[STR_BUF_LEN - 3] = _T('\n');
+	str_buf[STR_BUF_LEN - 2] = 0;
+	str_buf[STR_BUF_LEN - 1] = 0;
+
+	// 仅支持行对齐
+	JCSIZE add_offset = offset & 0xFFFFFFF0;
+	JCSIZE add = add_offset;
+
+	ii = 0;
+	JCSIZE len = min (GetSize() - add_offset, out_len);
+
+	while (ii < len)
+	{	// loop for line
+		wmemset(str_buf, _T(' '), STR_BUF_LEN - 3);
+		wmemset(str_buf + ASCII_OFFSET, _T('.'), 16);
+
+		// output address
+		_local_itohex(str_buf, 4, add);
+		LPTSTR  str1 = str_buf + HEX_OFFSET;
+		LPTSTR	str2 = str_buf + ASCII_OFFSET;
+
+		for (int cc = 0; (cc<0x10) && (ii<len) ; ++ii, ++add, ++cc)
+		{
+			BYTE dd = m_array[ii];
+			_local_itohex(str1, 2, dd);	str1 += 3;
+			if ( (0x20 <= dd) && (dd < 0x7F) )	str2[0] = dd;
+			str2++;
+		}
+		stream->Put(str_buf, STR_BUF_LEN-2);
+	}
+	Unlock();
+}
+
 
 void CBinaryBuffer::GetSubValue(LPCTSTR name, jcparam::IValue * & val)
 {
@@ -180,6 +249,8 @@ void CBinaryBuffer::SetBlockAddress(FILESIZE add)
 {
 	m_address = new CBlockAddress(add);
 }
+
+
 
 template <> IAddress::ADDRESS_TYPE CTypedAddress<JCSIZE>::GetType()
 {
