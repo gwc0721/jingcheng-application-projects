@@ -146,7 +146,7 @@ public:
 
 // ILoopOperate
 public:
-	void Init(void);
+	virtual bool Init(void);
 	bool InvokeOnce(jcscript::IOutPort * outport);
 
 protected:
@@ -199,7 +199,7 @@ public:
 	//virtual bool IsRunning(void);
 
 protected:
-	void Init(void);
+	bool Init(void);
 
 public:
 	CJCStringT m_file_name;

@@ -45,20 +45,20 @@ protected:
 	ISmiDevice * m_dev;
 	CJCStringT m_device_name;
 
-	jcparam::IValue * m_result;
 
 
 //--命令解析与执行
 protected:
 	// 解析并执行一条命令
 	bool ParseCommand(LPCTSTR first, LPCTSTR last);
+
+	bool ParseUiCmd(LPCTSTR str, JCSIZE len);
+
 	bool RunScript(LPCTSTR file_name);
 	void ShowHelpMessage() const;
 	virtual void OnError(JCSIZE line, JCSIZE column, LPCTSTR msg);
 	void GetVersionInfo(void);
-	bool SmartShowVar(jcparam::IValue * var);
 
-	UINT m_main_ver, m_sub_ver;
 
 
 public:
@@ -72,18 +72,16 @@ public:
 	virtual bool Reset(void) {return false;}; 
 	virtual LPCTSTR name() const {return _T("default");}
 
-protected:
-	jcscript::IAtomOperate	* m_cur_script;
-
-
-protected:
-	bool OutputVariable(FILE * file, jcparam::IValue * var_val, LPCTSTR type);
+//protected:
+//	bool OutputVariable(FILE * file, jcparam::IValue * var_val, LPCTSTR type);
 
 
 //-- 命令行
 protected:
+	UINT m_main_ver, m_sub_ver;
 	// 命令行参数
 	jcparam::CArguSet		m_arg_set;		// argument for process command line
+	jcscript::IAtomOperate	* m_cur_script;
 	
 	// 输出编译的中间结果
 	CJCStringT	m_compile_log_fn;
@@ -92,13 +90,20 @@ protected:
 
 	static const TCHAR INDENTATION[];
 
+	// Smart show
+protected:
+	bool SmartShowVar(jcparam::IValue * var);
+	JCSIZE		m_sshw_offset;
+	JCSIZE		m_sshw_increase;
+	jcparam::IValue * m_result;
+
 
 	// for command tokenize and invoke
-protected:
-	static const TCHAR CMD_KEY_EXIT[];
-	static const TCHAR CMD_KEY_SCANDEVICE[];
-	static const TCHAR CMD_KEY_ASSIGN[];
-	static const TCHAR CMD_KEY_SAVE[];
-	static const TCHAR CMD_KEY_DUMMY_DEVICE[];
+//protected:
+//	static const TCHAR CMD_KEY_EXIT[];
+//	static const TCHAR CMD_KEY_SCANDEVICE[];
+//	static const TCHAR CMD_KEY_ASSIGN[];
+//	static const TCHAR CMD_KEY_SAVE[];
+//	static const TCHAR CMD_KEY_DUMMY_DEVICE[];
 };
 

@@ -49,7 +49,7 @@ CPluginTrace::BusHound::~BusHound(void)
 	}
 }
 
-void CPluginTrace::BusHound::Init(void)
+bool CPluginTrace::BusHound::Init(void)
 {
 	JCASSERT(NULL == m_src_file);
 	if (!m_line_buf) m_line_buf = new char[MAX_LINE_BUF];
@@ -59,7 +59,7 @@ void CPluginTrace::BusHound::Init(void)
 	// read header
 	while ( 1 )
 	{
-		if ( fgets(m_line_buf, MAX_LINE_BUF, m_src_file) == NULL) return;
+		if ( fgets(m_line_buf, MAX_LINE_BUF, m_src_file) == NULL) return false;
 		m_line_num ++;
 		if ( strstr(m_line_buf, "Phase") != m_line_buf )	continue;
 		// 找到各列的位置
@@ -79,6 +79,7 @@ void CPluginTrace::BusHound::Init(void)
 	fgets(m_line_buf, MAX_LINE_BUF, m_src_file);
 	m_line_num ++;
 	m_init = true;
+	return true;
 }
 
 // 读取文件直到解析出一个phase

@@ -27,7 +27,7 @@ public:
 	bool InvokeOnce(jcscript::IOutPort * outport);
 
 protected:
-	void Init(void);
+	virtual bool Init(void);
 	void ParseLine(const CJCStringA & line, JCSIZE length);
 
 public:
@@ -87,7 +87,7 @@ public:
 	virtual ~BusHound(void);
 
 public:
-	virtual void Init(void);
+	virtual bool Init(void);
 	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
 	bool InvokeOnce(jcscript::IOutPort * outport);
 
@@ -180,7 +180,7 @@ public:
 public:
 	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
 protected:
-	void Init(jcscript::IOutPort * outport);
+	bool Init(jcscript::IOutPort * outport);
 
 
 public:
@@ -208,7 +208,7 @@ public:
 public:
 	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
 protected:
-	void Init(void);
+	virtual bool Init(void);
 	bool ParseLine(CFis & fis);
 
 public:

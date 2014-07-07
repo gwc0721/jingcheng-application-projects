@@ -43,7 +43,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="$(VLD_INC_DIR);$(BOOST_INC_DIR);..\..\..\jcvos\stdext;..\..\..\jcvos\script_engine;..\..\..\jcvos\jcparam;..\SmiDevice;..\FerriSimulator"
+				AdditionalIncludeDirectories="&quot;$(VLD_INC_DIR)&quot;;&quot;$(BOOST_INC_DIR)&quot;;..\..\..\jcvos\stdext;..\..\..\jcvos\script_engine;..\..\..\jcvos\jcparam;..\SmiDevice;..\FerriSimulator;..\feature_encode"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
@@ -502,10 +502,6 @@
 			</File>
 			<File
 				RelativePath=".\source\feature_spare_pool.h"
-				>
-			</File>
-			<File
-				RelativePath=".\source\file_table.h"
 				>
 			</File>
 			<File
