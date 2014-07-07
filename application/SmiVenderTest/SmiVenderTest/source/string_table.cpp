@@ -1,10 +1,10 @@
 #include "application.h"
 
-const TCHAR CSvtApplication::CMD_KEY_EXIT[] = _T("exit");
-const TCHAR CSvtApplication::CMD_KEY_SCANDEVICE[] = _T("scandev");
-const TCHAR CSvtApplication::CMD_KEY_ASSIGN[] = _T("#assign");
-const TCHAR CSvtApplication::CMD_KEY_SAVE[] = _T("save");
-const TCHAR CSvtApplication::CMD_KEY_DUMMY_DEVICE[] = _T("dummydev");
+//const TCHAR CSvtApplication::CMD_KEY_EXIT[] = _T("exit");
+//const TCHAR CSvtApplication::CMD_KEY_SCANDEVICE[] = _T("scandev");
+//const TCHAR CSvtApplication::CMD_KEY_ASSIGN[] = _T("#assign");
+//const TCHAR CSvtApplication::CMD_KEY_SAVE[] = _T("save");
+//const TCHAR CSvtApplication::CMD_KEY_DUMMY_DEVICE[] = _T("dummydev");
 
 /*
 #include "plugin_test.h"

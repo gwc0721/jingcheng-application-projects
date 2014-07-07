@@ -144,7 +144,7 @@ public:
 	int test;
 };
 
-void CPluginTrace::BusDoctor::Init(void)
+bool CPluginTrace::BusDoctor::Init(void)
 {
 	JCASSERT(NULL == m_src_file);
 	if (!m_line_buf) m_line_buf = new char[SRC_READ_SIZE + SRC_BACK_SIZE];
@@ -159,6 +159,7 @@ void CPluginTrace::BusDoctor::Init(void)
 	m_first = m_last;
 
 	m_init = true;
+	return true;
 }
 
 static busdoctor_gm<const char *> gm;

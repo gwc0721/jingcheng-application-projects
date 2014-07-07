@@ -54,8 +54,6 @@ public:
 
 class CPluginSimulator::RandomPatten
 	: public virtual jcscript::IFeature
-	//, virtual public jcscript::ILoopOperate
-	//, public CLoopFeatureBase<CAtaTrace>
 	, public CFeatureBase<CPluginSimulator::RandomPatten, CPluginSimulator>
 	, public CJCInterfaceBase
 {
@@ -67,7 +65,7 @@ public:
 
 public:
 	virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const;
-	virtual void Init(void);
+	virtual bool Init(void);
 	virtual bool InvokeOnce(void);
 
 public:

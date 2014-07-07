@@ -161,7 +161,7 @@ bool CPluginTrace::ParserTrace::ParsePayload(const char * &first, const char * l
 	return true;
 }
 
-void CPluginTrace::ParserTrace::Init(void)
+bool CPluginTrace::ParserTrace::Init(void)
 {
 	// 初始化文件缓存
 	JCASSERT(NULL == m_src_file);
@@ -183,6 +183,7 @@ void CPluginTrace::ParserTrace::Init(void)
 	// Next line
 	for ( ; (*m_first != '\n' && m_first != m_last); ++m_first);
 	m_line ++;
+	return true;
 }
 
 using namespace boost::phoenix;

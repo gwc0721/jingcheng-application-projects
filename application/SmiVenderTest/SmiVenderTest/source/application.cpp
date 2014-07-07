@@ -26,6 +26,7 @@ CSvtApplication::CSvtApplication(void)
 	, m_cur_script(NULL)
 	, m_main_ver(0), m_sub_ver(0)
 	, m_result(NULL)
+	, m_sshw_offset(0)
 {
 	JCASSERT(m_app == NULL);
 	m_app = this;
@@ -63,6 +64,11 @@ void CSvtApplication::RegisterPlugins(void)
 	cat = new CCategoryComm(_T("device"));
 	cat->RegisterFeatureT<CFeature2246ReadCount>();
 	cat->RegisterFeatureT<CDeviceReadSpare>();
+	cat->RegisterFeatureT<CDeviceReadFlash>();
+	cat->RegisterFeatureT<CDeviceOriginalBad>();
+	cat->RegisterFeatureT<CDevicePhOriginalBad>();
+	cat->RegisterFeatureT<CDeviceDiffAdd>();
+
 	m_plugin_manager->RegistPlugin(cat);
 	cat->Release(), cat = NULL;
 
@@ -171,7 +177,7 @@ bool CSvtApplication::RunScript(LPCTSTR file_name)
 		if (m_cur_script)	m_cur_script->Release(), m_cur_script= NULL;
 
 #if USING_STREAM
-		stdext::auto_interface<jcparam::IStream>	stream;
+		stdext::auto_interface<jcparam::IJCStream>	stream;
 		CreateStreamFile(file_name, jcparam::READ, stream);
 
 		jcscript::CSyntaxParser	syntax_parser(
@@ -182,22 +188,14 @@ bool CSvtApplication::RunScript(LPCTSTR file_name)
 #else
 		if ( _tfopen_s(&script_file, file_name, _T("r") ) != 0)
 			THROW_ERROR(ERR_PARAMETER, _T("failure on openning script %s"), file_name);
-		//jcscript::CSyntaxParser	syntax_parser(
-		//	static_cast<jcscript::IPluginContainer*>(m_plugin_manager),
-		//	static_cast<jcscript::LSyntaxErrorHandler*>(this) );
-		//syntax_parser.Source(script_file);
 		bool br = jcscript::Parse(
 			static_cast<jcscript::IPluginContainer*>(m_plugin_manager),
 			static_cast<jcscript::LSyntaxErrorHandler*>(this),
 			script_file, m_cur_script);
 #endif	// USING_STREAM
 
-
-		//syntax_parser.MatchScript(m_cur_script);
-
 		OutCompileLog(m_cur_script);
 
-		//if ( (!m_compile_only) && (!syntax_parser.GetError()) )
 		if ( (!m_compile_only) && (!br) )
 		{
 			LOG_DEBUG(_T("Start invoking script") );
@@ -229,6 +227,38 @@ bool CSvtApplication::RunScript(LPCTSTR file_name)
 	return true;
 }
 
+bool CSvtApplication::ParseUiCmd(LPCTSTR str, JCSIZE len)
+{
+	if (!m_result) return false;
+
+	if ( _tcscmp(str + 1, _T("-") ) == 0 )
+	{
+		if (m_result) m_result->Release(), m_result = NULL;
+		stdext::jc_printf(_T("result is cleard\n"));
+	}
+	else if ( _tcscmp(str + 1, _T(":") ) == 0 )
+	{
+		if (m_sshw_offset >= m_sshw_increase)	m_sshw_offset -= m_sshw_increase;
+		else									m_sshw_offset = 0;
+		SmartShowVar(m_result);
+	}
+	else if ( _tcscmp(str + 1, _T(">") ) == 0 )
+	{
+		SmartShowVar(m_result);
+	}
+	else if ( _tcscmp(str + 1, _T("<") ) == 0 )
+	{
+		if (m_sshw_offset >= 2*m_sshw_increase)	m_sshw_offset -= 2*m_sshw_increase;
+		else									m_sshw_offset = 0;
+		SmartShowVar(m_result);
+	}
+	else
+	{
+		stdext::jc_printf(_T("unknow ui command %s\n"), str + 1);
+	}
+	return true;
+}
+
 bool CSvtApplication::SmartShowVar(jcparam::IValue * var)
 {
 	JCASSERT(var);
@@ -239,31 +269,39 @@ bool CSvtApplication::SmartShowVar(jcparam::IValue * var)
 	jcparam::IValueFormat * val_format = dynamic_cast<jcparam::IValueFormat *>(var);
 	if (NULL == val_format) return false;
 
-	if ( buf = dynamic_cast<CBinaryBuffer *>(var) )
-	{	// for binary data
 
+	stdext::auto_interface<jcparam::IJCStream>	stream;
+	CreateStreamStdout(stream);
+
+
+	vec = dynamic_cast<jcparam::IVector *>(var);
+	JCASSERT(vec);
+
+	// for table / vector
+	val_format->WriteHeader(stdout);
+	//printf("\n");
+	JCSIZE row_size = vec->GetRowSize();
+	JCSIZE show_rows = 0;
+
+	if ( m_sshw_offset != 0 ) stream->Put(_T("...\n"), 4);
+
+	while (m_sshw_offset < row_size)
+	{
+		AUTO_IVAL row(NULL);
+		vec->GetRow(m_sshw_offset, row);
+		m_sshw_offset ++;
+
+		if (row.d_cast<CSectorBuf*>() )	m_sshw_increase = 1;
+		else								m_sshw_increase = 32;
+
+		jcparam::IVisibleValue * vv = row.d_cast<jcparam::IVisibleValue *>();
+		if (vv)	vv->ToStream(stream, jcparam::VAL_FORMAT(jcparam::VF_PARTIAL | jcparam::VF_TEXT), 0);
+		stream->Put(_T('\n'));
+		show_rows ++;
+		if (show_rows >= m_sshw_increase) break;
 	}
-	else if ( vec = dynamic_cast<jcparam::IVector *>(var) )
-	{	// for table / vector
-		val_format->WriteHeader(stdout);
-		printf("\n");
-		JCSIZE count = vec->GetRowSize();
-		if (count > 20) count = 20;
-		for (JCSIZE ii =0; ii<count; ++ii)
-		{
-			AUTO_IVAL row(NULL);
-			vec->GetRow(ii, row);
-			jcparam::IValueFormat* f= row.d_cast<jcparam::IValueFormat*>();
-			if (f) f->Format(stdout, _T("text"));
-			printf("\n");
-		}
-	}
-	else
-	{	// for value
-		//var_in->QueryInterface(jcparam::IF_NAME_VALUE_FORMAT, format);
-		val_format->Format(stdout, _T("text"));
-		stdext::jc_fprintf(stdout, _T("\n"));
-	}
+
+	if ( m_sshw_offset < row_size ) stream->Put(_T("...\n"), 4);
 
 	return true;
 }
@@ -275,11 +313,6 @@ bool CSvtApplication::ParseCommand(LPCTSTR first, LPCTSTR last)
 	{
 		if (m_cur_script)	m_cur_script->Release(),	m_cur_script= NULL;
 
-		//jcscript::CSyntaxParser	syntax_parser(
-		//	static_cast<jcscript::IPluginContainer*>(m_plugin_manager),
-		//	static_cast<jcscript::LSyntaxErrorHandler*>(this) );
-		//syntax_parser.Parse(first, last);
-		//syntax_parser.MatchScript(m_cur_script);
 		bool br = jcscript::Parse(
 			static_cast<jcscript::IPluginContainer*>(m_plugin_manager),
 			static_cast<jcscript::LSyntaxErrorHandler*>(this),
@@ -303,8 +336,10 @@ bool CSvtApplication::ParseCommand(LPCTSTR first, LPCTSTR last)
 				m_plugin_manager->GetVariable(var);
 				if (var) var->SetSubValue(_T("res"), m_result);
 				// show res
+				m_sshw_offset = 0;
 				SmartShowVar(m_result);
 			}
+			m_cur_script->Release(), m_cur_script = NULL;
 		}
 	}
 	catch (std::exception & err)
@@ -352,11 +387,20 @@ int CSvtApplication::Run(void)
 			_getts_s(line_buf, MAX_LINE_BUF-1);
 			JCSIZE len = _tcslen(line_buf);
 			JCASSERT(len < MAX_LINE_BUF -1);
-			line_buf[len++] = _T('\n');
-			line_buf[len] = 0;
+			if (len <= 0) continue;
 
-			LPCTSTR first = line_buf, last = line_buf + len;
-			ParseCommand(first, last);
+			if (line_buf[0] == _T(':') )
+			{
+				ParseUiCmd(line_buf, len);
+			}
+			else
+			{
+				line_buf[len++] = _T('\n');
+				line_buf[len] = 0;
+
+				LPCTSTR first = line_buf, last = line_buf + len;
+				ParseCommand(first, last);
+			}
 		}
 	}
 	catch(jcscript::CExitException)

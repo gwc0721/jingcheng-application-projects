@@ -42,7 +42,7 @@ public:
 
 public:
 	virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const;
-	virtual void Init(void);
+	virtual bool Init(void);
 	virtual bool InvokeOnce(void);
 
 protected:
@@ -91,7 +91,7 @@ public:
 	virtual bool GetResult(jcparam::IValue * & val);
 	virtual bool Invoke(void);
 public:
-	void Init(void); 
+	virtual bool Init(void); 
 
 public:
 	FILESIZE	m_lba;
@@ -119,7 +119,7 @@ public:
 
 public:
 	virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const;
-	virtual void Init(void);
+	virtual bool Init(void);
 	virtual bool InvokeOnce(void);
 
 protected:
