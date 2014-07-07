@@ -148,6 +148,7 @@ namespace jcscript
 		static const TCHAR m_name[];
 
 		bool	m_state_op_run_more;		// default true
+		bool	m_init;			// 第一次强制运行
 	};
 
 ///////////////////////////////////////////////////////////////////////////////

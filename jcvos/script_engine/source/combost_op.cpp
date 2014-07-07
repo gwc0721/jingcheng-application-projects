@@ -75,7 +75,7 @@ void CLoopVarOp::Init(void)
 	JCASSERT(NULL == m_table);		// 不能重复调用
 	jcparam::IValue * val = NULL;
 	m_src[0]->GetResult(val);
-	m_table = dynamic_cast<jcparam::ITable*>(val);
+	m_table = dynamic_cast<jcparam::IVector*>(val);
 	if (!m_table) 
 	{
 		if (val) val->Release();

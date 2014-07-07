@@ -92,7 +92,7 @@ public:
 	typedef CFeatureBase<F_TYPE, P_TYPE>  _BASE_TYPE;
 
 protected:
-	CFeatureBase(void) {}
+	CFeatureBase(void) : m_init_(false) {}
 	~CFeatureBase(void)  {}
 
 public:
@@ -127,11 +127,22 @@ public:
 
 	virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const {};
 	virtual bool Clean(void) {return false; };
+	virtual bool Init(void) {return false; };
+	virtual bool InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * outport) {return false;}
+
+	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport)
+	{
+		if (!m_init_) m_init_ = Init();
+		bool br = InternalInvoke(row, outport);
+		if (!br) m_init_ = false;
+		return br;
+	}
 
 protected:
 	static CParamDefTab	m_param_def_tab;
 	static LPCTSTR m_feature_name;
 	P_TYPE		* m_plugin;
+	bool m_init_;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

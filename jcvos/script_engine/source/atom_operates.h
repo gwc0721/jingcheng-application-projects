@@ -98,7 +98,7 @@ namespace jcscript
 		static const TCHAR m_name[];
 
 	protected:
-		jcparam::ITable		* m_table;	
+		jcparam::IVector		* m_table;	
 		IOutPort			* m_outport;
 
 		JCSIZE	m_table_size;
@@ -256,6 +256,8 @@ namespace jcscript
 		virtual UINT GetProperty(void) const {return OPP_LOOP_SOURCE;};
 		virtual UINT GetDependency(void) {return m_dependency +1;}
 
+	//public:
+	//	bool IsInportEmpty(void) { return m_src[0]->IsEmpty(); }
 	public:
 		static const TCHAR m_name[];
 
