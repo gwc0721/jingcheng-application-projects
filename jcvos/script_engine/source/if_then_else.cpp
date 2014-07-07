@@ -42,6 +42,8 @@ void CSequenceOp::AddOp(IAtomOperate * op)
 
 bool CSequenceOp::InvokeOpList(void)
 {
+	if (m_op_list.empty() ) return false;
+
 	bool running = true;
 	OP_LIST::iterator it = m_op_list.begin(), endit = m_op_list.end();
 	for (; it != endit; ++it)
@@ -192,6 +194,7 @@ CSingleSt::CSingleSt(CSequenceOp * super)
 	, m_property(0)
 	, m_state_op(NULL)
 	, m_state_op_run_more(false)
+	, m_init(true)
 {
 }
 
@@ -247,15 +250,19 @@ bool CSingleSt::Invoke(void)
 	//			 (4) filter的invoke函数被设计成可重入的，
 	//			 (5) 如果invoke返回true，则表示还需要继续来处理当前的inport，下次执行时以NULL作为inport
 	//			 (6) 如果invoke返回false则表示不需要继续处理。下次执行时，以下一个inport作为输入
+
+	// combo的第一个st的第一次强制运行。
+	if (m_init && m_op_list.empty() ) m_state_op_run_more = true;
+	m_init = false;
+
 	if (!m_state_op_run_more)
 	{
-		if (! InvokeOpList() )
-		{
-			LOG_SCRIPT_OUT(_T("failure on non-state op"));
-			return false;
-		}
+		// 有新的数据进入，重置state
+		if ( InvokeOpList() )		m_state_op_run_more = true;
+		else	LOG_SCRIPT_OUT(_T("failure on non-state op"));
 	}	
-	while (1)
+
+	while (m_state_op_run_more)
 	{
 		JCASSERT(m_state_op);
 		if ( ! m_outport.empty() )
@@ -264,13 +271,9 @@ bool CSingleSt::Invoke(void)
 			return true;
 		}
 		m_state_op_run_more = m_state_op->Invoke();
-		if (!m_state_op_run_more)
-		{
-			LOG_SCRIPT_OUT(_T("state op no more"));
-			return false;
-		}
 	}
-	return true;
+	if ( m_outport.empty() ) return false;
+	else return true;
 }
 
 bool CSingleSt::PopupResult(jcparam::IValue * & val)

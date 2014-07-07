@@ -182,11 +182,11 @@ bool CSaveToFileOp::Invoke(void)
 		{
 			jcparam::ITable * tab = NULL;
 			row->CreateTable(tab);
-			tab->ToStream(m_stream, jcparam::VF_HEAD);
+			tab->ToStream(m_stream, jcparam::VF_HEAD, 0);
 			tab->Release();
 		}
 	}
-	vval->ToStream(m_stream, jcparam::VF_DEFAULT);
+	vval->ToStream(m_stream, jcparam::VF_DEFAULT, 0);
 	m_stream->Put(_T('\n'));
 
 	//}
