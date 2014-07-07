@@ -7,11 +7,17 @@
 
 LOCAL_LOGGER_ENABLE(_T("jcparam.stream"), LOGGER_LEVEL_ERROR);
 
+
+
 ///////////////////////////////////////////////////////////////////////////////
-// -- CStreamFile
+// -- file stream
 LOG_CLASS_SIZE(CStreamFile)
 
 const wchar_t * CStreamFile::STREAM_EOF = (wchar_t*) -1;
+
+
+
+
 void CreateStreamFile(const CJCStringT & file_name, jcparam::READ_WRITE rd, jcparam::IJCStream * & stream)
 {
 	JCASSERT(NULL == stream);
@@ -96,7 +102,13 @@ JCSIZE CStreamFile::Get(wchar_t * str, JCSIZE len)
 	return read_len;
 }
 
-void CStreamFile::Format(LPCTSTR f, ...) {}
+void CStreamFile::Format(LPCTSTR fmt, ...) 
+{
+	va_list argptr;
+	va_start(argptr, fmt);
+	
+	_vftprintf_s(m_file, fmt, argptr);
+}
 
 
 bool CStreamFile::ReadFromFile(void)
@@ -112,6 +124,15 @@ bool CStreamFile::ReadFromFile(void)
 	JCSIZE conv_size = stdext::Utf8ToUnicode(m_first, BUF_SIZE, file_buf, read_size);
 	m_last = m_first + conv_size;
 	return true;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// -- stream stdout
+void CreateStreamStdout(jcparam::IJCStream * & stream)
+{
+	JCASSERT(stream == NULL);
+	stream = new CStreamStdOut;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

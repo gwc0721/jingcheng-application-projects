@@ -88,14 +88,17 @@ namespace jcparam
 	enum VAL_FORMAT
 	{
 		VF_DEFAULT = 0, 
-		VF_TEXT, VF_BINARY,
-		VF_HEAD = 0x80000000,
+		VF_FORMAT_MASK = 0xF0000000,
+		VF_TEXT =	0x10000000, 
+		VF_BINARY = 0x20000000,
+		VF_HEAD =	0x08000000,
+		VF_PARTIAL= 0x00800000,
 	};
 
-	class IVisibleValue : /*virtual*/ public IValue
+	class IVisibleValue : virtual public IValue
 	{
 	public:
-		virtual void ToStream(IJCStream * str, VAL_FORMAT) const = 0;
+		virtual void ToStream(IJCStream * stream, VAL_FORMAT fmt, DWORD param) const = 0;
 		virtual void FromStream(IJCStream * str, VAL_FORMAT) = 0;
 	};
 

@@ -139,9 +139,9 @@ bool CGeneralRow::CreateTable(ITable * & tab)
 	return true;
 }
 
-void CGeneralRow::ToStream(jcparam::IJCStream * str, VAL_FORMAT) const
+void CGeneralRow::ToStream(IJCStream * stream, VAL_FORMAT, DWORD) const
 {
-	str->Put(m_data, m_data_len);
+	stream->Put(m_data, m_data_len);
 }
 
 void CGeneralRow::FromStream(jcparam::IJCStream * str, VAL_FORMAT)
@@ -239,7 +239,7 @@ JCSIZE CGeneralTable::GetColumnSize() const
 	return m_col_info->GetColNum();
 }
 
-void CGeneralTable::ToStream(IJCStream * stream, VAL_FORMAT fmt) const
+void CGeneralTable::ToStream(IJCStream * stream, VAL_FORMAT fmt, DWORD param) const
 {
 	JCASSERT(m_col_info);
 	m_col_info->OutputHead(stream);
@@ -248,7 +248,7 @@ void CGeneralTable::ToStream(IJCStream * stream, VAL_FORMAT fmt) const
 
 	for ( ; it != endit; ++it)
 	{
-		(*it)->ToStream(stream, fmt);
+		(*it)->ToStream(stream, fmt, param);
 	}
 
 }

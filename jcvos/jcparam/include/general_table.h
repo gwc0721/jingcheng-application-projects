@@ -56,7 +56,7 @@ namespace jcparam
 		virtual bool CreateTable(ITable * & tab);
 
 		// IVisibleValue
-		virtual void ToStream(IJCStream * str, VAL_FORMAT) const;
+		virtual void ToStream(IJCStream * stream, VAL_FORMAT format, DWORD param) const;
 		virtual void FromStream(IJCStream * str, VAL_FORMAT);
 
 	protected:
@@ -108,7 +108,7 @@ namespace jcparam
 		//virtual void Append(IValue * source) {};
 
 		// IVisibleValue
-		virtual void ToStream(IJCStream * str, VAL_FORMAT) const;
+		virtual void ToStream(IJCStream * stream, VAL_FORMAT format, DWORD param) const;
 		virtual void FromStream(IJCStream * str, VAL_FORMAT);
 
 	public:

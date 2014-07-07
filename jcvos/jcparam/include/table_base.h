@@ -50,7 +50,7 @@ namespace jcparam
 	template <class ROW_BASE_TYPE>
 	class CTableRowBase 
 		: public ROW_BASE_TYPE
-		, /*virtual*/ public ITableRow
+		, public ITableRow
 		, public CJCInterfaceBase
 	{
 	public:
@@ -125,7 +125,7 @@ namespace jcparam
 
 		static const CColumnInfoList * GetColumnInfo(void) { return &m_column_info; }
 
-		virtual void ToStream(IJCStream * stream, VAL_FORMAT) const
+		virtual void ToStream(IJCStream * stream, jcparam::VAL_FORMAT, DWORD) const
 		{
 			JCSIZE col_size = GetColumnSize();
 			const ROW_BASE_TYPE * row = static_cast<const ROW_BASE_TYPE*>(this);
@@ -141,7 +141,7 @@ namespace jcparam
 			}
 		}
 
-		virtual void FromStream(IJCStream * str, VAL_FORMAT)
+		virtual void FromStream(IJCStream * str, jcparam::VAL_FORMAT)
 		{/*DO NOT SUPPORT*/}
 	
 	protected:
@@ -217,7 +217,7 @@ namespace jcparam
 			return col_list->GetSize();
 		}
 
-		virtual void ToStream(IJCStream * stream, VAL_FORMAT) const
+		virtual void ToStream(IJCStream * stream, jcparam::VAL_FORMAT, DWORD) const
 		{
 			// output head
 			const CColumnInfoList * col_list = ROW_TYPE::GetColumnInfo();
@@ -248,7 +248,7 @@ namespace jcparam
 			}
 		}
 
-		virtual void FromStream(IJCStream * str, VAL_FORMAT)
+		virtual void FromStream(IJCStream * str, jcparam::VAL_FORMAT)
 		{/*DO NOT SUPPORT*/}
 
 		virtual void WriteHeader(FILE * file) 		{}
