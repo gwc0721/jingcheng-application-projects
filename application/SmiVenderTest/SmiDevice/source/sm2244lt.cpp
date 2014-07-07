@@ -37,8 +37,9 @@ const CSmartAttrDefTab CLT2244::m_smart_def_2244lt(CSmartAttrDefTab::RULE()
 
 CLT2244::CLT2244(IStorageDevice * dev)
 	: CSM2242(dev)
+	, m_info_page(0xFF), m_bitmap_page(0xFF)
+	, m_orphan_page(0xFF), m_blockindex_page(0xFF)
 {
-	//Init2244();
 }
 
 bool CLT2244::CreateDevice(IStorageDevice * storage, ISmiDevice *& smi_device)
@@ -86,7 +87,7 @@ bool CLT2244::Initialize(void)
 	LOG_STACK_TRACE();
 	BYTE bb = 0;
 	// Read Flash ID
-	stdext::auto_array<BYTE> buf(SECTOR_SIZE);
+	stdext::auto_array<BYTE> buf(SECTOR_SIZE * 2);
 	memset(buf, 0, SECTOR_SIZE);
 	ReadFlashID(buf, 1);
 
@@ -94,7 +95,7 @@ bool CLT2244::Initialize(void)
 	m_info_block_valid = (0x01 == buf[0x01]);
 
 	m_mu = buf[0];
-	//m_f_block_num = m_mu * 256;
+
 	// Check channels and CE
 	m_channel_num = 0;
 	DWORD flash_id;
@@ -112,6 +113,8 @@ bool CLT2244::Initialize(void)
 	m_isp_index[0] = MAKEWORD(buf[0x147], buf[0x146]);
 	m_isp_index[1] = MAKEWORD(buf[0x149], buf[0x148]);
 
+	m_org_bad_info = MAKEWORD(buf[0x14B], buf[0x14A]);
+
 	bb = buf[2];
 	if (bb & 0x01)			m_f_chunk_size = 4;
 	else if (bb & 0x02)		m_f_chunk_size = 8;
@@ -125,14 +128,12 @@ bool CLT2244::Initialize(void)
 	if (m_info_block_valid)
 	{
 		memset(buf, 0, SECTOR_SIZE);
-
 		// Parameter page for card mode
 		CCmdBaseLT2244 cmd(16);
 		cmd.id(0xF00A);		// read flash
-		//CCmdReadFlash cmd;
 		cmd.block(m_info_index[0]);
 		cmd.size() = 1;
-		VendorCommand(cmd, read, buf, 1);
+		VendorCommand(cmd, read, buf, 2);	// 2 sector for page index
 
 		bb = buf[0x0A];
 		if (bb & 0x04)		m_interleave = 4;
@@ -154,8 +155,8 @@ bool CLT2244::Initialize(void)
 		JCSIZE ph_page_size = 0;
 		bb = buf[0x1C];
 		if (bb & 0x04)			ph_page_size = 8;		// in sectors
-		else if (bb & 0x02)		ph_page_size = 16;
 		else if (bb & 0x01)		ph_page_size = 32;
+		else if (bb & 0x02)		ph_page_size = 16;
 		else					ph_page_size = 0;
 
 		if (bb & 0x08)			m_p_page_per_block = 256;
@@ -163,17 +164,28 @@ bool CLT2244::Initialize(void)
 		else if (bb & 0x20)		m_p_page_per_block = 128;
 		else					m_p_page_per_block = 64;
 
-		if (0x98DE9482 == flash_id)
+		//if (0x98DE9482 == flash_id)
+		//{
+		//	if (slc_mode) m_p_page_per_block /= 2;		// for 651G8~B (L0315)
+		//}
+		//else if (0x98D7A032 == flash_id)	m_p_page_per_block /= 2;
+
+		if (slc_mode)
 		{
-			if (slc_mode) m_p_page_per_block /= 2;		// for 651G8~B (L0315)
+			m_p_page_per_block /= 2;
 		}
-		else if (0x98D7A032 == flash_id)	m_p_page_per_block /= 2;
 		
 		// unnecessary: for 651G4 (L0315) 651G1
 
 		m_f_page_per_block = m_p_page_per_block * m_interleave;	// 
 		m_p_chunk_per_page = ph_page_size * m_channel_num / m_f_chunk_size;		
 		m_f_chunk_per_page = m_p_chunk_per_page * m_plane;		
+
+		// get info page index
+		m_info_page = buf[0x26A] * m_interleave;
+		m_bitmap_page = buf[0x26B] * m_interleave;
+		m_orphan_page = buf[0x26C] * m_interleave;
+		m_blockindex_page = buf[0x26D] * m_interleave;
 
 		// Read page 1 for f-block number
 		// search page 1
@@ -187,6 +199,8 @@ bool CLT2244::Initialize(void)
 				break;
 			}
 		}
+
+
 	}
 	return true;
 }
@@ -266,13 +280,10 @@ void CLT2244::FlashAddToPhysicalAdd(const CFlashAddress & add, CSmiCommand & cmd
 
 bool CLT2244::GetProperty(LPCTSTR prop_name, UINT & val)
 {
-	//JCASSERT(NULL == val);
-
 	if ( FastCmpT(prop_name, CSmiDeviceBase::PROP_CACHE_NUM ) )
 	{
 		stdext::auto_array<BYTE> buf(SECTOR_SIZE);
 		ReadSRAM(0xDE00, buf);
-		//val = jcparam::CTypedValue<UINT>::Create( MAKEWORD(buf[0x10D], buf[0x10C]) );
 		val = MAKEWORD(buf[0x10D], buf[0x10C]);
 		return true;
 	}
@@ -280,14 +291,20 @@ bool CLT2244::GetProperty(LPCTSTR prop_name, UINT & val)
 	{
 		stdext::auto_array<BYTE> buf(SECTOR_SIZE);
 		ReadSRAM(0xB000, buf);
-		//val = jcparam::CTypedValue<UINT>::Create( MAKEWORD(buf[0xBD], buf[0xBC]) );
 		val = MAKEWORD(buf[0xBD], buf[0xBC]);
 		return true;
 	}
-	//else if (  FastCmpT(prop_name, _T("FBLOCK_NUM") ) )
-	//{
-
-	//}
+	else if (  FastCmpT(prop_name, CSmiDeviceBase::PROP_INFO_PAGE) )
+	{
+		val = MAKELONG(
+			MAKEWORD(m_blockindex_page, m_orphan_page), MAKEWORD(m_bitmap_page, m_info_page) );
+		return true;
+	}
+	else if (  FastCmpT(prop_name, CSmiDeviceBase::PROP_ORG_BAD_INFO) )
+	{
+		val = m_org_bad_info;
+		return true;
+	}
 	else	return __super::GetProperty(prop_name, val);
 }
 

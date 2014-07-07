@@ -22,8 +22,6 @@ protected:
 public:
 	virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr);
 
-
-
 // Implement of ISmiDevice
 	virtual bool GetCardInfo(CCardInfo &);
 	virtual void SetCardInfo(const CCardInfo &, UINT mask);
@@ -33,7 +31,6 @@ public:
 	virtual void ReadFlashChunk(const CFlashAddress & add, CSpareData & spare, BYTE * buf, JCSIZE secs, UINT option =0);
 	virtual JCSIZE WriteFlash(const CFlashAddress & add, BYTE * buf, JCSIZE secs);
 	virtual void EraseFlash(const CFlashAddress & add);
-
 
 	// Read Flash ID
 	virtual void ReadFlashID(BYTE * buf, JCSIZE secs);		// buffer size >= 1 sector
@@ -45,6 +42,8 @@ public:
 // Others
 	virtual void GetSmartData(BYTE * data);
 	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(void) const {return &m_smart_attr_tab;}
+		
+	virtual bool GetProperty(LPCTSTR prop_name, UINT & val);
 
 	// virtual functions 
 protected:

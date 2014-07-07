@@ -485,6 +485,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source\sector_buf.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\source\sm2232.cpp"
 				>
 			</File>
