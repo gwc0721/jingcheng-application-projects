@@ -125,8 +125,9 @@ namespace jcparam
 
 		static const CColumnInfoList * GetColumnInfo(void) { return &m_column_info; }
 
-		virtual void ToStream(IJCStream * stream, jcparam::VAL_FORMAT, DWORD) const
+		virtual void ToStream(IJCStream * stream, jcparam::VAL_FORMAT fmt, DWORD) const
 		{
+			JCASSERT(stream);
 			JCSIZE col_size = GetColumnSize();
 			const ROW_BASE_TYPE * row = static_cast<const ROW_BASE_TYPE*>(this);
 			CJCStringT str;
@@ -135,10 +136,12 @@ namespace jcparam
 			{
 				CJCStringT str;
 				const COLUMN_INFO_BASE * col_info = GetColumnInfo(ii);
-				col_info->GetText((void*)(row), str);
-				stream->Put(str.c_str(), str.length());
+				col_info->ToStream((void*)(row), stream, fmt); 
+				//col_info->GetText((void*)(row), str);
+				//stream->Put(str.c_str(), str.length());
 				stream->Put(_T(','));
 			}
+			stream->Put(_T('\n'));
 		}
 
 		virtual void FromStream(IJCStream * str, jcparam::VAL_FORMAT)
@@ -217,7 +220,7 @@ namespace jcparam
 			return col_list->GetSize();
 		}
 
-		virtual void ToStream(IJCStream * stream, jcparam::VAL_FORMAT, DWORD) const
+		virtual void ToStream(IJCStream * stream, jcparam::VAL_FORMAT fmt, DWORD) const
 		{
 			// output head
 			const CColumnInfoList * col_list = ROW_TYPE::GetColumnInfo();
@@ -240,8 +243,9 @@ namespace jcparam
 				{
 					CJCStringT str;
 					const COLUMN_INFO_BASE * col_info = col_list->GetItem(ii);
-					col_info->GetText( (void*)( &(*it) ), str);
-					stream->Put(str.c_str(), str.length());
+					//col_info->GetText( (void*)( &(*it) ), str);
+					//stream->Put(str.c_str(), str.length());
+					col_info->ToStream( (void*)( &(*it) ), stream, fmt);
 					stream->Put(_T(','));
 				}
 				stream->Put(_T('\n'));
@@ -255,8 +259,10 @@ namespace jcparam
 
 		virtual void Format(FILE * file, LPCTSTR format)
 		{
+			NOT_SUPPORT0;
 			// default : csv
 			// output head
+/*
 			const CColumnInfoList * col_list = ROW_TYPE::GetColumnInfo();
 			JCASSERT(col_list);
 			JCSIZE col_size = col_list->GetSize();
@@ -281,6 +287,7 @@ namespace jcparam
 				}
 				fprintf_s(file, "\n");
 			}
+*/
 		}
 
 		bool QueryInterface(const char * if_name, IJCInterface * &if_ptr)

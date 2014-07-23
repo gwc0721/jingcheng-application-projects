@@ -31,12 +31,13 @@ namespace jcparam
 
 template <> void jcparam::CConvertor<bool>::T2S(const bool & typ, CJCStringT & str)
 {
-	str =  typ?_T("true"):_T("false");
+	str =  typ?_T("1"):_T("0");
 }
 
 template <> void jcparam::CConvertor<bool>::S2T(LPCTSTR str, bool & typ)
 {
-	 typ = (str[0] == _T('t'));
+	if ( _tcscmp(str, _T("0"))==0 || _tcscmp(str, _T("false")) == 0  )	typ = false;
+	else	typ = true;
 }
 
 //-- char --
@@ -166,18 +167,6 @@ template <> void CConvertor<INT64>::S2T(LPCTSTR str, INT64 & typ)
 }
 
 //-- uint64 --
-//template <> void CHexConvertor<UINT64>::T2S(const UINT64 & typ, CJCStringT & str)
-//{
-//	TCHAR _str[32];
-//	stdext::jc_sprintf(_str, _T("%08X%08X"), (DWORD)( typ>>32), (DWORD)( typ&0xFFFFFFFF) );
-//	str = _str;
-//}
-//
-//template <> void CHexConvertor<UINT64>::S2T(LPCTSTR str, UINT64 & typ)
-//{
-//	 typ = stdext::str2hex(str);
-//}
-
 template <> void CConvertor<UINT64>::T2S(const UINT64 & typ, CJCStringT & str)
 {
 	TCHAR _str[32];

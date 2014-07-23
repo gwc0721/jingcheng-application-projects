@@ -44,8 +44,6 @@ namespace jcparam
 	class IJCStream : virtual public IJCInterface
 	{
 	public:
-		//virtual void GetCurIterator(READ_WRITE rd, IIterator * & it) = 0;
-		//virtual void GetLastIterator(READ_WRITE rd, IIterator * & it) = 0;
 		virtual void Put(wchar_t)	= 0;
 		virtual wchar_t Get(void)	= 0;
 
@@ -53,6 +51,8 @@ namespace jcparam
 		virtual JCSIZE Get(wchar_t * str, JCSIZE len) = 0;
 		virtual void Format(LPCTSTR f, ...) = 0;
 		virtual bool IsEof(void) = 0;
+
+		virtual LPCTSTR GetName(void) const = 0;
 	};
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -67,14 +67,6 @@ namespace jcparam
 		virtual void GetValueText(CJCStringT & str) const = 0;
 		virtual void SetValueText(LPCTSTR str)  = 0;
 	};
-
-	//class IValueConvertor : virtual public IJCInterface
-	//{
-	//public:
-	//	// 转换器
-	//	virtual void GetValueText(CJCStringT & str) const = 0;
-	//	virtual void SetValueText(LPCTSTR str)  = 0;
-	//};
 
 	const char IF_NAME_VALUE_FORMAT[] = "IValueFormat";
 
@@ -112,7 +104,9 @@ namespace jcparam
 			m_name(name)
 		{};
 
-		virtual void GetText(void * row, CJCStringT & str) const {};
+		void GetText(void * row, CJCStringT & str) const;
+
+		virtual void ToStream(void * row, IJCStream * stream, jcparam::VAL_FORMAT fmt) const {};
 		virtual void CreateValue(BYTE * src, IValue * & val) const {};
 		virtual void GetColVal(BYTE * src, void *) const {};
 		LPCTSTR name(void) const {return m_name.c_str(); }
@@ -143,20 +137,12 @@ namespace jcparam
 	};
 
 	class ITable : virtual public IVector, virtual public IVisibleValue
-	//class ITable : public IVisibleValue
 	{
 		// for column access
 	public:
 		virtual JCSIZE GetColumnSize() const = 0;
-		//virtual bool GetColumn(int filed, IVector * &) const	= 0;
-		//virtual const COLUMN_INFO_BASE * GetColumnInfo(LPCTSTR field_name) const = 0;
-		//virtual const COLUMN_INFO_BASE * GetColumnInfo(int field) const = 0;
-
-	//public:
-	//	virtual void Append(IValue * source) = 0;
 	};
 
-	//class ITableRow : virtual public IValue
 	class ITableRow : public IVisibleValue
 	{
 		// for column(field) access
@@ -167,10 +153,7 @@ namespace jcparam
 		// 从一个通用的行中取得通用的列数据
 		virtual void GetColumnData(int field, IValue * &)	const = 0;
 
-		//virtual void GetColVal(int field, void *) const = 0;
-
 	public:
-		//virtual JCSIZE GetRowID(void) const = 0;
 		// 从row的类型创建一个表格
 		virtual bool CreateTable(ITable * & tab) = 0;
 	};
@@ -185,7 +168,6 @@ namespace jcparam
 //	类型转换器
 //	
 	template <typename T>
-//	class __declspec(dllexport) CConvertor
 	class CConvertor
 	{
 	public:

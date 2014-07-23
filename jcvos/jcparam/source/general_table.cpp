@@ -128,11 +128,7 @@ void CGeneralRow::GetColumnData(int field, IValue * & val)	const
 	GetColumnData(info, val);
 }
 
-//JCSIZE CGeneralRow::GetRowID(void) const
-//{
-//	return 0;
-//}
-		// 从row的类型创建一个表格
+// 从row的类型创建一个表格
 bool CGeneralRow::CreateTable(ITable * & tab)
 {
 	jcparam::CreateGeneralTable(m_col_info, tab);
@@ -141,39 +137,14 @@ bool CGeneralRow::CreateTable(ITable * & tab)
 
 void CGeneralRow::ToStream(IJCStream * stream, VAL_FORMAT, DWORD) const
 {
+	JCASSERT(stream);
 	stream->Put(m_data, m_data_len);
+	stream->Put(_T('\n'));
 }
 
 void CGeneralRow::FromStream(jcparam::IJCStream * str, VAL_FORMAT)
 {
 }
-
-///////////////////////////////////////////////////////////////////////////////
-// -- CGeneralColumn
-/*
-CGeneralColumn::CGeneralColumn(CGeneralTable * table, const COLUMN_INFO_BASE *info)
-	: m_table(table), m_col_info(info)
-{
-}
-
-CGeneralColumn::~CGeneralColumn(void)
-{
-}
-
-void CGeneralColumn::GetRow(JCSIZE index, IValue * & val)
-{
-	JCASSERT(m_table);
-	stdext::auto_cif<ITableRow, IValue> row;
-	m_table->GetRow(index, row);
-	row->GetColumnData(m_col_info->m_id, val);
-}
-
-JCSIZE CGeneralColumn::GetRowSize() const
-{
-	JCASSERT(m_table);
-	return m_table->GetRowSize();
-}
-*/
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- CGeneralTable
@@ -225,6 +196,7 @@ void CGeneralTable::GetRow(JCSIZE index, IValue * & val)
 {
 	JCASSERT(index < m_rows.size() );
 	val = dynamic_cast<IValue*>( m_rows.at(index) );
+	if (val) val->AddRef();
 }
 
 JCSIZE CGeneralTable::GetRowSize() const
@@ -242,6 +214,7 @@ JCSIZE CGeneralTable::GetColumnSize() const
 void CGeneralTable::ToStream(IJCStream * stream, VAL_FORMAT fmt, DWORD param) const
 {
 	JCASSERT(m_col_info);
+	JCASSERT(stream);
 	m_col_info->OutputHead(stream);
 	ROWS::const_iterator it = m_rows.begin();
 	ROWS::const_iterator endit = m_rows.end();
@@ -250,7 +223,7 @@ void CGeneralTable::ToStream(IJCStream * stream, VAL_FORMAT fmt, DWORD param) co
 	{
 		(*it)->ToStream(stream, fmt, param);
 	}
-
+	stream->Put(_T('\n'));
 }
 
 void CGeneralTable::FromStream(IJCStream * str, VAL_FORMAT)
