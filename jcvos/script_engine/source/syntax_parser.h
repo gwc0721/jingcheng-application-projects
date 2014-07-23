@@ -44,6 +44,7 @@ namespace jcscript
 		// 算术运算符
 		ID_ATHOP_ADD_SUB,
 		ID_ATHOP_MUL_DIV,
+		ID_ATHOP_BITOP,
 		// 逻辑运算符
 		ID_BOOLOP_AND,
 		ID_BOOLOP_OR,
@@ -129,7 +130,7 @@ public:
 	//		所有sigle st级别(filter st, assign, ...)的match函数支持类似参数
 	bool MatchAssign(CSequenceOp * combo, IChainOperate * chain);
 
-	bool MatchBoolExpression(CSequenceOp * combo, IAtomOperate * & op);
+	//bool MatchBoolExpression(CSequenceOp * combo, IAtomOperate * & op);
 
 	bool MatchCmdSet(CSingleSt * st, IFeature * proxy, int index);
 	bool MatchComboSt(CSequenceOp * prog);		
@@ -140,8 +141,8 @@ public:
 	// 成员函数得到计算结果。
 	bool MatchExpression(CSequenceOp * combo, IAtomOperate * & op);
 	bool MatchTermVec(CSequenceOp * combo, IAtomOperate * & op);
-	bool MatchTermAdd(CSequenceOp * combo, IAtomOperate * & op);
-	bool MatchTermMul(CSequenceOp * combo, IAtomOperate * & op);
+	//bool MatchTermAdd(CSequenceOp * combo, IAtomOperate * & op);
+	//bool MatchTermMul(CSequenceOp * combo, IAtomOperate * & op);
 
 	bool MatchFactor(CSequenceOp * combo, IAtomOperate * & op);
 
@@ -195,6 +196,11 @@ protected:
 	bool MatchPV2PushParam(CSingleSt * st, IFeature * func, const CJCStringT & param_name);
 	void SetBoolOption(IFeature * proxy, const CJCStringT & param_name);
 	bool CheckAbbrev(IFeature * proxy, TCHAR abbr, CJCStringT & param_name);
+	// 通用二元运算解析
+public:
+	typedef bool (CSyntaxParser::* BINARY_OP)(CSequenceOp * combo, IAtomOperate * & op);
+	template <class OP_MAKER>
+	bool MatchBinaryOperate(CSequenceOp * combo, IAtomOperate * & op);
 
 	void OnError(LPCTSTR msg, ...);
 

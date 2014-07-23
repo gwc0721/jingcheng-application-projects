@@ -168,7 +168,8 @@ bool CAthOpBase<ATH_OP>::Invoke(void)
 		/*if (tl != m_res_type) */m_conv_r = GetConvFunc(tr, m_res_type);
 
 		// 
-		m_op = ATH_OP::AthOp[m_res_type];
+		//m_op = ATH_OP::AthOp[m_res_type];
+		m_op = AthOp[m_res_type];
 		JCASSERT(m_op);
 
 		LOG_NOTICE(_T("%s init: type_l=%d, type_r=%d, type_res=%d"), ATH_OP::m_name, tl, tr, m_res_type);
@@ -185,23 +186,48 @@ bool CAthOpBase<ATH_OP>::Invoke(void)
 ///////////////////////////////////////////////////////////////////////////////
 //-- relation operator
 
-const ATHOP_FUN CAthAdd::AthOp[] = {
-	AthAdd<bool>, AthAdd<char>, AthAdd<BYTE>, AthAdd<short>, AthAdd<WORD>,
-	AthAdd<int>, AthAdd<DWORD>, AthAdd<INT64>, AthAdd<UINT64>, AthAdd<float>, AthAdd<double>, NULL, 
+template <class ATH_OP>
+const ATHOP_FUN CAthOpBase<ATH_OP>::AthOp[] = {
+	ATH_OP::Op<bool>, ATH_OP::Op<char>, ATH_OP::Op<BYTE>, ATH_OP::Op<short>, ATH_OP::Op<WORD>,
+	ATH_OP::Op<int>, ATH_OP::Op<DWORD>, ATH_OP::Op<INT64>, ATH_OP::Op<UINT64>, ATH_OP::Op<float>, ATH_OP::Op<double>, NULL, 
 };
+
 const TCHAR CAthAdd::m_name[] = _T("+");
 template class CAthOpBase<CAthAdd>;
 LOG_CLASS_SIZE_T1(CAthOpBase, CAthAdd)
 
 
-const ATHOP_FUN CAthSub::AthOp[] = {
-	AthSub<bool>, AthSub<char>, AthSub<BYTE>, AthSub<short>, AthSub<WORD>,
-	AthSub<int>, AthSub<DWORD>, AthSub<INT64>, AthSub<UINT64>, AthSub<float>, AthSub<double>, NULL, 
-};
 const TCHAR CAthSub::m_name[] = _T("-");
 template class CAthOpBase<CAthSub>;
 LOG_CLASS_SIZE_T1(CAthOpBase, CAthSub)
 
+const TCHAR CAthMul::m_name[] = _T("*");
+template class CAthOpBase<CAthMul>;
+LOG_CLASS_SIZE_T1(CAthOpBase, CAthMul)
+
+const TCHAR CAthDiv::m_name[] = _T("/");
+template class CAthOpBase<CAthDiv>;
+LOG_CLASS_SIZE_T1(CAthOpBase, CAthDiv)
+template <> void CAthDiv::Op<bool>(const void * l, const void* r, void * res)	{NOT_SUPPORT0;}
+
+const TCHAR CAthAnd::m_name[] = _T("&");
+template class CAthOpBase<CAthAnd>;
+LOG_CLASS_SIZE_T1(CAthOpBase, CAthAnd)
+template <> void CAthAnd::Op<float>(const void * l, const void* r, void * res)	{NOT_SUPPORT0;}
+template <> void CAthAnd::Op<double>(const void * l, const void* r, void * res)	{NOT_SUPPORT0;}
+
+
+const TCHAR CAthOr::m_name[] = _T("|");
+template class CAthOpBase<CAthOr>;
+LOG_CLASS_SIZE_T1(CAthOpBase, CAthOr)
+template <> void CAthOr::Op<float>(const void * l, const void* r, void * res)	{NOT_SUPPORT0;}
+template <> void CAthOr::Op<double>(const void * l, const void* r, void * res)	{NOT_SUPPORT0;}
+
+const TCHAR CAthXor::m_name[] = _T("^");
+template class CAthOpBase<CAthXor>;
+LOG_CLASS_SIZE_T1(CAthOpBase, CAthXor)
+template <> void CAthXor::Op<float>(const void * l, const void* r, void * res)	{NOT_SUPPORT0;}
+template <> void CAthXor::Op<double>(const void * l, const void* r, void * res)	{NOT_SUPPORT0;}
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- Column Value
@@ -247,16 +273,11 @@ bool CColumnVal::Invoke(void)
 		m_convertor = FROM_IVALUE_FUN_TAB[m_res_type];
 		if (! m_convertor) THROW_ERROR(ERR_UNSUPPORT, _T("unsupport type %d"), m_res_type);
 	}
-	//const COLUMN_INFO_BASE * col_info = row->GetColumnInfo(m_col_id);
-	//JCASSERT(col_info);
-	//col_info->GetColVal( 
 
 	stdext::auto_interface<jcparam::IValue> col_val;
 	row->GetColumnData(m_col_id, col_val);
 	bool br = m_convertor(col_val, m_res);
 	if (!br) THROW_ERROR(ERR_PARAMETER, _T("wrong type convert"));
-
-	//row->GetColVal(m_col_id, m_res);
 
 	LOG_SCRIPT(_T(": val=%X"), *((UINT*)(m_res)) );
 	return true;

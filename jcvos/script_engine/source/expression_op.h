@@ -173,6 +173,8 @@ const TCHAR CConstantOp<DTYPE>::name[] = _T("constant");
 		virtual bool GetResult(jcparam::IValue * & val);
 		virtual bool Invoke(void);
 
+		static const ATHOP_FUN AthOp[jcparam::VT_MAXNUM - 1];
+
 	public:
 		// 返回计算结果
 		virtual const void * GetValue(void)		{	return m_res;	}
@@ -194,26 +196,74 @@ const TCHAR CConstantOp<DTYPE>::name[] = _T("constant");
 ///////////////////////////////////////////////////////////////////////////////
 // -- ath operator
 	//-- +
-	template <typename T>
-	void AthAdd(const void * l, const void* r, void * res)
-	{	T* _l = (T*)l, * _r = (T*)r; 	*((T*)res) = *_l + *_r; 	}
 	struct CAthAdd 
 	{	
-		static const ATHOP_FUN AthOp[jcparam::VT_MAXNUM - 1];	
+		template <typename T>
+		static void Op(const void * l, const void* r, void * res)
+		{	T* _l = (T*)l, * _r = (T*)r; 	*((T*)res) = *_l + *_r; 	}
 		static const TCHAR m_name[];
+		//static LPCTSTR name(void) {return _T("+");}
 	};
-	typedef CAthOpBase<CAthAdd>	CAthOpAdd;
 
 	//-- -
-	template <typename T>
-	void AthSub(const void * l, const void* r, void * res)
-	{	T* _l = (T*)l, * _r = (T*)r; 	*((T*)res) = *_l - *_r; 	}
 	struct CAthSub 
 	{	
-		static const ATHOP_FUN AthOp[jcparam::VT_MAXNUM - 1];	
+		template <typename T>
+		static void Op(const void * l, const void* r, void * res)
+		{	T* _l = (T*)l, * _r = (T*)r; 	*((T*)res) = *_l - *_r; 	}
 		static const TCHAR m_name[];
+		//static LPCTSTR name(void) {return _T("-");}
 	};
-	typedef CAthOpBase<CAthSub>	CAthOpSub;
+
+	//-- *
+	struct CAthMul 
+	{	
+		template <typename T>
+		static void Op(const void * l, const void* r, void * res)
+		{	T* _l = (T*)l, * _r = (T*)r; 	*((T*)res) = (*_l) * (*_r); 	}
+		static const TCHAR m_name[];
+		//static LPCTSTR name(void) {return _T("*");}
+	};
+
+	//-- /
+	struct CAthDiv 
+	{	
+		template <typename T>
+		static void Op(const void * l, const void* r, void * res)
+		{	T* _l = (T*)l, * _r = (T*)r; 	*((T*)res) = (*_l) / (*_r); 	}		
+		static const TCHAR m_name[];
+		//static LPCTSTR name(void) {return _T("/");}
+	};
+
+	//-- & 二进制与
+	struct CAthAnd 
+	{	
+		template <typename T>
+		static void Op(const void * l, const void* r, void * res)
+		{	T* _l = (T*)l, * _r = (T*)r; 	*((T*)res) = *_l & *_r; 	}
+		static const TCHAR m_name[];
+		//static LPCTSTR name(void) {return _T("&");}
+	};
+
+	//-- | 二进制或
+	struct CAthOr 
+	{	
+		template <typename T>
+		static void Op(const void * l, const void* r, void * res)
+		{	T* _l = (T*)l, * _r = (T*)r; 	*((T*)res) = *_l | *_r; 	}
+		static const TCHAR m_name[];
+		//static LPCTSTR name(void) {return _T("&");}
+	};
+
+	//-- ^ 二进制异或
+	struct CAthXor 
+	{	
+		template <typename T>
+		static void Op(const void * l, const void* r, void * res)
+		{	T* _l = (T*)l, * _r = (T*)r; 	*((T*)res) = *_l ^ *_r; 	}
+		static const TCHAR m_name[];
+		//static LPCTSTR name(void) {return _T("&");}
+	};
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- CBoolOpBase 逻辑运算符
