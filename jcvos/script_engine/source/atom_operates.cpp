@@ -49,7 +49,7 @@ bool CAssignOp::Invoke(void)
 
 #ifdef _DEBUG
 	CJCStringT _str;
-	//if ( NULL != dynamic_cast<jcparam::IValueConvertor*>(val) )
+	if (val)
 	{
 		jcparam::GetVal(val, _str);
 		LOG_SCRIPT(_T("val=%s => %s"), _str.c_str(), m_dst_name.c_str());
@@ -61,18 +61,11 @@ bool CAssignOp::Invoke(void)
 
 	if (val)
 	{
-#if 1
 		// 赋值的实现1: m_dst_op基于IAtomOperate的界面
 		jcparam::IValue * val_dst = NULL;
 		m_dst_op->GetResult(val_dst);
 		val_dst->SetSubValue(m_dst_name.c_str(), val);
 		val_dst->Release();
-#else
-		// 赋值的实现2：m_dst_op基于IVariableSet / IFeature的界面
-		m_dst_op->SetVariable(m_dst_name, val);
-		// or
-		m_dst_op->PushParameter(m_dst_name, val);
-#endif
 		val->Release();
 	}
 
@@ -152,6 +145,25 @@ CSaveToFileOp::~CSaveToFileOp(void)
 	if (m_stream)	m_stream->Release();
 }
 
+bool CSaveToFileOp::CreateStream(jcparam::IValue * val, jcparam::IJCStream * & stream)
+{
+	jcparam::ITableRow * row = NULL;
+	if (row = dynamic_cast<jcparam::ITableRow *>(val) )
+	{
+		CreateStreamFile(m_file_name.c_str(), jcparam::WRITE, stream);
+		// output header if it is a row
+		jcparam::ITable * tab = NULL;
+		row->CreateTable(tab);
+		tab->ToStream(m_stream, jcparam::VF_HEAD, 0);
+		tab->Release();
+	}
+	else	// binary data
+	{
+		CreateStreamBinaryFile(m_file_name.c_str(), jcparam::WRITE, stream);
+	}
+	return true;
+}
+
 bool CSaveToFileOp::Invoke(void)
 {
 	LOG_SCRIPT(_T(""));
@@ -173,35 +185,11 @@ bool CSaveToFileOp::Invoke(void)
 		return false;
 	}
 
-	if (NULL == m_stream)
-	{
-		CreateStreamFile(m_file_name.c_str(), jcparam::WRITE, m_stream);
-		// output header if it is a row
-		jcparam::ITableRow * row = val.d_cast<jcparam::ITableRow*>();
-		if (row)
-		{
-			jcparam::ITable * tab = NULL;
-			row->CreateTable(tab);
-			tab->ToStream(m_stream, jcparam::VF_HEAD, 0);
-			tab->Release();
-		}
-	}
+	if (NULL == m_stream)	CreateStream(val, m_stream);
+	JCASSERT(m_stream);
 	vval->ToStream(m_stream, jcparam::VF_DEFAULT, 0);
-	m_stream->Put(_T('\n'));
+	//m_stream->Put(_T('\n'));
 
-	//}
-	//else if (format)
-	//{
-	//	if (NULL == m_file)
-	//	{	// 初始化
-	//		_tfopen_s(&m_file, m_file_name.c_str(), _T("w+b"));
-	//		if ( !m_file ) THROW_ERROR(ERR_PARAMETER, 
-	//			_T("failure on openning file %s"), m_file_name.c_str());
-	//		format->WriteHeader(m_file);
-	//	}
-	//	format->Format(m_file, _T("") );
-	//}
-	// return false means no need more running for this input
 	return false;
 }
 

@@ -77,6 +77,7 @@ public:
 
 			(_T("[\\+\\-]"),			ID_ATHOP_ADD_SUB)
 			(_T("[\\*\\/]"),			ID_ATHOP_MUL_DIV)
+			(_T("[\\&\\|\\^]"),			ID_ATHOP_BITOP)
 
 			(_T("0x[0-9a-fA-F]+"),		ID_HEX)
 
@@ -183,6 +184,7 @@ public:
 
 		case ID_ATHOP_ADD_SUB:
 		case ID_ATHOP_MUL_DIV:
+		case ID_ATHOP_BITOP:
 			m_property->m_val = (UINT)(t_begin[0]);
 			break;
 
@@ -402,6 +404,9 @@ void CSyntaxParser::NextToken(CTokenProperty & prop)
 	if (ID_SYMBO_ERROR == prop.m_id)
 		SYNTAX_ERROR(_T("Unknow symbo '%c'"), (TCHAR)(prop.m_val) );
 }
+
+class COpMakerBoolExp;
+class COpMakerAddSub;
 
 bool CSyntaxParser::Match(TOKEN_ID id, LPCTSTR err_msg)
 {
@@ -736,7 +741,7 @@ void CSyntaxParser::MatchFilterSt(CSingleSt * single_st)
 
 	ft->SetSource(CFilterSt::SRC_TAB,  chain);
 	stdext::auto_interface<IAtomOperate> op;
-	MatchBoolExpression(static_cast<CSequenceOp*>(single_st), op);
+	MatchBinaryOperate<COpMakerBoolExp>(static_cast<CSequenceOp*>(single_st), op);
 
 	ft->SetSource(CFilterSt::SRC_EXP, op);
 	single_st->AddOp(static_cast<IAtomOperate*>(ft) );
@@ -1000,40 +1005,6 @@ void CSyntaxParser::MatchHelp(IAtomOperate * & op)
 	JCASSERT(NULL == op);
 }
 
-
-bool CSyntaxParser::MatchBoolExpression(CSequenceOp * combo, IAtomOperate * & op)
-{
-	LOG_STACK_TRACE();
-
-	bool match = MatchRelationFactor(combo, op);
-	if (!match) return false;
-
-	while (1)
-	{
-		bool exit = false;
-		stdext::auto_interface<IAtomOperate> this_op;
-		switch (m_lookahead.m_id)
-		{
-		case ID_BOOLOP_AND:	this_op = static_cast<IAtomOperate*>(new CBoolOpAnd); break;
-		case ID_BOOLOP_OR:	this_op = static_cast<IAtomOperate*>(new CBoolOpOr);	break;
-		default:			exit = true; break;
-		}
-		if (exit) break;
-		NextToken(m_lookahead);
-		this_op->SetSource(0, op);
-
-		stdext::auto_interface<IAtomOperate> exp_r;
-		match = MatchRelationFactor(combo, exp_r);
-		if ( !match ) SYNTAX_ERROR( _T("synatx error in right side of boolean exp") );
-		this_op->SetSource(1, exp_r);
-		combo->AddOp(this_op);
-
-		op->Release(), op = NULL;
-		this_op.detach<IAtomOperate>(op);
-	}
-	return true;
-}
-
 bool CSyntaxParser::MatchRelationFactor(CSequenceOp * combo, IAtomOperate * & op)
 {
 	LOG_STACK_TRACE();
@@ -1043,7 +1014,7 @@ bool CSyntaxParser::MatchRelationFactor(CSequenceOp * combo, IAtomOperate * & op
 	{
 	case ID_BRACKET_1:
 		NextToken(m_lookahead);
-		match = MatchBoolExpression(combo, op);
+		match = MatchBinaryOperate<COpMakerBoolExp>(combo, op);
 		if (!match) SYNTAX_ERROR(_T("expected a bool expression"));
 		Match(ID_BRACKET_2, _T("expect ')'"));
 		break;
@@ -1143,7 +1114,7 @@ bool CSyntaxParser::MatchTermVec(CSequenceOp * single_st, IAtomOperate * & op)
 	JCASSERT(NULL == op);
 
 	// 值1
-	bool match = MatchTermAdd(single_st, op);
+	bool match = MatchBinaryOperate<COpMakerAddSub>(single_st, op);
 	if (!match) return false;
 
 	JCASSERT(op);
@@ -1160,7 +1131,7 @@ bool CSyntaxParser::MatchTermVec(CSequenceOp * single_st, IAtomOperate * & op)
 
 		// 值2
 		stdext::auto_interface<IAtomOperate> exp_r;
-		match = MatchTermAdd(single_st, exp_r);
+		match = MatchBinaryOperate<COpMakerAddSub>(single_st, exp_r);
 		if (!match) SYNTAX_ERROR( _T("syntax error on right side :") );
 		vector_op->SetSource(1, exp_r);
 
@@ -1169,7 +1140,7 @@ bool CSyntaxParser::MatchTermVec(CSequenceOp * single_st, IAtomOperate * & op)
 			NextToken(m_lookahead);
 			// 值3
 			stdext::auto_interface<IAtomOperate> exp_3;
-			match = MatchTermAdd(single_st, exp_3);
+			match = MatchBinaryOperate<COpMakerAddSub>(single_st, exp_3);
 			if (!match) SYNTAX_ERROR( _T("syntax error on right side :") );
 			vector_op->SetSource(2, exp_3);		
 		}
@@ -1181,50 +1152,69 @@ bool CSyntaxParser::MatchTermVec(CSequenceOp * single_st, IAtomOperate * & op)
 }
 
 
-bool CSyntaxParser::MatchTermAdd(CSequenceOp * combo, IAtomOperate * & op)
+class COpMakerBitOp
 {
-	// 解析加减法运算
-	LOG_STACK_TRACE();
-	JCASSERT(NULL == op);
-
-	// 左值
-	bool match = MatchTermMul(combo, op);
-	if (!match) return false;
-
-	while (1)
+public:
+	inline static CSyntaxParser::BINARY_OP NextTerm() {return &CSyntaxParser::MatchFactor;};
+	inline static bool Make(TOKEN_ID id, INT64 val, IAtomOperate * & op)
 	{
-		// Match('+' / '-')
-		if (ID_ATHOP_ADD_SUB != m_lookahead.m_id) break;
-		stdext::auto_interface<IAtomOperate>	this_op;
-
-		switch (m_lookahead.m_val)
+		if (ID_ATHOP_BITOP != id) return false;
+		switch (val)
 		{
-		case _T('+'):	this_op = static_cast<IAtomOperate*>(new CAthOpAdd); break;
-		case _T('-'):	this_op = static_cast<IAtomOperate*>(new CAthOpSub); break;
-		default:		break;
+		case _T('&'):	op = static_cast<IAtomOperate*>(new CAthOpBase<CAthAnd>); return true;
+		case _T('|'):	op = static_cast<IAtomOperate*>(new CAthOpBase<CAthOr>); return true;
+		case _T('^'):	op = static_cast<IAtomOperate*>(new CAthOpBase<CAthXor>); return true;
+		default:		return false;
 		}
-		NextToken(m_lookahead);
-		this_op->SetSource(0, op);
-
-		// 右值
-		stdext::auto_interface<IAtomOperate> exp_r;
-		match = MatchTermMul(combo, exp_r);
-		if ( !match )  SYNTAX_ERROR( _T("syntax error on right side of exp") );
-
-		this_op->SetSource(1, exp_r);
-		combo->AddOp(this_op);
-
-		op->Release(); op=NULL;
-		this_op.detach<IAtomOperate>(op);
 	}
-	return true;
-}
+};
 
-bool CSyntaxParser::MatchTermMul(CSequenceOp * combo, IAtomOperate * & op)
+class COpMakerMulDiv
 {
-	// 实现乘除法
-	return MatchFactor(combo, op);
-}
+public:
+	inline static CSyntaxParser::BINARY_OP NextTerm() {return &CSyntaxParser::MatchBinaryOperate<COpMakerBitOp>;};
+	inline static bool Make(TOKEN_ID id, INT64 val, IAtomOperate * & op)
+	{
+		if (ID_ATHOP_MUL_DIV != id) return false;
+		switch (val)
+		{
+		case _T('*'):	op = static_cast<IAtomOperate*>(new CAthOpBase<CAthMul>); return true;
+		case _T('/'):	op = static_cast<IAtomOperate*>(new CAthOpBase<CAthDiv>); return true;
+		default:		return false;
+		}
+	}
+};
+
+class COpMakerAddSub
+{
+public:
+	inline static CSyntaxParser::BINARY_OP NextTerm() {return &CSyntaxParser::MatchBinaryOperate<COpMakerMulDiv>;};
+	inline static bool Make(TOKEN_ID id, INT64 val, IAtomOperate * & op)
+	{
+		if (ID_ATHOP_ADD_SUB != id) return false;
+		switch (val)
+		{
+		case _T('+'):	op = static_cast<IAtomOperate*>(new CAthOpBase<CAthAdd>); return true;
+		case _T('-'):	op = static_cast<IAtomOperate*>(new CAthOpBase<CAthSub>); return true;
+		default:		return false;
+		}
+	}
+};
+
+class COpMakerBoolExp
+{
+public:
+	inline static CSyntaxParser::BINARY_OP NextTerm() {return &CSyntaxParser::MatchRelationFactor;};
+	inline static bool Make(TOKEN_ID id, INT64 val, IAtomOperate * & op)
+	{
+		switch (id)
+		{
+		case ID_BOOLOP_AND:	op = static_cast<IAtomOperate*>(new CBoolOpAnd); return true;
+		case ID_BOOLOP_OR:	op = static_cast<IAtomOperate*>(new CBoolOpOr);	return true;
+		default:		return false;
+		}
+	}
+};
 
 bool CSyntaxParser::MatchFactor(CSequenceOp * combo, IAtomOperate * & exp)
 {
@@ -1316,6 +1306,41 @@ bool CSyntaxParser::MatchFactor(CSequenceOp * combo, IAtomOperate * & exp)
 	default:
 		LOG_COMPILE(_T("- do not match factor"));
 		return false;
+	}
+	return true;
+}
+
+template <class OP_MAKER>
+bool CSyntaxParser::MatchBinaryOperate(CSequenceOp * combo, IAtomOperate * & op)
+{
+	// 解析加减法运算
+	LOG_STACK_TRACE();
+	JCASSERT(NULL == op);
+
+	// 左值
+	bool match = (this->*(OP_MAKER::NextTerm()))(combo, op);
+	if (!match) return false;
+
+	while (1)
+	{
+		// Match('+' / '-')
+		stdext::auto_interface<IAtomOperate>	this_op;
+		match = OP_MAKER::Make(m_lookahead.m_id, m_lookahead.m_val, this_op);
+		if ( !match ) break;
+
+		NextToken(m_lookahead);
+		this_op->SetSource(0, op);
+
+		// 右值
+		stdext::auto_interface<IAtomOperate> exp_r;
+		match = (this->*(OP_MAKER::NextTerm()))(combo, exp_r);
+		if ( !match )  SYNTAX_ERROR( _T("syntax error on right side of exp") );
+
+		this_op->SetSource(1, exp_r);
+		combo->AddOp(this_op);
+
+		op->Release(); op=NULL;
+		this_op.detach<IAtomOperate>(op);
 	}
 	return true;
 }

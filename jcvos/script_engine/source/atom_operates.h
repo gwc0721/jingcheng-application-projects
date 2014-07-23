@@ -171,6 +171,9 @@ namespace jcscript
 		virtual bool Invoke(void);
 		virtual void DebugInfo(FILE * outfile);
 
+	protected:
+		bool CreateStream(jcparam::IValue * val, jcparam::IJCStream * & stream);
+
 	public:
 		static const TCHAR m_name[];
 

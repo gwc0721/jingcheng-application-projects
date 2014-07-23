@@ -127,7 +127,7 @@ public:
 
 	virtual void GetProgress(JCSIZE &cur_prog, JCSIZE &total_prog) const {};
 	virtual bool Clean(void) {return false; };
-	virtual bool Init(void) {return false; };
+	virtual bool Init(void) {return true; };
 	virtual bool InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * outport) {return false;}
 
 	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport)
