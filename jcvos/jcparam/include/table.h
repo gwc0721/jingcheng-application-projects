@@ -12,11 +12,16 @@ namespace jcparam
 			: COLUMN_INFO_BASE(id, type_id<VAL_TYPE>::id(), offset, name)
 		{	JCASSERT(1);
 		};
-		virtual void GetText(void * row, CJCStringT & str) const
+
+		virtual void ToStream(void * row, IJCStream * stream, jcparam::VAL_FORMAT fmt) const
 		{
+			JCASSERT(stream);
+			CJCStringT str;
 			VAL_TYPE * val = reinterpret_cast<VAL_TYPE*>((BYTE*)row + m_offset);
 			CONVERTOR::T2S(*val, str);
+			stream->Put(str.c_str(), str.length() );
 		}
+
 		virtual void CreateValue(BYTE * src, IValue * & val) const
 		{
 			JCASSERT(NULL == val);
@@ -41,9 +46,12 @@ namespace jcparam
 		CStringColInfo (int id, JCSIZE offset, LPCTSTR name)
 			: COLUMN_INFO_BASE(id, VT_STRING, offset, name)
 		{};
-		virtual void GetText(void * row, CJCStringT & str) const
+
+		virtual void ToStream(void * row, IJCStream * stream, jcparam::VAL_FORMAT fmt) const
 		{
-			str = *(reinterpret_cast<CJCStringT*>((BYTE*)row + m_offset));
+			JCASSERT(stream);
+			CJCStringT * str = (reinterpret_cast<CJCStringT*>((BYTE*)row + m_offset));
+			stream->Put(str->c_str(), str->length() );
 		}
 		virtual void CreateValue(BYTE * src, IValue * & val) const
 		{

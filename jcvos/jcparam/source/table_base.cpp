@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "../include/value.h"
 #include "../include/table_base.h"
+#include "../include/jcstream.h"
 
 using namespace jcparam;
 
@@ -36,33 +37,15 @@ void CColumn::GetRow(JCSIZE index, IValue * & val)
 	m_parent_tab->GetRow(index, row);
 	ITableRow * _row = dynamic_cast<ITableRow*>((IValue*)row);
 	JCASSERT(_row);
-	//if (_row)
-	//{
-		_row->GetColumnData(m_col_info->m_id, val);
-	//}
+	_row->GetColumnData(m_col_info->m_id, val);
 }
 
-//JCSIZE CColumn::GetColumnSize() const
-//{
-//	return 1;
-//}
-
-//void CColumn::PushBack(IValue * row)
-//{
-//	THROW_ERROR(ERR_UNSUPPORT, _T("Nor support"));
-//}
-	
-//void CColumn::Append(IValue * source)
-//{
-//	THROW_ERROR(ERR_UNSUPPORT, _T("Nor support"));
-//}
-
-//void CColumn::GetSubValue(LPCTSTR name, IValue * & val)
-//{
-//	THROW_ERROR(ERR_UNSUPPORT, _T("Nor support"));
-//}
-//
-//void CColumn::SetSubValue(LPCTSTR name, IValue * val)
-//{
-//	THROW_ERROR(ERR_UNSUPPORT, _T("Nor support"));
-//}
+///////////////////////////////////////////////////////////////////////////////
+// -- 
+void COLUMN_INFO_BASE::GetText(void *row, CJCStringT &str) const
+{
+	IJCStream * stream = NULL;
+	CreateStreamString(&str, stream);
+	ToStream(row, stream, jcparam::VF_TEXT);
+	stream->Release();
+}

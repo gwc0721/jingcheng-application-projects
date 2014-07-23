@@ -70,10 +70,10 @@ namespace jcparam
 	public:
 		virtual void ToStream(IJCStream * stream, VAL_FORMAT fmt, DWORD param) const
 		{
+			JCASSERT(stream);
 			CJCStringT str;
 			GetValueText(str);
 			stream->Put(str.c_str(), str.length() );
-			//stdext::jc_fprintf(file, _T("%s"), str.c_str());
 		}
 
 		virtual void FromStream(IJCStream * str, VAL_FORMAT) { NOT_SUPPORT0; };
@@ -187,9 +187,6 @@ namespace jcparam
 		CTypedValue<T> * v = dynamic_cast<CTypedValue<T> * >(val);
 		if (v)	{ t = (*v); return true; }
 
-		//jcparam::IValueConvertor * c = dynamic_cast<jcparam::IValueConvertor *>(val);
-		//if ( !c)  return false;
-
 		CJCStringT str;
 		val->GetValueText(str);
 		jcparam::CConvertor<T>::S2T(str.c_str(), t);
@@ -210,8 +207,7 @@ namespace jcparam
 	template <typename T>
 	inline void GetVal(IValue * val, T & t)
 	{
-		//IValueConvertor * conv = dynamic_cast<IValueConvertor *>(val);
-		//if (NULL == conv) THROW_ERROR(ERR_APP, _T("ivalue do not support convertor"));
+		JCASSERT(val)
 		CJCStringT str;
 		val->GetValueText(str);
 		CConvertor<T>::S2T(str.c_str(), t);
