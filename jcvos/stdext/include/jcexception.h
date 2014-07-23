@@ -70,17 +70,18 @@ extern "C"
 	void LogException(LPCSTR function, int line, stdext::CJCException & err); 
 }
 
-inline void _NOTSUPPORT(LPCSTR func)
+inline void _NOTSUPPORT(LPCTSTR msg = NULL)
 {
-	LPTSTR __temp_str = new TCHAR[128];
-	stdext::jc_sprintf(__temp_str, 128, _T("function : %S is not supported"), func);
-	stdext::CJCException err(__temp_str, stdext::CJCException::ERR_UNSUPPORT);
-	delete [] __temp_str;
+	if (!msg) msg = _T("");
+	stdext::CJCException err(msg, stdext::CJCException::ERR_UNSUPPORT);
 	throw err;
 }
 
-#define NOT_SUPPORT(T)		_NOTSUPPORT(__FUNCTION__); return T(0);
-#define NOT_SUPPORT0		_NOTSUPPORT(__FUNCTION__);
+#define NOT_SUPPORT(T)		_NOTSUPPORT(_T(__FUNCTION__) _T(" is not supported")); return T(0);
+#define NOT_SUPPORT0		_NOTSUPPORT(_T(__FUNCTION__) _T(" is not supported"));
+#define NOT_SUPPORT00(...)	_NOTSUPPORT(__VA_ARGS_);		
+#define NOT_SUPPORT1(T, ...)	_NOTSUPPORT(__VA_ARGS_); return T(0);		
+	
 
 #define THROW_ERROR(level, ...)   {					\
 		LPTSTR __temp_str = new TCHAR[512];			\

@@ -201,13 +201,10 @@ void stdext::itohex(LPTSTR str, JCSIZE dig, UINT d)
 {
 	str[dig] = 0;
 	JCSIZE ii = dig;
-	//UINT mask = 0xF;
 	do
 	{
 		--ii;
-		//BYTE b = d & mask;
-		//str[ii] = (b > 9) ? (b - 0xA + _T('A')) : (b + _T('0')); 
-		str[ii] = hex2char(d);
+		str[ii] = hex2char(d & 0xF);
 		d >>= 4;
 	}
 	while (ii > 0);
