@@ -3,7 +3,11 @@
 #include "configuration.h"
 #include "CrazyCatEvaluator.h"
 
+#include <vector>
+
 class CChessBoard;
+
+class CRobotCatcher;
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -42,6 +46,7 @@ public:
 struct CCrazyCatMovement : public MOVEMENT
 {
 	CCrazyCatMovement(char col, char row) : m_col(col), m_row(row) {};
+	CCrazyCatMovement(const CCrazyCatMovement & mv) : m_col(mv.m_col), m_row(mv.m_row) {};
 	char m_col, m_row;
 };
 
@@ -69,9 +74,11 @@ enum PLAYER
 #define WM_MSG_ROBOTMOVE		(WM_USER + 100)
 // 定义消息，AI或者PLAYER下完棋，更新装态
 #define WM_MSG_COMPLETEMOVE		(WM_USER + 101)
+// 定义消息，按下旗子
+#define WM_MSG_CLICKCHESS		(WM_USER + 102)
 
 class CChessBoardUi : public CStatic
-	, public IRefereeListen
+	//, public IRefereeListen
 {
 	DECLARE_DYNAMIC(CChessBoardUi)
 
@@ -82,11 +89,13 @@ public:
 protected:
 	afx_msg void OnPaint();
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
+	afx_msg void OnMouseMove(UINT flag, CPoint point);
+	afx_msg void OnLButtonUp(UINT flag, CPoint point);
 
 	DECLARE_MESSAGE_MAP()
 
+protected:
 	void Initialize(CDC * dc);
-
 	// 从GUI坐标转化为棋盘坐标
 	bool Hit(int ux, int uy, int &cx, int &cy);
 	// 计算从棋盘坐标到GUI坐标
@@ -94,14 +103,16 @@ protected:
 
 public:
 	void SetBoard(CChessBoard * board);
-	afx_msg void OnMouseMove(UINT flag, CPoint point);
-	afx_msg void OnLButtonUp(UINT flag, CPoint point);
 
-	void StartSearch(void);
 
-	void SetListener(IMessageListen * l)	{m_listen = l;}
 
-	void StartPlay(bool player_blue, bool player_cat);
+
+
+public:
+
+	//void SearchCatEscape(void);
+	//void SetListener(IMessageListen * l)	{m_listen = l;}
+	//void StartPlay(bool player_blue, bool player_cat, int search_depth);
 
 	void SetCellRadius(int r)
 	{
@@ -115,15 +126,17 @@ public:
 		m_draw_search = search;
 		Draw(0, 0, 0);
 	}
-	virtual void SearchCompleted(MOVEMENT * move);
+	//virtual void SearchCompleted(MOVEMENT * move);
 
-	void Reset(void);
+	//void Reset(void);
+	//void Undo(void);
 
+	void SetPath(CCrazyCatEvaluator * ev);
+	void Draw(int level, char col, char row);
 
 
 protected:
 	// 指定重画层次，相应层次的参数(棋子，路经等)
-	void Draw(int level, char col, char row);
 	void DrawPath(CDC * dc);
 	void DrawSearch(CDC * dc);
 
@@ -132,10 +145,10 @@ protected:
 	CBrush	m_brush_blue, m_brush_red, m_brush_white;
 
 protected:
-	afx_msg LRESULT OnCompleteMove(WPARAM wp, LPARAM lp);
-	afx_msg LRESULT OnRobotMove(WPARAM wp, LPARAM lp);
-	bool m_catcher_ai, m_cat_ai;
-	IRobot * m_cat_robot;
+	//afx_msg LRESULT OnCompleteMove(WPARAM wp, LPARAM lp);
+	//afx_msg LRESULT OnRobotMove(WPARAM wp, LPARAM lp);
+	//bool m_catcher_ai, m_cat_ai;
+	//int m_search_depth;
 
 protected:
 	CChessBoard * m_chess_board;
@@ -149,7 +162,7 @@ protected:
 	bool	m_hit;
 	int		m_cx, m_cy;
 
-	IMessageListen * m_listen;
+	//IMessageListen * m_listen;
 	// 棋子半径，六角形边长
 	float m_cr, m_ca;
 };
@@ -175,7 +188,7 @@ public:
 	// 判断走棋是否合法
 	virtual bool IsValidMove(BYTE player, int x, int y) {return false;};
 	// 撤销走棋
-	virtual void Undo(void) {};
+	virtual bool Undo(void);
 
 	virtual PLAY_STATUS StartPlay(void);
 
@@ -184,6 +197,12 @@ public:
 		if (player == PLAYER_CAT) m_status = PS_CATCHER_WIN;
 		else m_status = PS_CAT_WIN;
 	}
+
+	// 复制棋盘，用于博弈树搜索等。
+	virtual void Dupe(CChessBoard * & board) const;
+
+	virtual UINT MakeHash(void)	const;
+
 
 	void GetCatPosition(char & col, char & row) const;
 	BYTE CheckPosition(char col, char row) const;
@@ -198,11 +217,17 @@ protected:
 	// 棋盘: 0，空；1，黑方（墙）；2，红方（猫)
 	BYTE m_board[BOARD_SIZE_COL][BOARD_SIZE_ROW];
 
+	static const UINT RANDOM_TAB[BOARD_SIZE_COL][BOARD_SIZE_ROW];
+
 	// 猫所在的位置
-	char m_cat_pos_col, m_cat_pos_row;
+	char m_cat_col, m_cat_row;
 	
 	PLAY_STATUS		m_status;	// 轮到哪方走 
-	//BYTE m_
 
+	// 记录当前走法，用于恢复
+	//char m_move_col, m_move_row;
+
+	typedef std::vector<CCrazyCatMovement> MOVE_STACK;
+	MOVE_STACK	m_recorder;
 };
 
