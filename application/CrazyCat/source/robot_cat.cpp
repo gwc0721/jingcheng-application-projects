@@ -52,7 +52,7 @@ bool CRobotCat::StartSearch(const CChessBoard * board, int depth)
 	JCASSERT(board);
 	stdext::auto_ptr<CCrazyCatEvaluator> eval(new CCrazyCatEvaluator(board));
 	int ir = eval->StartSearch();
-	if (ir == INT_MAX)
+	if (ir == MAX_SCORE)
 	{	// 认输
 		CCrazyCatMovement mv(-1, -1);
 		if (m_referee)	m_referee->SearchCompleted(&mv);

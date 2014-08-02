@@ -68,6 +68,7 @@ CCrazyCatEvaluator::~CCrazyCatEvaluator(void)
 int CCrazyCatEvaluator::StartSearch(void)
 {
 	JCASSERT(m_board);
+	LOG_STACK_PERFORM(_T(""));
 
 	// 初始化指针，添加第一个节点
 	char col = 0, row = 0;
@@ -118,5 +119,5 @@ int CCrazyCatEvaluator::StartSearch(void)
 	}
 
 	if (m_succeeded)	return m_succeeded->m_depth;
-	else				return INT_MAX;
+	else				return MAX_SCORE;
 }

@@ -10,3 +10,7 @@
 #define BOARD_SIZE_ROW	9
 // 棋子大小 半径
 #define CHESS_RADIUS	15
+
+
+//
+#define HASH_SIZE	(64 * 1024)

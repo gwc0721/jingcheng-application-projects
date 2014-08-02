@@ -210,6 +210,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source\robot_catcher.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\source\stdafx.cpp"
 				>
 			</File>
@@ -245,6 +249,10 @@
 			</File>
 			<File
 				RelativePath=".\source\robot_cat.h"
+				>
+			</File>
+			<File
+				RelativePath=".\source\robot_catcher.h"
 				>
 			</File>
 			<File

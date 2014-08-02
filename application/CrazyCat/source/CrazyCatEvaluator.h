@@ -5,6 +5,9 @@
 
 #define MAX_MOVEMENT	6
 
+#define MAX_SCORE	200
+#define MIN_SCORE	0
+
 class CChessBoard;
 
 
