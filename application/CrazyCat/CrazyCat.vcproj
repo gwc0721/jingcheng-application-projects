@@ -129,11 +129,12 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
+				AdditionalIncludeDirectories="$(VLD_INC_DIR);..\..\jcvos\stdext;..\..\jcvos\jcparam;..\..\jcvos\jcapp;C:\library\cryptopp\includ;..\SmiVenderTest\feature_encode;..\..\jcvos\script_engine"
 				PreprocessorDefinitions="WIN32;_WINDOWS;NDEBUG"
 				MinimalRebuild="false"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
-				UsePrecompiledHeader="2"
+				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="3"
 			/>
@@ -152,6 +153,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="1"
+				AdditionalLibraryDirectories="$(VLD_LIB_DIR);"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"

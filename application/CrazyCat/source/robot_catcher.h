@@ -3,7 +3,9 @@
 
 enum ENTRY_TYPE
 {	
-	ET_EXACT, ET_LOWER, ET_UPPER,
+	ET_EXACT,	// 棋盘的实际值 = score
+	ET_LOWER,	// 棋盘的实际值 > m_score
+	ET_UPPER,	// 棋盘的实际值 < m_score
 };
 
 struct HASHITEM
@@ -19,34 +21,72 @@ class CGameTreeEngine
 {
 };
 
+class CCatcherMoveGenerator
+{
+public:
+	CCatcherMoveGenerator(void);
+	CCatcherMoveGenerator(const UINT * hist_tab);
+	~CCatcherMoveGenerator(void);
+
+public:
+	JCSIZE Generate(const CChessBoard * board);
+	CCrazyCatMovement * GetMovement(JCSIZE index);
+
+	static int MvCmpRise(const void * mv1, const void * mv2 );
+	static int MvCmpFall(const void * mv1, const void * mv2 );
+
+
+public:
+	bool m_sort;
+
+protected:
+	static const int ARRAY_SIZE = BOARD_SIZE_ROW * BOARD_SIZE_COL;
+	// Move的指针数组，用于排序。
+	CCrazyCatMovement * m_index[BOARD_SIZE_ROW * BOARD_SIZE_COL];
+	// 移动方法数组
+	CCrazyCatMovement m_array[BOARD_SIZE_ROW * BOARD_SIZE_COL];
+
+	JCSIZE	m_move_count;
+	const UINT * m_history_tab;
+};
 
 
 class CRobotCatcher : public IRobot
 	, public CGameTreeEngine
 {
 public:
-	CRobotCatcher(IRefereeListen * listener);
+	CRobotCatcher(IRefereeListen * listener, bool sort = false);
 	virtual ~CRobotCatcher(void);
 
 public:
 	// 搜索下一步棋
 	virtual bool StartSearch(const CChessBoard * board, int depth);
+	static int Evaluate(CChessBoard * board, CCrazyCatEvaluator * eval);
 
 protected:
 	int AlphaBetaSearch(int depth, int alpha, int beta, CCrazyCatMovement * mv);
 	int LookUpHashTab(int alpha, int beta, int depth, UINT key, int player);
 	void EnterHashTab(ENTRY_TYPE entry, int score, int depth, UINT key, int player);
+	void EnterHistoryTab(const CCrazyCatMovement &mv, int depth);
 
 protected:
 	IRefereeListen	* m_referee;
 	CChessBoard * m_board;
 	// 哈希表，前一般用于保存CATCHER，后一半保存CAT
 	HASHITEM	m_hashtab[HASH_SIZE];
+	// 历史启发表
+	UINT		m_history_tab[BOARD_SIZE_COL * BOARD_SIZE_ROW];
+
+	CCrazyCatEvaluator * m_eval;
 
 public:
 	// 用于算法评估
-	UINT m_node;
+	JCSIZE m_node, m_hash_hit, m_hash_conflict;
+	// 记录走法
+	CCrazyCatMovement * m_movement;
 
-
-
+protected:
+	// for debug
+	bool m_log;
+	bool m_sort;
 };

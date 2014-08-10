@@ -23,11 +23,21 @@ void Move(char col, char row, char way, char & new_col, char & new_row)
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- A*搜索节点类，
+LOG_CLASS_SIZE(CSearchNode);
 
 CSearchNode::CSearchNode(char col, char row, char move, CSearchNode * father)
 	: m_cat_col(col), m_cat_row(row), m_move(move)
 	, m_father(father), m_next(NULL), m_depth(0), m_evaluate(0)
 {
+	Init(col, row, move, father);
+}
+
+void CSearchNode::Init(char col, char row, char move, CSearchNode * father)
+{
+	m_cat_col = col, m_cat_row = row, m_move = move;
+	m_father = father, m_next = NULL;
+	m_depth = 0, m_evaluate = 0;
+
 	char x0 = -1, y0=-1;
 	if (m_father)
 	{
@@ -44,26 +54,43 @@ CSearchNode::CSearchNode(char col, char row, char move, CSearchNode * father)
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- 评价类，
+LOG_CLASS_SIZE(CCrazyCatEvaluator);
+
+CCrazyCatEvaluator::CCrazyCatEvaluator(void)
+	: m_head(NULL), m_closed(NULL)
+	, m_succeeded(NULL)
+	, m_board(NULL)
+{
+	m_node_array = new CSearchNode[BOARD_SIZE_COL * BOARD_SIZE_ROW];
+
+}
+
 CCrazyCatEvaluator::CCrazyCatEvaluator(const CChessBoard * board)
-	: m_head(NULL), m_closed(NULL)/*, m_open(NULL)*/
+	: m_head(NULL), m_closed(NULL)
 	, m_succeeded(NULL)
 	, m_board(board)
 {
 	JCASSERT(m_board);
-	m_closed_qty = 0;
-	m_open_qty = 0;
-	memset(m_hash, 0, sizeof(CSearchNode*) * BOARD_SIZE_COL * BOARD_SIZE_ROW);
+	//memset(m_hash, 0, sizeof(CSearchNode*) * BOARD_SIZE_COL * BOARD_SIZE_ROW);
+
+	m_node_array = new CSearchNode[BOARD_SIZE_COL * BOARD_SIZE_ROW];
+	Reset(board);
 }
 
 CCrazyCatEvaluator::~CCrazyCatEvaluator(void)
 {
-	while (m_head)
-	{
-		CSearchNode * nn = m_head;
-		m_head = m_head->m_next;
-		delete nn;
-	}
+	delete [] m_node_array;
 }
+
+void CCrazyCatEvaluator::Reset(const CChessBoard * board)
+{
+	JCASSERT(m_node_array);
+	m_closed_qty = 0, m_open_qty = 0;
+	m_head = NULL, m_closed = NULL, m_succeeded = NULL;
+	m_board = board;
+	memset(m_node_array, 0xFF, sizeof(CSearchNode) * BOARD_SIZE_COL * BOARD_SIZE_ROW);
+}
+
 
 int CCrazyCatEvaluator::StartSearch(void)
 {
@@ -73,7 +100,8 @@ int CCrazyCatEvaluator::StartSearch(void)
 	// 初始化指针，添加第一个节点
 	char col = 0, row = 0;
 	m_board->GetCatPosition(col, row);
-	m_head = new CSearchNode(col, row, -1, NULL);
+	m_head = NewNode(col, row, -1, NULL);
+	JCASSERT(m_head);
 	m_closed = m_head;
 	if (m_head->m_evaluate == 0) return m_head->m_depth;
 
@@ -88,10 +116,10 @@ int CCrazyCatEvaluator::StartSearch(void)
 			char new_col, new_row;
 			Move(col, row, ww, new_col, new_row);
 			if (m_board->CheckPosition(new_col, new_row) != 0) continue;
-			// 已经搜索过的节点
-			if (m_hash[new_row * BOARD_SIZE_COL + new_col] != NULL) continue;
-			CSearchNode * node = new CSearchNode(new_col, new_row, ww, m_closed);
-			m_hash[new_row * BOARD_SIZE_COL + new_col] = node;
+			// 根据位置申请节点，如果节点已分配（返回NULL）表示该节点已被搜索。
+			CSearchNode * node = NewNode(new_col, new_row, ww, m_closed);
+			if (!node) continue;	// node 已经搜索过了
+
 			// 插入节点
 			CSearchNode * nm = m_closed;
 			CSearchNode * nn = nm->m_next;
@@ -109,15 +137,15 @@ int CCrazyCatEvaluator::StartSearch(void)
 
 			if (node->m_depth == node->m_evaluate)
 			{	// found
-				m_succeeded = node; break;
+				m_succeeded = node;
+				break;
 			}
 		}
 		if (m_succeeded) break;
 		m_closed = m_closed->m_next;
 		if (NULL == m_closed) break;	// 未找到节点
-	// closed + 1
 	}
 
-	if (m_succeeded)	return m_succeeded->m_depth;
-	else				return MAX_SCORE;
+	if (m_succeeded)		return m_succeeded->m_depth;
+	else					return MAX_DISTANCE;
 }

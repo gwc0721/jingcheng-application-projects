@@ -52,9 +52,9 @@ bool CRobotCat::StartSearch(const CChessBoard * board, int depth)
 	JCASSERT(board);
 	stdext::auto_ptr<CCrazyCatEvaluator> eval(new CCrazyCatEvaluator(board));
 	int ir = eval->StartSearch();
-	if (ir == MAX_SCORE)
+	if (ir >= MAX_DISTANCE)
 	{	// 认输
-		CCrazyCatMovement mv(-1, -1);
+		CCrazyCatMovement mv(-1, -1, PLAYER_CAT);
 		if (m_referee)	m_referee->SearchCompleted(&mv);
 		return true;
 	}
@@ -66,7 +66,7 @@ bool CRobotCat::StartSearch(const CChessBoard * board, int depth)
 	while (node && (node->m_father != head) ) node = node->m_father;
 	JCASSERT(node->m_father == head);
 	// 找到走法
-	CCrazyCatMovement mv(node->m_cat_col, node->m_cat_row);
+	CCrazyCatMovement mv(node->m_cat_col, node->m_cat_row, PLAYER_CAT);
 	m_referee->SearchCompleted(&mv);
 	return true;
 }

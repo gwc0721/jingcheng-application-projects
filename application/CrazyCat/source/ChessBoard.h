@@ -39,26 +39,25 @@ class IRobot
 {
 public:
 	virtual bool StartSearch(const CChessBoard * board, int depth) = 0;
+	virtual ~IRobot(void) {};
 };
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- Crazy Cat走法
 struct CCrazyCatMovement : public MOVEMENT
 {
-	CCrazyCatMovement(char col, char row) : m_col(col), m_row(row) {};
-	CCrazyCatMovement(const CCrazyCatMovement & mv) : m_col(mv.m_col), m_row(mv.m_row) {};
+	CCrazyCatMovement(char col, char row, char player) : m_col(col), m_row(row), m_player(player) {};
+	CCrazyCatMovement(void) {};
 	char m_col, m_row;
+	char m_player;
+	int m_score;
 };
+
+typedef std::vector<CCrazyCatMovement> MOVE_STACK;
+
 
 class IChessBoard
 {
-};
-
-enum PLAY_STATUS
-{	
-	PS_SETTING,
-	PS_CATCHER_MOVE,	PS_CAT_MOVE,
-	PS_CATCHER_WIN,		PS_CAT_WIN,
 };
 
 enum PLAYER
@@ -77,8 +76,12 @@ enum PLAYER
 // 定义消息，按下旗子
 #define WM_MSG_CLICKCHESS		(WM_USER + 102)
 
+// 移动到棋子上，左键单击，右键单击
+#define CLICKCHESS_MOVE			0
+#define CLICKCHESS_LEFT			1
+#define CLICKCHESS_RIGHT		2
+
 class CChessBoardUi : public CStatic
-	//, public IRefereeListen
 {
 	DECLARE_DYNAMIC(CChessBoardUi)
 
@@ -91,6 +94,7 @@ protected:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnMouseMove(UINT flag, CPoint point);
 	afx_msg void OnLButtonUp(UINT flag, CPoint point);
+	afx_msg void OnRButtonUp(UINT flag, CPoint point);
 
 	DECLARE_MESSAGE_MAP()
 
@@ -104,16 +108,7 @@ protected:
 public:
 	void SetBoard(CChessBoard * board);
 
-
-
-
-
 public:
-
-	//void SearchCatEscape(void);
-	//void SetListener(IMessageListen * l)	{m_listen = l;}
-	//void StartPlay(bool player_blue, bool player_cat, int search_depth);
-
 	void SetCellRadius(int r)
 	{
 		m_cr = (float)r, m_ca = (float)1.155 * m_cr;		// 2/squr(3)
@@ -126,12 +121,6 @@ public:
 		m_draw_search = search;
 		Draw(0, 0, 0);
 	}
-	//virtual void SearchCompleted(MOVEMENT * move);
-
-	//void Reset(void);
-	//void Undo(void);
-
-	void SetPath(CCrazyCatEvaluator * ev);
 	void Draw(int level, char col, char row);
 
 
@@ -145,10 +134,6 @@ protected:
 	CBrush	m_brush_blue, m_brush_red, m_brush_white;
 
 protected:
-	//afx_msg LRESULT OnCompleteMove(WPARAM wp, LPARAM lp);
-	//afx_msg LRESULT OnRobotMove(WPARAM wp, LPARAM lp);
-	//bool m_catcher_ai, m_cat_ai;
-	//int m_search_depth;
 
 protected:
 	CChessBoard * m_chess_board;
@@ -162,7 +147,6 @@ protected:
 	bool	m_hit;
 	int		m_cx, m_cy;
 
-	//IMessageListen * m_listen;
 	// 棋子半径，六角形边长
 	float m_cr, m_ca;
 };
@@ -171,6 +155,8 @@ protected:
 ///////////////////////////////////////////////////////////////////////////////
 // -- 棋盘类，
 //  管理棋盘布局，下棋操作等
+
+
 class CChessBoard : public IChessBoard
 {
 public:
@@ -184,50 +170,54 @@ public:
 	// 走棋：
 	//	player，选手，1
 	//  x, y, 走法：
-	virtual bool Move(BYTE player, int x, int y);
+	virtual bool Move(CCrazyCatMovement * mv);
 	// 判断走棋是否合法
-	virtual bool IsValidMove(BYTE player, int x, int y) {return false;};
+	virtual bool IsValidMove(CCrazyCatMovement * mv);
 	// 撤销走棋
 	virtual bool Undo(void);
+	virtual bool Redo(void);
 
-	virtual PLAY_STATUS StartPlay(void);
-
-	virtual void GiveUp(BYTE player)
-	{
-		if (player == PLAYER_CAT) m_status = PS_CATCHER_WIN;
-		else m_status = PS_CAT_WIN;
-	}
+	void SetTurn(PLAYER turn)  {JCASSERT(turn ==1 || turn==2); m_turn = turn;}
+	PLAYER GetTurn(void)  {return m_turn;}
 
 	// 复制棋盘，用于博弈树搜索等。
 	virtual void Dupe(CChessBoard * & board) const;
 
 	virtual UINT MakeHash(void)	const;
 
+	void SaveToFile(FILE * file) const;
+	bool LoadFromFile(FILE * file);
+
+	bool GetLastMovement(CCrazyCatMovement & mv);
+
 
 	void GetCatPosition(char & col, char & row) const;
 	BYTE CheckPosition(char col, char row) const;
-	void SetPosition(char col, char row, BYTE ss);
-	PLAY_STATUS Status(void) const {return m_status;}
-
-protected:
+	bool SetChess(BYTE chess, char col, char row);
 	bool IsCatcherWin(void);
 	bool IsCatWin(void);
+	bool IsWin(PLAYER & player);
 
 protected:
+	void PushMovement(const CCrazyCatMovement & mv);
+
+protected:
+	static const UINT RANDOM_TAB_CATCHER[BOARD_SIZE_COL][BOARD_SIZE_ROW];
+	static const UINT RANDOM_TAB_CAT[BOARD_SIZE_COL][BOARD_SIZE_ROW];
+
 	// 棋盘: 0，空；1，黑方（墙）；2，红方（猫)
 	BYTE m_board[BOARD_SIZE_COL][BOARD_SIZE_ROW];
-
-	static const UINT RANDOM_TAB[BOARD_SIZE_COL][BOARD_SIZE_ROW];
-
 	// 猫所在的位置
 	char m_cat_col, m_cat_row;
-	
-	PLAY_STATUS		m_status;	// 轮到哪方走 
-
+	//PLAY_STATUS		m_status;	
+	// 轮到哪方走 
+	PLAYER	m_turn;
 	// 记录当前走法，用于恢复
-	//char m_move_col, m_move_row;
-
-	typedef std::vector<CCrazyCatMovement> MOVE_STACK;
-	MOVE_STACK	m_recorder;
+	//MOVE_STACK	m_recorder;
+	static const JCSIZE STACK_SIZE = BOARD_SIZE_COL * BOARD_SIZE_ROW + 10;
+	CCrazyCatMovement	m_recorder[STACK_SIZE];
+	JCSIZE m_stack_point, m_stack_top;
+	// 用于判断catcher是否胜。
+	CCrazyCatEvaluator	* m_eval;
 };
 

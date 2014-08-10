@@ -10,13 +10,23 @@ LOCAL_LOGGER_ENABLE(_T("search_engine"), LOGGER_LEVEL_DEBUGINFO -1);
 
 #define SORT_MOVEMENT
 
+#define HISOTRY_HEURISTIC
+
 ///////////////////////////////////////////////////////////////////////////////
 // -- 
+LOG_CLASS_SIZE(CCatcherMoveGenerator)
+
+
 CCatcherMoveGenerator::CCatcherMoveGenerator(void)
+	: m_sort(false)
+	, m_history_tab(NULL)
 {
-	//memset(m_array, 0, sizeof (CCrazyCatMovement) * ARRAY_SIZE);
-	//memset(m_index, 0, sizeof (CCrazyCatMovement *) * ARRAY_SIZE);
-	//m_move_count = 0;
+}
+
+CCatcherMoveGenerator::CCatcherMoveGenerator(const UINT * hist_tab)
+	: m_sort(false)
+	, m_history_tab(hist_tab)
+{
 }
 
 CCatcherMoveGenerator::~CCatcherMoveGenerator(void)
@@ -29,7 +39,9 @@ JCSIZE CCatcherMoveGenerator::Generate(const CChessBoard * board)
 	JCASSERT(board);
 	memset(m_array, 0, sizeof (CCrazyCatMovement) * ARRAY_SIZE);
 	memset(m_index, 0, sizeof (CCrazyCatMovement *) * ARRAY_SIZE);
-
+#ifdef HISOTRY_HEURISTIC
+	JCASSERT(m_history_tab)
+#endif
 	char cat_c, cat_r;
 	board->GetCatPosition(cat_c, cat_r);
 	m_move_count = 0;
@@ -41,24 +53,39 @@ JCSIZE CCatcherMoveGenerator::Generate(const CChessBoard * board)
 			if (board->CheckPosition(cc, rr) != 0) continue;
 			CCrazyCatMovement & mv = m_array[m_move_count];
 			mv.m_col = cc, mv.m_row = rr, mv.m_player = PLAYER_CATCHER;
+#ifdef HISOTRY_HEURISTIC
+			mv.m_score = m_history_tab[rr * BOARD_SIZE_COL + cc];
+#else
 			mv.m_score = abs(cat_c - cc) + delta_r;
+#endif
 			m_index[m_move_count] = m_array + m_move_count;
 			m_move_count ++;
 		}
 	}
-#ifdef SORT_MOVEMENT
-	// 注意！！线程不安全
-	qsort(m_index, m_move_count, sizeof(CCrazyCatMovement*), MovementCompare);
+	// <WARNING> 线程不安全
+#ifdef HISOTRY_HEURISTIC
+	qsort(m_index, m_move_count, sizeof(CCrazyCatMovement*), MvCmpFall);
+#else
+	if (m_sort)	qsort(m_index, m_move_count, sizeof(CCrazyCatMovement*), MovementCompare);
 #endif
 	return m_move_count;
 }
 
-int CCatcherMoveGenerator::MovementCompare(const void * mv1, const void * mv2 )
+int CCatcherMoveGenerator::MvCmpRise(const void * mv1, const void * mv2 )
 {
 	const CCrazyCatMovement * _mv1 = *(CCrazyCatMovement **)mv1;
 	const CCrazyCatMovement * _mv2 = *(CCrazyCatMovement **)mv2;
 	if ( _mv1->m_score < _mv2->m_score) return -1;
 	else if (_mv1->m_score > _mv2->m_score) return 1;
+	else return 0;
+}
+
+int CCatcherMoveGenerator::MvCmpFall(const void * mv1, const void * mv2 )
+{
+	const CCrazyCatMovement * _mv1 = *(CCrazyCatMovement **)mv1;
+	const CCrazyCatMovement * _mv2 = *(CCrazyCatMovement **)mv2;
+	if ( _mv1->m_score > _mv2->m_score) return -1;
+	else if (_mv1->m_score < _mv2->m_score) return 1;
 	else return 0;
 }
 
@@ -68,6 +95,9 @@ CCrazyCatMovement * CCatcherMoveGenerator::GetMovement(JCSIZE index)
 	return m_index[index];
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// -- 
+LOG_CLASS_SIZE(CRobotCatcher)
 
 #define ENABLE_HASHTAB
 
@@ -97,20 +127,22 @@ static BREAK_POINT_NODE break_point[BREAK_POINT_DEPTH_MAX] =
 };
 
 // 猫逃走的距离在评价中的比重
-#define DIST_RATE	10
-#define MAX_SCORE	((MAX_DISTANCE + 5) * DIST_RATE)
+#define DIST_RATE	50
+#define MAX_SCORE	((MAX_DISTANCE + 50) * DIST_RATE)
 #define MIN_SCORE	0
 
 
-CRobotCatcher::CRobotCatcher(IRefereeListen * listener)
+CRobotCatcher::CRobotCatcher(IRefereeListen * listener, bool sort)
 	: m_referee(listener)
 	, m_board(NULL)
 	, m_movement(NULL)
+	, m_sort(sort)
 {
 	m_log= false;
 	m_eval = new CCrazyCatEvaluator;
 	// 初始化哈希表
 	memset(m_hashtab, 0, sizeof(HASHITEM) * HASH_SIZE);
+	memset(m_history_tab, 0, sizeof(UINT) * BOARD_SIZE_COL * BOARD_SIZE_ROW);
 }
 
 CRobotCatcher::~CRobotCatcher(void)
@@ -118,6 +150,33 @@ CRobotCatcher::~CRobotCatcher(void)
 	delete m_eval;
 	delete m_board;
 	delete [] m_movement;
+}
+
+int CRobotCatcher::Evaluate(CChessBoard * board, CCrazyCatEvaluator * eval)
+{
+	//LOG_STACK_PERFORM(_T(""));
+	JCASSERT(eval);
+	JCASSERT(board);
+	eval->Reset(board);
+	// 最短套出距离
+	int min_dist = eval->StartSearch() * DIST_RATE;
+	// CATCHER对CAT的紧密程度
+	int round = 0;
+
+	char cat_c, cat_r;
+	board->GetCatPosition(cat_c, cat_r);
+	for (int rr = 0; rr < BOARD_SIZE_ROW; ++rr)
+	{
+		int delta_r = abs(cat_r - rr);
+		for (int cc = 0; cc < BOARD_SIZE_COL; ++cc)
+		{
+			if (board->CheckPosition(cc, rr) == PLAYER_CATCHER)
+			{	// 离CAT越远，分数越低
+				round += 16 - (delta_r + abs(cat_c - cc) );
+			}
+		}
+	}
+	return (min_dist + round);
 }
 
 bool CRobotCatcher::StartSearch(const CChessBoard * bd0, int depth)
@@ -137,6 +196,7 @@ bool CRobotCatcher::StartSearch(const CChessBoard * bd0, int depth)
 	delete [] m_movement;
 	m_movement = new CCrazyCatMovement[depth + 1];
 	memset(m_movement, 0, sizeof(CCrazyCatMovement) * (depth + 1));
+	memset(m_history_tab, 0, sizeof(UINT) * BOARD_SIZE_ROW * BOARD_SIZE_COL);
 
 	int alpha = AlphaBetaSearch(depth, MIN_SCORE-1, MAX_SCORE+1, m_movement);
 
@@ -165,15 +225,16 @@ bool CRobotCatcher::StartSearch(const CChessBoard * bd0, int depth)
 
 int CRobotCatcher::AlphaBetaSearch(int depth, int alpha, int beta, CCrazyCatMovement * bestmv)
 {
-	PLAY_STATUS ss = m_board->Status();
+	PLAYER turn = m_board->GetTurn();
+	//PLAY_STATUS ss = m_board->Status();
 	// 判断是否分出胜负
-	if (PS_CATCHER_WIN == ss)	
-	{
-		return MAX_DISTANCE * DIST_RATE + depth;		// CATCHER胜
+	if ( turn == PLAYER_CATCHER)
+	{	// 刚才一步是CAT走
+		if (m_board->IsCatWin() )	return DIST_RATE - depth;
 	}
-	else if (PS_CAT_WIN == ss)	
+	else
 	{
-		return DIST_RATE - depth;
+		if (m_board->IsCatcherWin() ) return MAX_DISTANCE * DIST_RATE + depth;
 	}
 
 	// 
@@ -182,7 +243,7 @@ int CRobotCatcher::AlphaBetaSearch(int depth, int alpha, int beta, CCrazyCatMove
 #ifdef ENABLE_HASHTAB
 	hash_key = m_board->MakeHash();
 	if (0 == hash_key) LOG_WARNING(_T("hashkey = 0"))
-	score = LookUpHashTab(alpha, beta, depth, hash_key, (ss==PS_CATCHER_MOVE)?0:1);	// player 0 for CATCHER
+	score = LookUpHashTab(alpha, beta, depth, hash_key, (turn-1) );	// player 0 for CATCHER
 	if (score != INT_MAX)
 	{
 		m_hash_hit ++;
@@ -192,10 +253,7 @@ int CRobotCatcher::AlphaBetaSearch(int depth, int alpha, int beta, CCrazyCatMove
 
 	if (depth <= 0)
 	{	// 已达到叶子节点，评估
-		LOG_STACK_PERFORM(_T("#Evaluation"));
-		m_eval->Reset(m_board);
-		int val = m_eval->StartSearch() * DIST_RATE + depth;
-		return val;
+		return Evaluate(m_board, m_eval);
 	}
 
 	// save best mv
@@ -203,62 +261,59 @@ int CRobotCatcher::AlphaBetaSearch(int depth, int alpha, int beta, CCrazyCatMove
 	memset(currentmv, 0, sizeof(CCrazyCatMovement) * (depth + 1));
 
 	// 搜索所有走法
-	if (PS_CATCHER_MOVE == ss)
+	//if (PS_CATCHER_MOVE == ss)
+	if (PLAYER_CATCHER == turn)
 	{	// CATCHER下, 取最大值（评价越大，CAT逃出所要的步数越多）
 		bool exact = false;
-		CCatcherMoveGenerator gen;
+		CCatcherMoveGenerator gen(m_history_tab);
+		gen.m_sort = m_sort;
 		JCSIZE move_count = gen.Generate(m_board);
 		for (JCSIZE ii = 0; ii < move_count; ++ii)
 		{
 			CCrazyCatMovement * mv = gen.GetMovement(ii);		JCASSERT(mv);
 			char cc = mv->m_col, rr = mv->m_row;
-			bool br = m_board->Move(PLAYER_CATCHER, cc, rr);
+			bool br = m_board->Move(mv);
 			JCASSERT(br);
-		//for (char rr = 0; rr<BOARD_SIZE_ROW; ++rr)
-		//{
-		//	for (char cc = 0; cc < BOARD_SIZE_COL; ++cc)
-		//	{
-		//		if ( m_board->Move(PLAYER_CATCHER, cc, rr) )
-		//		{
-					m_node ++;
-					LOG_DEBUG_(1, _T("CCH, [%d], moveto (%d,%d), node=%d"), depth, cc, rr, m_node);
+
+			m_node ++;
+			LOG_DEBUG_(1, _T("CCH, [%d], moveto (%d,%d), node=%d"), depth, cc, rr, m_node);
 #ifdef BREAK_POINT
-					BREAK_POINT_NODE &bp = break_point[depth];
-					if ( (bp.col < 0 || bp.col == cc) && (bp.row < 0 || bp.row == rr) )
-					{
-						bp.match = break_point[depth+1].match;
-						LOG_DEBUG_(0, _T("pre-move[%d]: CCH->(%d,%d):??, a=%d,b=%d"), depth, cc, rr, alpha, beta);
-					}
-					else bp.match = false;
-					//JCASSERT(bp.match == false);
+			BREAK_POINT_NODE &bp = break_point[depth];
+			if ( (bp.col < 0 || bp.col == cc) && (bp.row < 0 || bp.row == rr) )
+			{
+				bp.match = break_point[depth+1].match;
+				LOG_DEBUG_(0, _T("pre-move[%d]: CCH->(%d,%d):??, a=%d,b=%d"), depth, cc, rr, alpha, beta);
+			}
+			else bp.match = false;
+			//JCASSERT(bp.match == false);
 #endif
-					score = AlphaBetaSearch(depth -1, alpha, beta, currentmv);
-					br = m_board->Undo();		JCASSERT(br);
-					if (score >= beta)
-					{	// 剪枝
-						EnterHashTab(ET_LOWER, score, depth, hash_key, 0);
-						return score;
-					}
+			score = AlphaBetaSearch(depth -1, alpha, beta, currentmv);
+			br = m_board->Undo();		JCASSERT(br);
+			if (score >= beta)
+			{	// 剪枝
+				EnterHashTab(ET_LOWER, score, depth, hash_key, 0);
+				EnterHistoryTab(*mv, depth);
+				return score;
+			}
 
-					if (score > alpha)
-					{
-						// 保存当前走法
-						for (int ii = 0; ii < depth; ++ii)	bestmv[ii] = currentmv[ii];
-						bestmv[depth].m_col = cc, bestmv[depth].m_row = rr;
-						bestmv[depth].m_player = PLAYER_CATCHER;
-						bestmv[depth].m_score = score;
+			if (score > alpha)
+			{
+				// 保存当前走法
+				for (int ii = 0; ii < depth; ++ii)	bestmv[ii] = currentmv[ii];
+				bestmv[depth].m_col = cc, bestmv[depth].m_row = rr;
+				bestmv[depth].m_player = PLAYER_CATCHER;
+				bestmv[depth].m_score = score;
 
-						alpha = score;
-						exact = true;
-					}
-				//}
-			//}
+				alpha = score;
+				exact = true;
+			}
 		}
 		if (exact)	EnterHashTab(ET_EXACT, alpha, depth, hash_key, 0);
 		else		EnterHashTab(ET_UPPER, alpha, depth, hash_key, 0);
+		EnterHistoryTab(bestmv[depth], depth);
 		return alpha;
 	}
-	else if (PS_CAT_MOVE == ss)
+	else/* if (PS_CAT_MOVE == ss)*/
 	{	// CAT走，取最小值
 		bool exact = false;
 		for (char ww = 0; ww < MAX_MOVEMENT; ++ww)
@@ -266,45 +321,48 @@ int CRobotCatcher::AlphaBetaSearch(int depth, int alpha, int beta, CCrazyCatMove
 			char c0, r0, cc, rr;
 			m_board->GetCatPosition(c0, r0);
 			::Move(c0, r0, ww, cc, rr);
-			if ( m_board->Move(PLAYER_CAT, cc, rr) )
-			{
-				m_node ++;
-				LOG_DEBUG_(1, _T("CAT, [%d], moveto (%d,%d), node=%d"), depth, cc, rr, m_node);
+			// check valid move
+			//if (cc < 0 || cc >= BOARD_SIZE_COL || rr < 0 || rr >= BOARD_SIZE_ROW) continue;
+			if (m_board->CheckPosition(cc, rr) != 0)	continue;
+			CCrazyCatMovement mv(cc, rr, PLAYER_CAT);
+			m_board->Move( &mv );
+			m_node ++;
+			LOG_DEBUG_(1, _T("CAT, [%d], moveto (%d,%d), node=%d"), depth, cc, rr, m_node);
 #ifdef BREAK_POINT
-				BREAK_POINT_NODE &bp = break_point[depth];
-				if ( (bp.col < 0 || bp.col == cc) && (bp.row < 0 || bp.row == rr) )
-				{
-					bp.match = break_point[depth+1].match;
-					LOG_DEBUG_(0, _T("pre-move[%d]: CAT->(%d,%d):??, a=%d,b=%d"), depth, cc, rr, alpha, beta);
-				}
-				else bp.match = false;
-				//JCASSERT(bp.match == false);
+			BREAK_POINT_NODE &bp = break_point[depth];
+			if ( (bp.col < 0 || bp.col == cc) && (bp.row < 0 || bp.row == rr) )
+			{
+				bp.match = break_point[depth+1].match;
+				LOG_DEBUG_(0, _T("pre-move[%d]: CAT->(%d,%d):??, a=%d,b=%d"), depth, cc, rr, alpha, beta);
+			}
+			else bp.match = false;
+			//JCASSERT(bp.match == false);
 #endif
-				int score = AlphaBetaSearch(depth -1, alpha, beta, currentmv);
-				bool br = m_board->Undo();
-				JCASSERT(br);
-				if ( score <= alpha)
-				{	//剪枝
-					EnterHashTab(ET_UPPER, score, depth, hash_key, 1);
-					return score;
-				}
+			int score = AlphaBetaSearch(depth -1, alpha, beta, currentmv);
+			bool br = m_board->Undo();
+			JCASSERT(br);
+			if ( score <= alpha)
+			{	//剪枝
+				EnterHashTab(ET_UPPER, score, depth, hash_key, 1);
+				//EnterHistoryTab(bestmv[depth]);
+				return score;
+			}
 
-				if ( score < beta)
-				{
-					// 保存当前走法
-					for (int ii = 0; ii < depth; ++ii)	bestmv[ii] = currentmv[ii];
-					bestmv[depth].m_col = cc, bestmv[depth].m_row = rr;
-					bestmv[depth].m_player = PLAYER_CATCHER;
-					bestmv[depth].m_score = score;
+			if ( score < beta)
+			{
+				// 保存当前走法
+				for (int ii = 0; ii < depth; ++ii)	bestmv[ii] = currentmv[ii];
+				bestmv[depth].m_col = cc, bestmv[depth].m_row = rr;
+				bestmv[depth].m_player = PLAYER_CATCHER;
+				bestmv[depth].m_score = score;
 
-					beta = score;
-					exact = true;
-				}
+				beta = score;
+				exact = true;
 			}
 		}
 		if (exact)	EnterHashTab(ET_EXACT, beta, depth, hash_key, 1);
 		else		EnterHashTab(ET_LOWER, beta, depth, hash_key, 1);
-
+		//EnterHistoryTab(bestmv[depth]);
 		return beta;
 	}
 
@@ -314,7 +372,7 @@ int CRobotCatcher::AlphaBetaSearch(int depth, int alpha, int beta, CCrazyCatMove
 
 int CRobotCatcher::LookUpHashTab(int alpha, int beta, int depth, UINT key, int player)
 {
-	UINT index = (key & 0xFFFE) | player;
+	UINT index = (key & HASH_SIZE_MASK) | player;
 	HASHITEM & hash = m_hashtab[index];
 	// 哈希未命中（不同的棋盘哈希）
 	if (hash.m_checksum != key)		return INT_MAX;
@@ -345,7 +403,7 @@ int CRobotCatcher::LookUpHashTab(int alpha, int beta, int depth, UINT key, int p
 
 void CRobotCatcher::EnterHashTab(ENTRY_TYPE entry, int score, int depth, UINT key, int player)
 {
-	UINT index = (key & 0xFFFE) | player;
+	UINT index = (key & HASH_SIZE_MASK) | player;
 	HASHITEM & hash = m_hashtab[index];
 	if (hash.m_checksum == key)
 	{	// 相同的局面，覆盖原来值
@@ -376,5 +434,13 @@ void CRobotCatcher::EnterHashTab(ENTRY_TYPE entry, int score, int depth, UINT ke
 			hash.m_score = score;
 			hash.m_entry = entry;	
 		}
+	}
+}
+
+void CRobotCatcher::EnterHistoryTab(const CCrazyCatMovement &mv, int depth)
+{
+	if (mv.m_player != 0)
+	{	// player = 0时mv无效
+		m_history_tab[mv.m_row * BOARD_SIZE_COL + mv.m_col] += (2 << depth); 
 	}
 }
