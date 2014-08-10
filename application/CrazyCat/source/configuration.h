@@ -11,6 +11,7 @@
 // 棋子大小 半径
 #define CHESS_RADIUS	15
 
-
 //
-#define HASH_SIZE	(64 * 1024)
+#define HASH_SIZE_ORDER		20
+#define HASH_SIZE			(1<< HASH_SIZE_ORDER)
+#define HASH_SIZE_MASK		(HASH_SIZE - 2)
