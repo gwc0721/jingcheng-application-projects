@@ -11,6 +11,9 @@
 // 棋子大小 半径
 #define CHESS_RADIUS	15
 
+// 最大搜索深度
+#define MAX_DEPTH		10		
+
 //
 #define HASH_SIZE_ORDER		20
 #define HASH_SIZE			(1<< HASH_SIZE_ORDER)

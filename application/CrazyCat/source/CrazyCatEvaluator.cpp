@@ -4,7 +4,7 @@
 #include "configuration.h"
 #include "ChessBoard.h"
 
-LOCAL_LOGGER_ENABLE(_T("chess_board"), LOGGER_LEVEL_DEBUGINFO);
+LOCAL_LOGGER_ENABLE(_T("evaluate"), LOGGER_LEVEL_NOTICE);
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- move table

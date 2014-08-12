@@ -21,6 +21,31 @@ class CGameTreeEngine
 {
 };
 
+class CCatMoveGenerator
+{
+public:
+	CCatMoveGenerator(const UINT * hist_tab);
+	~CCatMoveGenerator(void);
+
+public:
+	JCSIZE Generate(const CChessBoard * board);
+	CCrazyCatMovement * GetMovement(JCSIZE index);
+
+protected:
+	// Move的指针数组，用于排序。
+	CCrazyCatMovement * m_index[MAX_MOVEMENT];
+	// 移动方法数组
+	CCrazyCatMovement m_array[MAX_MOVEMENT];
+	JCSIZE	m_move_count;
+	const UINT * m_history_tab;
+};
+
+// 搜索用堆栈。为避免调用堆栈消耗太大，以及动态分配内存的低效。
+struct SEARCH_STACK
+{
+	CCrazyCatMovement m_mv_track[MAX_DEPTH];
+};
+
 class CCatcherMoveGenerator
 {
 public:
@@ -50,6 +75,8 @@ protected:
 	const UINT * m_history_tab;
 };
 
+#define HH_SIZE	(BOARD_SIZE_COL * BOARD_SIZE_ROW)
+
 
 class CRobotCatcher : public IRobot
 	, public CGameTreeEngine
@@ -75,7 +102,7 @@ protected:
 	// 哈希表，前一般用于保存CATCHER，后一半保存CAT
 	HASHITEM	m_hashtab[HASH_SIZE];
 	// 历史启发表
-	UINT		m_history_tab[BOARD_SIZE_COL * BOARD_SIZE_ROW];
+	UINT		m_history_tab[HH_SIZE * 2];
 
 	CCrazyCatEvaluator * m_eval;
 
@@ -83,7 +110,8 @@ public:
 	// 用于算法评估
 	JCSIZE m_node, m_hash_hit, m_hash_conflict;
 	// 记录走法
-	CCrazyCatMovement * m_movement;
+	CCrazyCatMovement m_movement[MAX_DEPTH];
+	SEARCH_STACK		m_stack[MAX_DEPTH];
 
 protected:
 	// for debug

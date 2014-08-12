@@ -18,7 +18,7 @@
 #define new DEBUG_NEW
 #endif
 
-LOCAL_LOGGER_ENABLE(_T("chess_board"), LOGGER_LEVEL_DEBUGINFO);
+LOCAL_LOGGER_ENABLE(_T("dialog"), LOGGER_LEVEL_NOTICE);
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
@@ -66,25 +66,23 @@ void PassAllMessage()
 ///////////////////////////////////////////////////////////////////////////////
 // -- CCrazyCatDlg 对话框
 
-LPCTSTR CCrazyCatDlg::PLAYER_NAME[3] = {
-	_T("wrong player"),
-	_T("catcher"),
-	_T("cat"),
-};
 
 CCrazyCatDlg::CCrazyCatDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CCrazyCatDlg::IDD, pParent)
-	, m_cell_radius(15)
+	, m_cell_radius(CHESS_RADIUS)	, m_cell_size(CHESS_RADIUS)
+
 	, m_init(false)
 	, m_show_path(TRUE),	m_show_search(FALSE)
 	, m_search_depth(5)
 	, m_board(NULL)
 	, m_turn(PLAYER_CATCHER)
 	, m_status(PS_SETTING)
+	, m_preset_chess(15)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	memset(m_player, 0, sizeof(BOOL) * 3);
 	memset(m_robot, 0, sizeof(IRobot*) * 3);
+	m_seed =  (unsigned)time( NULL ) & RAND_MAX;
 }
 
 CCrazyCatDlg::~CCrazyCatDlg(void)
@@ -127,12 +125,13 @@ void CCrazyCatDlg::DoDataExchange(CDataExchange* pDX)
 
 	DDX_Text(pDX, IDC_TXT_STATUS, str_status);
 
-	DDX_Text(pDX, IDC_CELL_RADIUS, m_cell_radius);
 	DDX_Text(pDX, IDC_CHESS_LOCATION, m_txt_location);
 
 	DDX_Text(pDX, IDC_CHECKSUM, m_checksum);
 
 	DDX_Text(pDX, IDC_SEARCH_DEPTH, m_search_depth);
+	DDV_MinMaxInt(pDX, m_search_depth, 1, MAX_DEPTH);
+
 	DDV_MinMaxInt(pDX, m_search_depth, 1, 100);
 	DDX_Control(pDX, IDC_BT_PLAY, m_btn_play);
 	DDX_Control(pDX, IDC_BT_STOP, m_btn_stop);
@@ -141,13 +140,24 @@ void CCrazyCatDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_TURN_CATCHER, turn);
 	m_turn = (PLAYER)(turn + 1);
 	DDX_Control(pDX, IDC_TURN_CATCHER, m_ctrl_turn);
+
+	DDX_Text(pDX, IDC_CELL_SIZE, m_cell_size);
+	DDV_MinMaxInt(pDX, m_cell_size, 1, 100);
+	DDX_Text(pDX, IDC_CELL_RADIUS, m_cell_radius);
+	DDV_MinMaxInt(pDX, m_cell_radius, 1, m_cell_size);
+
+	DDX_Text(pDX, IDC_GAME_CHESS, m_preset_chess);
+	DDV_MinMaxInt(pDX, m_preset_chess, 0, 80);
+	DDX_Text(pDX, IDC_SEED, m_seed);
 }
 
 BEGIN_MESSAGE_MAP(CCrazyCatDlg, CDialog)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_EN_CHANGE(IDC_CELL_RADIUS, OnCellRadiusChanged)
+	ON_EN_CHANGE(IDC_CELL_RADIUS, &CCrazyCatDlg::OnCellRadiusChanged)
+	ON_EN_CHANGE(IDC_CELL_SIZE, &CCrazyCatDlg::OnCellRadiusChanged)
+
 	ON_BN_CLICKED(IDC_BT_SEARCH, &CCrazyCatDlg::OnClickedSearch)
 	ON_BN_CLICKED(IDC_BT_STOP, &CCrazyCatDlg::OnClickedStop)
 	ON_BN_CLICKED(IDC_BT_PLAY, &CCrazyCatDlg::OnClickedPlay)
@@ -162,6 +172,9 @@ BEGIN_MESSAGE_MAP(CCrazyCatDlg, CDialog)
 	ON_BN_CLICKED(IDC_BT_SAVE, &CCrazyCatDlg::OnClickedSave)
 	ON_BN_CLICKED(IDC_BT_LOAD, &CCrazyCatDlg::OnClickedLoad)
 	ON_BN_CLICKED(IDC_BT_REDO, &CCrazyCatDlg::OnClickedRedo)
+	ON_BN_CLICKED(IDC_BT_MAKEGAME, &CCrazyCatDlg::OnClickedMakeGame)
+
+	ON_BN_CLICKED(IDC_CLEAR_SEED, &CCrazyCatDlg::OnClickedClearSeed)
 END_MESSAGE_MAP()
 
 
@@ -209,6 +222,8 @@ BOOL CCrazyCatDlg::OnInitDialog()
 	m_ctrl_player_catcher.AddString(_T("ai nosort"));
 	m_ctrl_player_catcher.AddString(_T("ai sort"));
 	m_ctrl_player_catcher.SetCurSel(0);
+
+	//m_seed =  (unsigned)time( NULL );
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -269,7 +284,7 @@ afx_msg void CCrazyCatDlg::OnCellRadiusChanged(void)
 	if (m_init)
 	{
 		UpdateData();
-		m_board_ctrl.SetCellRadius(m_cell_radius);
+		m_board_ctrl.SetCellSize(m_cell_size, m_cell_radius);
 	}
 }
 
@@ -280,6 +295,9 @@ void CCrazyCatDlg::OnClickedSearch()
 void CCrazyCatDlg::OnClickedPlay()
 {
 	UpdateData();
+	LOG_NOTICE(_T("start playing, CCH:%d, CAT:%d"), m_player[PLAYER_CATCHER], m_player[PLAYER_CAT]);
+	LogBoard(m_board);
+
 	if (m_player[PLAYER_CAT])	m_robot[PLAYER_CAT] = new CRobotCat(static_cast<IRefereeListen*>(this) );
 	switch (m_player[PLAYER_CATCHER])
 	{
@@ -408,6 +426,32 @@ void CCrazyCatDlg::OnClickedLoad()
 	RedrawWindow();
 }
 
+void CCrazyCatDlg::OnClickedMakeGame()
+{	// 随机产生一些catcher
+	UpdateData();
+
+	srand(m_seed);
+	for (int ii=0; ii < m_preset_chess;)
+	{
+		char cc = rand() % BOARD_SIZE_COL;
+		char rr = rand() % BOARD_SIZE_ROW;
+		if (m_board->CheckPosition(cc, rr) != 0) continue;
+		m_board->SetChess(PLAYER_CATCHER, cc, rr);
+		ii ++;
+	}
+	m_board_ctrl.Draw(0, 0, 0);
+	UpdateData(FALSE);
+}
+
+
+
+void CCrazyCatDlg::OnClickedClearSeed()
+{
+	UpdateData();
+	m_seed =  (unsigned)time( NULL ) & RAND_MAX;
+	UpdateData(FALSE);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 void CCrazyCatDlg::DoMovement(CCrazyCatMovement * mv)
 {
@@ -416,12 +460,13 @@ void CCrazyCatDlg::DoMovement(CCrazyCatMovement * mv)
 	bool br = m_board->IsValidMove(mv);
 	if (!br)
 	{
-		_stprintf_s(str, _T("invalide move: %s to (%d,%d)"), PLAYER_NAME[mv->m_player], mv->m_col, mv->m_row);
+		_stprintf_s(str, _T("invalide move: %s to (%d,%d)"), CChessBoard::PLAYER_NAME[mv->m_player], mv->m_col, mv->m_row);
 		SendTextMsg(str);
 		return;
 	}
+	LOG_NOTICE(_T("play %s -> (%d,%d)"), CChessBoard::PLAYER_SNAME[mv->m_player], mv->m_col, mv->m_row);
 
-	_stprintf_s(str, _T("%s move to (%d,%d)"), PLAYER_NAME[mv->m_player], mv->m_col, mv->m_row);
+	_stprintf_s(str, _T("%s move to (%d,%d)"), CChessBoard::PLAYER_NAME[mv->m_player], mv->m_col, mv->m_row);
 	SendTextMsg(str);
 	m_board->Move(mv);
 	m_move_count ++;
@@ -433,13 +478,14 @@ LRESULT CCrazyCatDlg::OnChessClicked(WPARAM wp, LPARAM flag)
 	char col, row;
 	col = LOBYTE(wp & 0xFFFF), row = HIBYTE(wp & 0xFFFF);
 
+	UpdateData();
 	m_turn = m_board->GetTurn();
 
 	switch (flag)
 	{
 	case CLICKCHESS_MOVE:
 		m_txt_location.Format(_T("(%d,%d)"), col, row);
-		UpdateData(FALSE);
+		//UpdateData(FALSE);
 		break;
 
 	case CLICKCHESS_LEFT:	{
@@ -495,6 +541,8 @@ LRESULT CCrazyCatDlg::OnCompleteMove(WPARAM wp, LPARAM lp)
 		if (player == PLAYER_CATCHER)	SendTextMsg(_T("catcher win"));
 		else							SendTextMsg(_T("cat win"));
 		stdext::jc_sprintf(str, _T("total movement %d"), m_move_count);
+
+		LOG_NOTICE(_T("finished, %s win, movement%d"), CChessBoard::PLAYER_SNAME[player], m_move_count);
 		SendTextMsg(str);
 		OnClickedStop();
 		return 0;
@@ -527,7 +575,7 @@ void CCrazyCatDlg::SearchCompleted(MOVEMENT * move)
 
 	if (mv->m_col < 0 && mv->m_row < 0)
 	{	// 认输	
-		_stprintf_s(str, _T("player %s give up"), PLAYER_NAME[mv->m_player]);
+		_stprintf_s(str, _T("player %s give up"), CChessBoard::PLAYER_NAME[mv->m_player]);
 		SendTextMsg(str);
 		// wparam = 1 means giveup
 		PostMessage(WM_MSG_COMPLETEMOVE, 1, 0);
@@ -543,6 +591,26 @@ void CCrazyCatDlg::SearchCompleted(MOVEMENT * move)
 				catcher->m_node, catcher->m_hash_hit, catcher->m_hash_conflict);
 			SendTextMsg(str);
 		}
+	}
+}
+
+void CCrazyCatDlg::LogBoard(const CChessBoard * board)
+{
+	TCHAR str[256];
+	for (int rr = 0; rr < BOARD_SIZE_ROW; ++rr)
+	{
+		wmemset(str, _T(' '), 256);
+		int x = (rr & 1);		// 单数行缩进
+		for (int cc = 0; cc < BOARD_SIZE_COL; ++cc)
+		{
+			BYTE chess = board->CheckPosition(cc, rr);
+			if (chess == 0) str[x] = _T('-');
+			else if (chess == PLAYER_CATCHER) str[x] = _T('*');
+			else if (chess == PLAYER_CAT) str[x] = _T('0');
+			x += 2;
+		}
+		str[x] = 0;
+		LOG_NOTICE(str);
 	}
 }
 
