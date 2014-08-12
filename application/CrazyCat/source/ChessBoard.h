@@ -109,9 +109,10 @@ public:
 	void SetBoard(CChessBoard * board);
 
 public:
-	void SetCellRadius(int r)
+	void SetCellSize(int size, int r)
 	{
-		m_cr = (float)r, m_ca = (float)1.155 * m_cr;		// 2/squr(3)
+		m_cs = (float)size, m_ca = (float)1.155 * m_cs;		// 2/squr(3)
+		m_cr = r;
 		Draw(0, 0, 0);
 	}
 
@@ -145,10 +146,12 @@ protected:
 	bool	m_init;
 
 	bool	m_hit;
+
 	int		m_cx, m_cy;
 
-	// 棋子半径，六角形边长
-	float m_cr, m_ca;
+	// 棋子大小（六边形大小），棋子半径，六角形边长(辅助变量)
+	float m_cs, m_ca;
+	int m_cr;
 };
 
 
@@ -197,6 +200,7 @@ public:
 	bool IsCatcherWin(void);
 	bool IsCatWin(void);
 	bool IsWin(PLAYER & player);
+	bool IsWinPlayer(const PLAYER player);
 
 protected:
 	void PushMovement(const CCrazyCatMovement & mv);
@@ -219,5 +223,9 @@ protected:
 	JCSIZE m_stack_point, m_stack_top;
 	// 用于判断catcher是否胜。
 	CCrazyCatEvaluator	* m_eval;
+
+public:
+	static LPCTSTR PLAYER_NAME[3];
+	static LPCTSTR PLAYER_SNAME[3];
 };
 
