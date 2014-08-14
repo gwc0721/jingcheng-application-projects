@@ -38,8 +38,11 @@ public:
 class IRobot
 {
 public:
-	virtual bool StartSearch(const CChessBoard * board, int depth) = 0;
-	virtual ~IRobot(void) {};
+	// board 由Wrapper类提供，保证线程安全，不需要复制
+	virtual bool StartSearch(CChessBoard * board, int depth) = 0;
+	virtual void Release(void) = 0;
+	virtual void GetProgress(long & prog, long & max_prog) = 0;
+	virtual void CancelSearch(void) = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -72,9 +75,12 @@ enum PLAYER
 // 定义消息，轮到AI下棋
 #define WM_MSG_ROBOTMOVE		(WM_USER + 100)
 // 定义消息，AI或者PLAYER下完棋，更新装态
+//	wp=1 giveup,
 #define WM_MSG_COMPLETEMOVE		(WM_USER + 101)
-// 定义消息，按下旗子
+// 定义消息，按下旗子，
 #define WM_MSG_CLICKCHESS		(WM_USER + 102)
+// 定义消息，走子
+#define WM_MSG_MOVECHESS		(WM_USER + 103)
 
 // 移动到棋子上，左键单击，右键单击
 #define CLICKCHESS_MOVE			0

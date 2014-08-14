@@ -18,3 +18,6 @@
 #define HASH_SIZE_ORDER		20
 #define HASH_SIZE			(1<< HASH_SIZE_ORDER)
 #define HASH_SIZE_MASK		(HASH_SIZE - 2)
+
+// 文本的最大长度
+#define MAX_MESSAGE_LENGTH		256

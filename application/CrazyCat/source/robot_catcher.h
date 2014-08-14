@@ -87,8 +87,14 @@ public:
 
 public:
 	// 搜索下一步棋
-	virtual bool StartSearch(const CChessBoard * board, int depth);
+	virtual bool StartSearch(CChessBoard * board, int depth);
+	virtual void Release(void) { delete this; };
+	virtual void GetProgress(long & prog, long & max_prog)
+	{	prog = m_progress;	max_prog = m_max_prog;	}
 	static int Evaluate(CChessBoard * board, CCrazyCatEvaluator * eval);
+	virtual void CancelSearch(void)
+	{	InterlockedExchange(&m_terminate, 1); }
+
 
 protected:
 	int AlphaBetaSearch(int depth, int alpha, int beta, CCrazyCatMovement * mv);
@@ -106,9 +112,16 @@ protected:
 
 	CCrazyCatEvaluator * m_eval;
 
+	// 评估函数中，距离和得分换算表；
+	static const int DIST_SCORE_TAB[];
+	// 换算表大小
+	static const int DSTAB_SIZE;
+
 public:
 	// 用于算法评估
 	JCSIZE m_node, m_hash_hit, m_hash_conflict;
+	volatile long m_progress;
+	volatile long m_max_prog;
 	// 记录走法
 	CCrazyCatMovement m_movement[MAX_DEPTH];
 	SEARCH_STACK		m_stack[MAX_DEPTH];
@@ -117,4 +130,6 @@ protected:
 	// for debug
 	bool m_log;
 	bool m_sort;
+	long	m_terminate;
+	volatile int m_init_depth;
 };
