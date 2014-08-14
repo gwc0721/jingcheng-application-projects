@@ -28,8 +28,8 @@ namespace jcparam
 
 	template <typename DATATYPE, typename CONVERTOR = CConvertor<DATATYPE> >
 	class CTypedValue 
-		: virtual public IValueFormat
-		, virtual public IVisibleValue
+		: /*virtual public IValueFormat
+		, */virtual public IVisibleValue
 		, public CJCInterfaceBase
 		, public CTypedValueBase
 	{
@@ -78,27 +78,27 @@ namespace jcparam
 
 		virtual void FromStream(IJCStream * str, VAL_FORMAT) { NOT_SUPPORT0; };
 
-		virtual void WriteHeader(FILE *) {};
-		virtual void Format(FILE * file, LPCTSTR format)
-		{
-			CJCStringT str;
-			GetValueText(str);
-			stdext::jc_fprintf(file, _T("%s"), str.c_str());
-		}
+		//virtual void WriteHeader(FILE *) {};
+		//virtual void Format(FILE * file, LPCTSTR format)
+		//{
+		//	CJCStringT str;
+		//	GetValueText(str);
+		//	stdext::jc_fprintf(file, _T("%s"), str.c_str());
+		//}
 
-		virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr)
-		{
-			JCASSERT(NULL == if_ptr);
-			bool br = false;
-			if ( FastCmpA(IF_NAME_VALUE_FORMAT, if_name) )
-			{
-				if_ptr = static_cast<IJCInterface*>(this);
-				if_ptr->AddRef();
-				br = true;
-			}
-			else br = __super::QueryInterface(if_name, if_ptr);
-			return br;
-		}
+		//virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr)
+		//{
+		//	JCASSERT(NULL == if_ptr);
+		//	bool br = false;
+		//	if ( FastCmpA(IF_NAME_VALUE_FORMAT, if_name) )
+		//	{
+		//		if_ptr = static_cast<IJCInterface*>(this);
+		//		if_ptr->AddRef();
+		//		br = true;
+		//	}
+		//	else br = __super::QueryInterface(if_name, if_ptr);
+		//	return br;
+		//}
 
 		virtual jcparam::VALUE_TYPE GetType(void) const
 		{
@@ -153,7 +153,7 @@ namespace jcparam
 
 	class CVector
 		: virtual public IVector
-		, virtual public IValueFormat
+		//, virtual public IValueFormat
 		, public CJCInterfaceBase
 	{
 	public:
@@ -168,8 +168,8 @@ namespace jcparam
 		virtual void GetRow(JCSIZE index, IValue * & val);
 		virtual JCSIZE GetRowSize() const;
 
-		virtual void Format(FILE * file, LPCTSTR format);
-		virtual void WriteHeader(FILE * file);
+		//virtual void Format(FILE * file, LPCTSTR format);
+		//virtual void WriteHeader(FILE * file);
 	public:
 		virtual void GetSubValue(LPCTSTR name, IValue * & val) {};
 		virtual void SetSubValue(LPCTSTR name, IValue * val) {};
