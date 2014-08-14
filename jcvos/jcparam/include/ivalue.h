@@ -68,14 +68,14 @@ namespace jcparam
 		virtual void SetValueText(LPCTSTR str)  = 0;
 	};
 
-	const char IF_NAME_VALUE_FORMAT[] = "IValueFormat";
+	//const char IF_NAME_VALUE_FORMAT[] = "IValueFormat";
 
-	class IValueFormat/* : virtual public IValue*/
-	{
-	public:
-		virtual void Format(FILE * file, LPCTSTR format) = 0;
-		virtual void WriteHeader(FILE * file) = 0;
-	};
+	//class IValueFormat
+	//{
+	//public:
+	//	virtual void Format(FILE * file, LPCTSTR format) = 0;
+	//	virtual void WriteHeader(FILE * file) = 0;
+	//};
 
 	enum VAL_FORMAT
 	{

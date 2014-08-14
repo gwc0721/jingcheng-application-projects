@@ -137,8 +137,6 @@ namespace jcparam
 				CJCStringT str;
 				const COLUMN_INFO_BASE * col_info = GetColumnInfo(ii);
 				col_info->ToStream((void*)(row), stream, fmt); 
-				//col_info->GetText((void*)(row), str);
-				//stream->Put(str.c_str(), str.length());
 				stream->Put(_T(','));
 			}
 			stream->Put(_T('\n'));
@@ -165,7 +163,7 @@ namespace jcparam
 
 	template <class ROW_BASE_TYPE, class ROW_TYPE = CTableRowBase<ROW_BASE_TYPE> >
 	class CTypedTable 
-		: virtual public ITable, virtual public IValueFormat
+		: virtual public ITable/*, virtual public IValueFormat*/
 		, public CJCInterfaceBase
 	{
 	public:
@@ -243,8 +241,6 @@ namespace jcparam
 				{
 					CJCStringT str;
 					const COLUMN_INFO_BASE * col_info = col_list->GetItem(ii);
-					//col_info->GetText( (void*)( &(*it) ), str);
-					//stream->Put(str.c_str(), str.length());
 					col_info->ToStream( (void*)( &(*it) ), stream, fmt);
 					stream->Put(_T(','));
 				}
@@ -255,54 +251,23 @@ namespace jcparam
 		virtual void FromStream(IJCStream * str, jcparam::VAL_FORMAT)
 		{/*DO NOT SUPPORT*/}
 
-		virtual void WriteHeader(FILE * file) 		{}
+		//virtual void WriteHeader(FILE * file) 		{}
 
-		virtual void Format(FILE * file, LPCTSTR format)
-		{
-			NOT_SUPPORT0;
-			// default : csv
-			// output head
-/*
-			const CColumnInfoList * col_list = ROW_TYPE::GetColumnInfo();
-			JCASSERT(col_list);
-			JCSIZE col_size = col_list->GetSize();
-			for (JCSIZE ii = 0; ii < col_size; ++ii)
-			{
-				const COLUMN_INFO_BASE * col_info = col_list->GetItem(ii);
-				JCASSERT(col_info);
-				fprintf_s(file, "%S,", col_info->m_name.c_str());
-			}
-			fprintf_s(file, "\n");
+		//virtual void Format(FILE * file, LPCTSTR format)	{NOT_SUPPORT0;}
 
-			ROW_ITERATOR it = m_table.begin();
-			ROW_ITERATOR endit = m_table.end();
-			for ( ; it!=endit; ++it)
-			{
-				for (JCSIZE ii = 0; ii < col_size; ++ii)
-				{
-					CJCStringT str;
-					const COLUMN_INFO_BASE * col_info = col_list->GetItem(ii);
-					col_info->GetText( &(*it), str);
-					fprintf_s(file, "%S,", str.c_str());
-				}
-				fprintf_s(file, "\n");
-			}
-*/
-		}
-
-		bool QueryInterface(const char * if_name, IJCInterface * &if_ptr)
-		{
-			JCASSERT(NULL == if_ptr);
-			bool br = false;
-			if ( FastCmpA(IF_NAME_VALUE_FORMAT, if_name) )
-			{
-				if_ptr = static_cast<IJCInterface*>(this);
-				if_ptr->AddRef();
-				br = true;
-			}
-			else br = __super::QueryInterface(if_name, if_ptr);
-			return br;
-		}
+		//bool QueryInterface(const char * if_name, IJCInterface * &if_ptr)
+		//{
+		//	JCASSERT(NULL == if_ptr);
+		//	bool br = false;
+		//	if ( FastCmpA(IF_NAME_VALUE_FORMAT, if_name) )
+		//	{
+		//		if_ptr = static_cast<IJCInterface*>(this);
+		//		if_ptr->AddRef();
+		//		br = true;
+		//	}
+		//	else br = __super::QueryInterface(if_name, if_ptr);
+		//	return br;
+		//}
 
 		virtual void PushBack(IValue * row)
 		{

@@ -42,24 +42,23 @@ JCSIZE CVector::GetRowSize() const
 	return m_vector.size();
 }
 
-void CVector::Format(FILE * file, LPCTSTR format)
-{
-	VALUE_ITERATOR it = m_vector.begin();
-	VALUE_ITERATOR endit = m_vector.end();
-	for ( ; it!=endit; ++it)
-	{
-		//IValueConvertor * val = dynamic_cast<IValueConvertor *>(*it);
-		IValue *val = (*it);
-		if (val)
-		{
-			CJCStringT str;
-			val->GetValueText(str);
-			fprintf_s(file, "%S", str.c_str() );
-		}
-		fprintf_s(file, "\n");
-	}
-}
-
-void CVector::WriteHeader(FILE * file)
-{
-}
+//void CVector::Format(FILE * file, LPCTSTR format)
+//{
+//	VALUE_ITERATOR it = m_vector.begin();
+//	VALUE_ITERATOR endit = m_vector.end();
+//	for ( ; it!=endit; ++it)
+//	{
+//		IValue *val = (*it);
+//		if (val)
+//		{
+//			CJCStringT str;
+//			val->GetValueText(str);
+//			fprintf_s(file, "%S", str.c_str() );
+//		}
+//		fprintf_s(file, "\n");
+//	}
+//}
+//
+//void CVector::WriteHeader(FILE * file)
+//{
+//}
