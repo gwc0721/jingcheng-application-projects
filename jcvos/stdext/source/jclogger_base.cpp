@@ -1,4 +1,4 @@
-
+﻿
 #include "../include/jclogger_base.h"
 #include "../include/jcexception.h"
 #include <time.h>
@@ -21,8 +21,6 @@ CJCLogger::CJCLogger(CJCLoggerAppender * appender)
     : m_appender(appender)
 	, m_ts_cycle(0)
 	, m_column_select( 0
-		//| COL_TIME_STAMP 
-		//| COL_REAL_TIME 
 		| COL_SIGNATURE
 		| COL_FUNCTION_NAME 
 		)
@@ -30,13 +28,16 @@ CJCLogger::CJCLogger(CJCLoggerAppender * appender)
 #ifdef WIN32
 	LARGE_INTEGER freq;
 	QueryPerformanceFrequency(&freq);
-	m_ts_cycle = 1000.0 * 1000.0 / (double)(freq.QuadPart);
+	m_ts_cycle = 1000.0 * 1000.0 / (double)(freq.QuadPart);	// unit: us
+	InitializeCriticalSection(&m_critical);
 #endif
 	JCASSERT(m_appender);
 }
 
 CJCLogger::~CJCLogger(void)
 {
+	OutputFunctionDuration();
+
     LoggerCategoryMap::iterator it = m_logger_category.begin();
     LoggerCategoryMap::iterator last_it = m_logger_category.end();
     for (; it != last_it; it++)
@@ -46,6 +47,9 @@ CJCLogger::~CJCLogger(void)
     }
     m_logger_category.clear();	
 	CleanUp();
+#ifdef WIN32
+	DeleteCriticalSection(&m_critical);
+#endif
 }
 
 void CJCLogger::CleanUp(void)
@@ -218,8 +222,10 @@ bool CJCLogger::UnregisterLoggerNode(CJCLoggerNode * node)
 
 void CJCLogger::WriteString(LPCTSTR str, JCSIZE len)
 {
+	EnterCriticalSection(&m_critical);
 	JCASSERT(m_appender);
 	m_appender->WriteString(str, len);
+	LeaveCriticalSection(&m_critical);
 }
 
 void CJCLogger::CreateAppender(LPCTSTR app_type, LPCTSTR file_name, DWORD prop)
@@ -238,6 +244,38 @@ void CJCLogger::CreateAppender(LPCTSTR app_type, LPCTSTR file_name, DWORD prop)
 	{
 	}
 	JCASSERT(m_appender)
+}
+
+void CJCLogger::RegistFunction(const CJCStringT & func, LONGLONG duration)
+{
+	typedef std::pair<CJCStringT, CJCFunctionDuration>	PAIR;
+	DURATION_MAP::iterator it = m_duration_map.find(func);
+	if ( it == m_duration_map.end() )
+	{
+		CJCFunctionDuration dur(func);
+		std::pair<DURATION_MAP::iterator, bool> rs = m_duration_map.insert(PAIR(func, dur));
+		JCASSERT(rs.second);
+		it = rs.first;
+	}
+	CJCFunctionDuration & dur = it->second;
+	dur.m_duration += duration;
+	dur.m_calls ++;
+}
+
+void CJCLogger::OutputFunctionDuration(void)
+{
+	TCHAR str[LOGGER_MSG_BUF_SIZE];
+
+	DURATION_MAP::iterator it = m_duration_map.begin();
+	DURATION_MAP::iterator endit = m_duration_map.end();
+	for ( ; it!=endit; ++ it)
+	{
+		CJCFunctionDuration & dur = it->second;
+		double total= dur.m_duration / GetTimeStampCycle();
+		stdext::jc_sprintf(str, LOGGER_MSG_BUF_SIZE, _T("<FUN=%s> [Duration] calls=%d, total duration=%.1f ms, avg=%.1f us\n")
+			, dur.m_func_name.c_str(), dur.m_calls, total / 1000.0, total / dur.m_calls);
+		WriteString(str, LOGGER_MSG_BUF_SIZE);
+	}
 }
 
 
@@ -289,7 +327,7 @@ void CJCLoggerNode::LogMessageFuncV(LPCSTR function, LPCTSTR format, va_list arg
 	}
 
 	if (col_sel & CJCLogger::COL_TIME_STAMP)
-	{
+	{	// 单位: us
 		LARGE_INTEGER now;
 		QueryPerformanceCounter(&now);
 		double ts = now.QuadPart * m_ts_cycle;
@@ -367,13 +405,53 @@ CJCStackTrace::CJCStackTrace(CJCLoggerNode *log, const char *func_name, LPCTSTR 
 	{
 		log->LogMessageFunc(func_name, _T("[TRACE IN] %s"), msg);
 	}
+	// 计算函数执行时间
+	LARGE_INTEGER now;
+	QueryPerformanceCounter(&now);
+	m_start_time = now.QuadPart;
 }
 
 CJCStackTrace::~CJCStackTrace(void)
 {
+	// 计算函数执行时间
+	LARGE_INTEGER now;
+	QueryPerformanceCounter(&now);
+	m_start_time = now.QuadPart - m_start_time;
+	double runtime = (m_start_time / CJCLogger::Instance()->GetTimeStampCycle());
+
 	if (m_log && m_log->GetLevel() >= LOGGER_LEVEL_TRACE)
 	{
-		m_log->LogMessageFunc(m_func_name.c_str(), _T("[TRACE OUT]"));
+		m_log->LogMessageFunc(m_func_name.c_str(), _T("[TRACE OUT], duration = %.1f us"), runtime);
 	}
+
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// -- StackPerformance
+// 用于计算特定函数被执行的总次数和总时间
+CJCStackPerformance::CJCStackPerformance(LPCTSTR func_name)
+	: m_func_name(func_name)
+{
+	// 计算函数执行时间
+	LARGE_INTEGER now;
+	QueryPerformanceCounter(&now);
+	m_start_time = now.QuadPart;
+}
+
+CJCStackPerformance::~CJCStackPerformance(void)
+{
+	LARGE_INTEGER now;
+	QueryPerformanceCounter(&now);
+	m_start_time = now.QuadPart - m_start_time;
+
+	if ( !m_func_name.empty() )	CJCLogger::Instance()->RegistFunction(m_func_name, m_start_time);
+}
+
+double CJCStackPerformance::GetDeltaTime(void)
+{
+	LARGE_INTEGER now;
+	QueryPerformanceCounter(&now);
+	LONGLONG delta = now.QuadPart - m_start_time;
+	return ( delta / CJCLogger::Instance()->GetTimeStampCycle() );
+
+}

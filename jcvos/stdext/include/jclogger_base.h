@@ -85,6 +85,17 @@ private:
 };
 
 ///////////////////////////////////////////////////////////////////////////////
+// -- 统计函数的被叫次数和总时间
+struct CJCFunctionDuration
+{
+	CJCFunctionDuration(const CJCStringT & func) : m_func_name(func), m_duration(0), m_calls(0) {}
+	CJCStringT m_func_name;
+	LONGLONG m_duration;	// 总的累积执行时间
+	UINT m_calls;			// 被叫次数
+};
+
+
+///////////////////////////////////////////////////////////////////////////////
 //--
 class CJCLogger
 {
@@ -123,7 +134,7 @@ public:
 	void SetColumnSelect(DWORD sel)		{ m_column_select = sel; }
 	void SetProperty(DWORD prop)		{ m_prop = prop; }
 
-	double GetTimeStampCycle()			{return m_ts_cycle;}
+	inline double GetTimeStampCycle()			{return m_ts_cycle;}
 
 	// Read config from text file
 	//  format:
@@ -147,12 +158,23 @@ protected:
 	DWORD m_column_select;
 	DWORD m_prop;
 	double m_ts_cycle;
+#ifdef WIN32
+	CRITICAL_SECTION	m_critical;
+#endif
+
+	// 用于统计函数的执行次数和总时间。
+public:
+	void RegistFunction(const CJCStringT & func_name, LONGLONG duration);
+protected:
+	void OutputFunctionDuration(void);
+	typedef std::map<CJCStringT, CJCFunctionDuration>	DURATION_MAP;
+	DURATION_MAP	m_duration_map;
+
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-//-- StackTrace
-
-
+// -- StackTrace
+// 用于跟踪函数运行，在函数进入和返回点，自动输出LOG并且计算执行时间
 class CJCStackTrace
 {
 public:
@@ -161,7 +183,23 @@ public:
 
 private:
     CJCLoggerNode * m_log;
-	CJCStringA m_func_name;
+	CJCStringA	m_func_name;
+	LONGLONG	m_start_time;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// -- StackPerformance
+// 用于计算特定函数被执行的总次数和总时间
+class CJCStackPerformance
+{
+public:
+    CJCStackPerformance(LPCTSTR func_name);
+    ~CJCStackPerformance(void);
+	double GetDeltaTime(void);	// in us
+
+private:
+	CJCStringT m_func_name;
+	LONGLONG	m_start_time;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -227,6 +265,7 @@ public:
 #define _LOGGER_DEBUG( ... )	{}
 #define _LOGGER_TRACE( ... )
 #define LOG_STACK_TRACE( ... )
+#define LOG_STACK_PERFORM( ... )
 #define LOG_STACK_TRACE_P( ... )
 #define LOG_STACK_TRACE_O( ... )
 #define LOG_SIMPLE_TRACE( ... )
@@ -299,6 +338,10 @@ public:
 #undef LOG_STACK_TRACE
 #define LOG_STACK_TRACE()   \
     CJCStackTrace __stack_trace__(_local_logger, __FUNCTION__, _T("") );
+
+#undef LOG_STACK_PERFORM
+#define LOG_STACK_PERFORM(name)   \
+    CJCStackPerformance __stack_perform__(_T(__FUNCTION__)name);
 
 #undef LOG_STACK_TRACE_P
 #define LOG_STACK_TRACE_P(...)   \
