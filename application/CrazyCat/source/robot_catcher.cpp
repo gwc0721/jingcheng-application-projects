@@ -1,4 +1,4 @@
-﻿#include "StdAfx.h"
+﻿#include "stdafx.h"
 #include "robot_catcher.h"
 
 #include <stdext.h>
@@ -107,14 +107,19 @@ JCSIZE CCatcherMoveGenerator::Generate(const CChessBoard * board)
 	m_move_count = 0;
 	for (int rr = 0; rr < BOARD_SIZE_ROW; ++rr)
 	{
-		int delta_r = abs(cat_r - rr);
+		int dr = abs(cat_r - rr);
+		int dr2 = dr >> 1;
 		for (int cc = 0; cc < BOARD_SIZE_COL; ++cc)
 		{
 			if (board->CheckPosition(cc, rr) != 0) continue;
+			int dc = abs(cat_c - cc);
+			int dc2 = (dc > dr2) ? dc - dr2 : 0; 
+			int dd = dr + dc;
+
 			CCrazyCatMovement & mv = m_array[m_move_count];
 			mv.m_col = cc, mv.m_row = rr, mv.m_player = PLAYER_CATCHER;
 #ifdef HISOTRY_HEURISTIC
-			mv.m_score = m_history_tab[rr * BOARD_SIZE_COL + cc];
+			mv.m_score = m_history_tab[rr * BOARD_SIZE_COL + cc] - dd;
 #else
 			mv.m_score = abs(cat_c - cc) + delta_r;
 #endif
@@ -187,15 +192,19 @@ static BREAK_POINT_NODE break_point[BREAK_POINT_DEPTH_MAX] =
 };
 
 // 猫逃走的距离在评价中的比重
-#define DIST_RATE	50
+#define DIST_RATE	10
 #define MAX_SCORE	((MAX_DISTANCE + 50) * DIST_RATE)
 #define MIN_SCORE	0
 
+// 满分218分
+const int CRobotCatcher::DSTAB_SIZE = 9;
+const int CRobotCatcher::DIST_SCORE_TAB[DSTAB_SIZE] =
+//dist:		0, 1, 2, 3, 4, 5, 6, 7, 8, ...
+{			8, 8, 4, 3, 2, 1, 1, 1, 1, 	};
 
 CRobotCatcher::CRobotCatcher(IRefereeListen * listener, bool sort)
 	: m_referee(listener)
 	, m_board(NULL)
-	//, m_movement(NULL)
 	, m_sort(sort)
 {
 	m_log= false;
@@ -208,23 +217,22 @@ CRobotCatcher::CRobotCatcher(IRefereeListen * listener, bool sort)
 CRobotCatcher::~CRobotCatcher(void)
 {
 	delete m_eval;
-	delete m_board;
-	//delete [] m_movement;
+	//delete m_board;
 }
 
 int CRobotCatcher::Evaluate(CChessBoard * board, CCrazyCatEvaluator * eval)
 {
-	//LOG_STACK_PERFORM(_T(""));
 	JCASSERT(eval);
 	JCASSERT(board);
 	eval->Reset(board);
-	// 最短套出距离
+	// 最短套出距离: 值域：0~40
 	int min_dist = eval->StartSearch() * DIST_RATE;
 	// CATCHER对CAT的紧密程度
 	int round = 0;
 
 	char cat_c, cat_r;
 	board->GetCatPosition(cat_c, cat_r);
+#if 0
 	for (int rr = 0; rr < BOARD_SIZE_ROW; ++rr)
 	{
 		int delta_r = abs(cat_r - rr);
@@ -236,31 +244,62 @@ int CRobotCatcher::Evaluate(CChessBoard * board, CCrazyCatEvaluator * eval)
 			}
 		}
 	}
+#else
+	// 提高距离的计算精度. 一个近似距离的方法：
+	//   由于y方向移动两格同时，最多可使x方向移动一格。如果x方向的距离小于y方向距离的一半，侧y方向移动的同时完成x方向的移动。
+	//	否则，x方向还需移动y/2以外的步数。
+	//  实际上由于奇偶行的坐标不对称，考虑出发点和目的地的行间奇偶性，可能存在正负1步的误差。但是这算法要比考虑奇偶性高效得多。
+
+	for (int rr = 0; rr < BOARD_SIZE_ROW; ++rr)
+	{
+		int dr = abs(cat_r - rr);
+		int dr2 = dr >> 1;	// dr/2
+		for (int cc = 0; cc < BOARD_SIZE_COL; ++cc)		if (board->CheckPosition(cc, rr) == PLAYER_CATCHER)
+		{
+			int dc = abs(cat_c - cc);
+			int dc2 = (dc > dr2) ? dc - dr2 : 0; 
+			int dd = dr + dc;
+			// 距离超过DSTAB_SIZE的得分为零
+			if (dd < DSTAB_SIZE)	round += DIST_SCORE_TAB[dd];
+		}
+	}
+#endif
 	return (min_dist + round);
 }
 
-bool CRobotCatcher::StartSearch(const CChessBoard * bd0, int depth)
+bool CRobotCatcher::StartSearch(CChessBoard * board, int depth)
 {
 	// 复制棋盘
 	JCASSERT(m_referee);
 	JCASSERT(depth < MAX_DEPTH);
 
-	bd0->Dupe(m_board);
+	//bd0->Dupe(m_board);
+	m_board = board;
+	InterlockedExchange(&m_progress, 0);
+	InterlockedExchange(&m_max_prog, BOARD_SIZE_ROW * BOARD_SIZE_COL);
 	m_node = 0, m_hash_hit=0, m_hash_conflict = 0;
+	m_init_depth = depth;
+	InterlockedExchange(&m_terminate, 0);
+
 	// 初始化哈希表
 	memset(m_hashtab, 0, sizeof(HASHITEM) * HASH_SIZE);
 #ifdef BREAK_POINT
 	for (int ii = 0; ii< BREAK_POINT_DEPTH_MAX; ++ii)	break_point[ii].match = false;
 	break_point[depth +1].match = true;
 #endif
-
-	// 调用搜索引擎
-	//delete [] m_movement;
-	//m_movement = new CCrazyCatMovement[depth + 1];
+	// 
 	memset(m_movement, 0, sizeof(CCrazyCatMovement) * MAX_DEPTH);
+	// 初始化历史启发表
 	//memset(m_history_tab, 0, sizeof(UINT) * BOARD_SIZE_ROW * BOARD_SIZE_COL);
 
-	int alpha = AlphaBetaSearch(depth, MIN_SCORE-1, MAX_SCORE+1, m_movement);
+	double search_time = 0;
+	int alpha = 0;
+	CJCStackPerformance perf (_T(""));
+	// 调用搜索引擎
+	alpha = AlphaBetaSearch(depth, MIN_SCORE-1, MAX_SCORE+1, m_movement);
+	search_time = perf.GetDeltaTime();
+
+	InterlockedExchange(&m_progress, m_max_prog);
 
 	LOG_DEBUG(_T("find movement: "));
 	// output movement recorder
@@ -280,19 +319,22 @@ bool CRobotCatcher::StartSearch(const CChessBoard * bd0, int depth)
 	else if (alpha <= DIST_RATE)	
 	{	//认输
 		LOG_NOTICE(_T("catcher lost!"));
-		m_movement[depth].m_col = -1, m_movement[depth].m_row = -1, m_movement[depth].m_player = PLAYER_CATCHER;
+		JCASSERT(m_movement[depth].m_player > 0 && m_movement[depth].m_score > 0);
+		//m_movement[depth].m_col = -1, m_movement[depth].m_row = -1, m_movement[depth].m_player = PLAYER_CATCHER;
 	}
 
-	LOG_NOTICE( _T("node: % 8d, hash hit: % 6d, confilict: %6d"), m_node, m_hash_hit, m_hash_conflict);
+	LOG_NOTICE( _T("node: % 8d, search time: %.1f ms"), m_node, search_time / 1000);
+	LOG_DEBUG(_T("hash hit: % 6d, confilict: %6d"), m_hash_hit, m_hash_conflict);
 	m_referee->SearchCompleted(m_movement + depth);
 
-	delete m_board;
+	//delete m_board;
 	m_board = NULL;
 	return true;
 }
 
 int CRobotCatcher::AlphaBetaSearch(int depth, int alpha, int beta, CCrazyCatMovement * bestmv)
 {
+	if (m_terminate) throw 0;
 	PLAYER turn = m_board->GetTurn();
 	// 判断是否分出胜负
 	if ( m_board->IsWinPlayer(turn) )
@@ -319,13 +361,10 @@ int CRobotCatcher::AlphaBetaSearch(int depth, int alpha, int beta, CCrazyCatMove
 	}
 #endif
 
-	if (depth <= 0)
-	{	// 已达到叶子节点，评估
-		return Evaluate(m_board, m_eval);
-	}
+	// 已达到叶子节点，评估
+	if (depth <= 0)	return Evaluate(m_board, m_eval);
 
 	// save best mv
-	//stdext::auto_array<CCrazyCatMovement> currentmv(depth+1);
 	CCrazyCatMovement * currentmv = m_stack[depth].m_mv_track;
 	memset(currentmv, 0, sizeof(CCrazyCatMovement) * (depth + 1));
 
@@ -336,6 +375,7 @@ int CRobotCatcher::AlphaBetaSearch(int depth, int alpha, int beta, CCrazyCatMove
 		CCatcherMoveGenerator gen(m_history_tab);
 		gen.m_sort = m_sort;
 		JCSIZE move_count = gen.Generate(m_board);
+		if (depth == m_init_depth) InterlockedExchange(&m_max_prog, move_count);
 		for (JCSIZE ii = 0; ii < move_count; ++ii)
 		{
 			CCrazyCatMovement * mv = gen.GetMovement(ii);		JCASSERT(mv);
@@ -355,6 +395,8 @@ int CRobotCatcher::AlphaBetaSearch(int depth, int alpha, int beta, CCrazyCatMove
 			//JCASSERT(bp.match == false);
 #endif
 			score = AlphaBetaSearch(depth -1, alpha, beta, currentmv);
+			if ( depth == m_init_depth) InterlockedIncrement(&m_progress);
+
 			br = m_board->Undo();		JCASSERT(br);
 			if (score >= beta)
 			{	// 剪枝

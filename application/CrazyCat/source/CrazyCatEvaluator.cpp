@@ -71,8 +71,6 @@ CCrazyCatEvaluator::CCrazyCatEvaluator(const CChessBoard * board)
 	, m_board(board)
 {
 	JCASSERT(m_board);
-	//memset(m_hash, 0, sizeof(CSearchNode*) * BOARD_SIZE_COL * BOARD_SIZE_ROW);
-
 	m_node_array = new CSearchNode[BOARD_SIZE_COL * BOARD_SIZE_ROW];
 	Reset(board);
 }

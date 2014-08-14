@@ -19,9 +19,11 @@ public:
 public:
 	//virtual void SetBoard(CChessBoard * board);
 	// 搜索下一步棋
-	virtual bool StartSearch(const CChessBoard * board, int depth);
-	//
-	//virtual bool GetMove(char & col, char & row);
+	virtual bool StartSearch(CChessBoard * board, int depth);
+	virtual void Release(void) { delete this; };
+	virtual void GetProgress(long & prog, long & max_prog)
+	{	prog = 100, max_prog = 100;		}
+	virtual void CancelSearch(void) {}
 
 protected:
 	DWORD Run(void);
@@ -29,7 +31,4 @@ protected:
 
 protected:
 	IRefereeListen	* m_referee;
-	// 需要线程同步
-	//const CChessBoard * m_board;
-
 };

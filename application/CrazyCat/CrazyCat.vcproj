@@ -192,6 +192,10 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\source\background_search.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\source\ChessBoard.cpp"
 				>
 			</File>
@@ -219,12 +223,20 @@
 				RelativePath=".\source\stdafx.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\source\test_hook.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
+			<File
+				RelativePath=".\source\background_search.h"
+				>
+			</File>
 			<File
 				RelativePath=".\source\ChessBoard.h"
 				>
@@ -263,6 +275,10 @@
 			</File>
 			<File
 				RelativePath=".\source\targetver.h"
+				>
+			</File>
+			<File
+				RelativePath=".\source\test_hook.h"
 				>
 			</File>
 		</Filter>

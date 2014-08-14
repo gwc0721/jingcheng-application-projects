@@ -3,6 +3,9 @@
 #include "CrazyCatEvaluator.h"
 #include <stdext.h>
 
+LOCAL_LOGGER_ENABLE(_T("search_engine"), LOGGER_LEVEL_DEBUGINFO);
+
+LOG_CLASS_SIZE(CRobotCat)
 
 void CreateRobotCat(IRefereeListen * listener, IRobot * & robot)
 {
@@ -25,6 +28,7 @@ CRobotCat::CRobotCat(IRefereeListen * listener)
 
 CRobotCat::~CRobotCat(void)
 {
+	LOG_STACK_TRACE()
 }
 
 DWORD CRobotCat::StaticRun(LPVOID param)
@@ -44,10 +48,8 @@ bool CRobotCat::InternalSearch(const CChessBoard * board, int depth)
 	return false;
 }
 
-//bool CRobotCat::SetBoard(CChessBoard * board) {}
-
 // 搜索下一步棋
-bool CRobotCat::StartSearch(const CChessBoard * board, int depth)
+bool CRobotCat::StartSearch(CChessBoard * board, int depth)
 {
 	JCASSERT(board);
 	stdext::auto_ptr<CCrazyCatEvaluator> eval(new CCrazyCatEvaluator(board));
@@ -71,5 +73,3 @@ bool CRobotCat::StartSearch(const CChessBoard * board, int depth)
 	return true;
 }
 
-	//
-	//virtual bool GetMove(char & col, char & row);
