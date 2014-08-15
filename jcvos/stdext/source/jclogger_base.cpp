@@ -453,5 +453,4 @@ double CJCStackPerformance::GetDeltaTime(void)
 	QueryPerformanceCounter(&now);
 	LONGLONG delta = now.QuadPart - m_start_time;
 	return ( delta / CJCLogger::Instance()->GetTimeStampCycle() );
-
 }

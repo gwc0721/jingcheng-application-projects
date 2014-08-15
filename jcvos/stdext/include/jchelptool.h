@@ -45,5 +45,10 @@ namespace stdext
 		return ( (UINT64)(hi)<<32 | (UINT64)(lo) );
 	}
 
-
+	inline LONGLONG	GetTimeStamp(void)
+	{
+		LARGE_INTEGER t0;		// 性能计算
+		QueryPerformanceCounter(&t0);
+		return t0.QuadPart;
+	}
 };
