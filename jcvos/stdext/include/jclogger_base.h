@@ -135,11 +135,12 @@ public:
 	void SetProperty(DWORD prop)		{ m_prop = prop; }
 
 	inline double GetTimeStampCycle()			{return m_ts_cycle;}
+	static inline double GetTimeStampCycleS()	{return Instance()->m_ts_cycle;}
 
 	// Read config from text file
 	//  format:
 	//		set appender:	><target>,<prop hex>,<filename>...		/exp:	>FILE,2,
-	//		set column:		COL|<column name>|<column name>...	/exp:
+	//		set column:		+<column name>|-<column name>...	/exp:	+THREAD_ID
 	//		set node:		<Node Name>,<Level>					/exp:	CParameter,DEBUGINFO
 	bool Configurate(FILE * config);
 	bool Configurate(LPCTSTR file_name = NULL);
