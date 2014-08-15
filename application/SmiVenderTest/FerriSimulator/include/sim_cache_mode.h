@@ -70,11 +70,11 @@ protected:
 typedef std::list<WORD>	CacheBlockList;
 
 class CSimCacheMode
-	: virtual public IStorageDevice
-	, virtual public ISmiDevice
+	: /*virtual public IStorageDevice
+	, */virtual public ISmiDevice
 	, public CStorageDeviceBase
 	, public CSmiDeviceBase
-	, public CJCInterfaceBase
+	/*, public CJCInterfaceBase*/
 {
 public:
 	CSimCacheMode(void);

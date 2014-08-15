@@ -200,6 +200,14 @@ bool CPluginTrace::BusDoctor::InvokeOnce(jcscript::IOutPort * outport)
 		switch (line.m_fis)
 		{
 		case 0x27:	// command
+			if (UINT_MAX != trace_row->m_id)
+			{	// 已经解析了一条cmd，保存，重新开始下一条
+				CAtaTraceRow * _row = NULL;
+				trace_row.detach(_row);
+				outport->PushResult(_row);
+				_row->Release();
+				trace_row = new CAtaTraceRow;
+			}
 
 			trace_row->m_id = line.m_store;
 			trace_row->m_start_time = m_acc_time_stamp;

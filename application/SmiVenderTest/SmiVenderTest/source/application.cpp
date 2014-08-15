@@ -13,6 +13,7 @@ LOCAL_LOGGER_ENABLE(_T("CSvtApp"), LOGGER_LEVEL_DEBUGINFO);
 
 #include "feature_2246_readcount.h"
 #include "plugin_device_comm.h"
+#include "plugin_debug.h"
 
 #include <feature_codec.h>
 
@@ -61,20 +62,13 @@ void CSvtApplication::RegisterPlugins(void)
 {
 	CCategoryComm * cat = NULL;
 
-	cat = new CCategoryComm(_T("device"));
-	cat->RegisterFeatureT<CFeature2246ReadCount>();
-	cat->RegisterFeatureT<CDeviceReadSpare>();
-	cat->RegisterFeatureT<CDeviceReadFlash>();
-	cat->RegisterFeatureT<CDeviceOriginalBad>();
-	cat->RegisterFeatureT<CDevicePhOriginalBad>();
-	cat->RegisterFeatureT<CDeviceDiffAdd>();
+	RegisterPlugin( static_cast<jcscript::IPluginContainer*>(m_plugin_manager) );
+	RegisterPluginDebug( static_cast<jcscript::IPluginContainer*>(m_plugin_manager) );
 
-	m_plugin_manager->RegistPlugin(cat);
-	cat->Release(), cat = NULL;
-
-	cat = new CCategoryComm(_T("debug"));
-	m_plugin_manager->RegistPlugin(cat);
-	cat->Release(), cat = NULL;
+	//cat = new CCategoryComm(_T("debug"));
+	//cat->RegisterFeatureT<CFeature2246ReadCount>();
+	//m_plugin_manager->RegistPlugin(cat);
+	//cat->Release(), cat = NULL;
 
 	feature_codec_register(static_cast<jcscript::IPluginContainer*>(m_plugin_manager));
 	
@@ -264,44 +258,53 @@ bool CSvtApplication::SmartShowVar(jcparam::IValue * var)
 	JCASSERT(var);
 	LOG_STACK_TRACE();
 
-	CBinaryBuffer * buf = NULL;
 	jcparam::IVector * vec = NULL;
-	jcparam::IValueFormat * val_format = dynamic_cast<jcparam::IValueFormat *>(var);
-	if (NULL == val_format) return false;
-
 
 	stdext::auto_interface<jcparam::IJCStream>	stream;
 	CreateStreamStdout(stream);
 
-
 	vec = dynamic_cast<jcparam::IVector *>(var);
 	JCASSERT(vec);
 
-	// for table / vector
-	val_format->WriteHeader(stdout);
-	//printf("\n");
 	JCSIZE row_size = vec->GetRowSize();
 	JCSIZE show_rows = 0;
 
 	if ( m_sshw_offset != 0 ) stream->Put(_T("...\n"), 4);
 
+	bool show_header = true;
 	while (m_sshw_offset < row_size)
 	{
+		// show header
 		AUTO_IVAL row(NULL);
 		vec->GetRow(m_sshw_offset, row);
 		m_sshw_offset ++;
 
-		if (row.d_cast<CSectorBuf*>() )	m_sshw_increase = 1;
-		else								m_sshw_increase = 32;
+
+		if (show_header)
+		{
+			if (row.d_cast<CSectorBuf*>() )	m_sshw_increase = 1;
+			else
+			{
+				m_sshw_increase = 32;
+				jcparam::ITableRow * tab_row = row.d_cast<jcparam::ITableRow*>();
+				if (row)
+				{
+					stdext::auto_interface<jcparam::ITable> tab;
+					tab_row->CreateTable(tab);
+					tab->ToStream(stream, jcparam::VF_HEAD, 0);
+				}
+			}
+			show_header = false;
+		}
 
 		jcparam::IVisibleValue * vv = row.d_cast<jcparam::IVisibleValue *>();
 		if (vv)	vv->ToStream(stream, jcparam::VAL_FORMAT(jcparam::VF_PARTIAL | jcparam::VF_TEXT), 0);
-		stream->Put(_T('\n'));
 		show_rows ++;
 		if (show_rows >= m_sshw_increase) break;
 	}
 
 	if ( m_sshw_offset < row_size ) stream->Put(_T("...\n"), 4);
+	stream->Put(_T('\n'));
 
 	return true;
 }
@@ -360,7 +363,6 @@ void CSvtApplication::OutCompileLog(jcscript::IAtomOperate * script)
 		_tfopen_s(&compile_log, m_compile_log_fn.c_str(), _T("a+"));
 		if (NULL == compile_log) THROW_ERROR(ERR_APP, 
 			_T("Open log file %s failed"), m_compile_log_fn.c_str() );
-		//stdext::jc_fprintf(compile_log, _T("compiling script file %s.\n"), file_name);
 		script->DebugOutput(INDENTATION + 15, compile_log);
 		stdext::jc_fprintf(compile_log, _T("\n"));
 		fclose(compile_log);
@@ -550,11 +552,16 @@ bool CSvtApplication::GetDefaultVariable(const CJCStringT & name, jcparam::IValu
 	JCASSERT(NULL == var);
 	bool match = false;
 
+	CCardInfo info;
+	m_dev->GetCardInfo(info);
+
 	if ( name == _T("BKS") )
 	{
-		CCardInfo info;
-		m_dev->GetCardInfo(info);
 		var = jcparam::CTypedValue<UINT>::Create(info.m_f_block_num);
+	}
+	else if ( name == _T("PGS") )
+	{
+		var = jcparam::CTypedValue<UINT>::Create(info.m_f_ppb);
 	}
 	else if ( name == _T("MAX_LBAS") )
 	{

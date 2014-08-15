@@ -26,7 +26,7 @@ enum BLOCK_ID
 	BID_SYSTEM_MASK = 0xFFFFFF00,
 };
 
-class ICidTab : virtual public jcparam::IValue, virtual public jcparam::IValueFormat
+class ICidTab : virtual public jcparam::IValue/*, virtual public jcparam::IValueFormat*/
 {
 public:
 	virtual DWORD GetValue(const CJCStringT & name) = 0;
@@ -34,7 +34,7 @@ public:
 	virtual void Save(void) = 0;
 };
 
-class IIspBuf : virtual public jcparam::IValue, virtual public jcparam::IValueFormat
+class IIspBuf : virtual public jcparam::IValue/*, virtual public jcparam::IValueFormat*/
 {
 public:
 	virtual void Save(void) = 0;
@@ -125,21 +125,18 @@ public:
 	// Get SMART data from device,
 	//	[OUT] data: return 512 byte SMART data to caller. Caller need to insure data has more than 512 bytes.
 	//	Remart: If storage device support SMART command use it. Else get smart data from WPRO
-	virtual void GetSmartData(BYTE * data) = 0;
-	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(void) const = 0;
+	virtual bool VendorReadSmart(BYTE * data) = 0;
+	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(LPCTSTR rev) const = 0;
 	virtual void ReadSmartFromWpro(BYTE * data) = 0;
+
+	// 
+	virtual bool VendorIdentifyDevice(BYTE * data) = 0;
+	virtual void GetStorageDevice(IStorageDevice * & storage) = 0;
 };
 
 typedef bool (* DEVICE_CREATOR)(IStorageDevice *, ISmiDevice *&);
 
 typedef bool (* DEVICE_RECOGNIZER)(IStorageDevice *, BYTE *);
 
-//namespace smi_dev
-//{
-//	static LPCTSTR PROP_WPRO;			// UINT
-//	static LPCTSTR PROP_CACHE_NUM;		// UINT
-//	static LPCTSTR PROP_INFO_BLOCK;		// UINT, hi word: info 1, lo word: info 2
-//	static LPCTSTR PROP_ISP_BLOCK;		// UINT, hi word: isp 1, lo word: isp 2
-//	static LPCTSTR PROP_INFO_PAGE;		// UINT, hi -> lo: info page, bit map page, orphan page, block index page
-//};
+
 

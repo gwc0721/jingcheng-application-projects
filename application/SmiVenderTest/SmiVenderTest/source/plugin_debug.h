@@ -7,6 +7,8 @@
 #include <list>
 #include "ata_trace.h"
 
+extern "C" bool RegisterPluginDebug(jcscript::IPluginContainer * plugin_cont);
+
 class CPluginDebug 
 	: virtual public jcscript::IPlugin
 	, public CPluginBase2<CPluginDebug>
@@ -132,4 +134,68 @@ public:
 
 protected:
 	JCSIZE m_block, m_page;
+};
+
+
+///////////////////////////////////////////////////////////////////////////////
+// -- repeat
+class CDebugRepeat
+	: virtual public jcscript::IFeature
+	, public CFeatureBase<CDebugRepeat, CCategoryComm>
+	, public CJCInterfaceBase
+{
+public:
+public:
+	CDebugRepeat(void);
+	~CDebugRepeat(void);
+
+public:
+	static LPCTSTR	desc(void) {return m_desc;}
+
+public:
+	virtual bool InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * outport);
+	virtual bool Init(void);
+
+protected:
+	int m_repeat_count;
+
+public:
+	// parameters
+	// repeat times, -1 means infinitive 
+	int	m_repeat;
+	static const TCHAR m_desc[];
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// -- debug inject
+class CDebugInject
+	: virtual public jcscript::IFeature
+	, public CFeatureBase<CDebugInject, CCategoryComm>
+	, public CJCInterfaceBase
+{
+public:
+	CDebugInject(void);
+	virtual ~CDebugInject(void);
+
+public:
+	static LPCTSTR	desc(void) {return m_desc;}
+	//virtual bool GetResult(jcparam::IValue * & val);
+	//virtual bool Invoke(void);
+	virtual bool InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * outport);
+	virtual bool Init(void);
+
+public:
+	JCSIZE		m_lba;
+	JCSIZE		m_sectors;
+	UINT		m_command;
+	UINT		m_time_out;
+	static const TCHAR m_desc[];
+
+protected:
+	IStorageDevice * m_storage;
+
+	BYTE *	m_data_buf;
+	JCSIZE m_max_secs;
+
+	CAtaTraceRow * m_trace;
 };

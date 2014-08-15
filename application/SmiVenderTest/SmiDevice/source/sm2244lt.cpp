@@ -13,7 +13,7 @@ const CSmartAttrDefTab CLT2244::m_smart_def_2244lt(CSmartAttrDefTab::RULE()
 	( new CSmartAttributeDefine(0x07, STR_RESERVED, false) )
 	( new CSmartAttributeDefine(0x09, STR_RESERVED, false) )
 	( new CSmartAttributeDefine(0x0C, _T("Power cycle")) )
-	( new CSmartAttributeDefine(0xA0, STR_RESERVED, false) )
+	( new CSmartAttributeDefine(0xA0, _T("Online UNC")) )
 	( new CSmartAttributeDefine(0xA1, _T("Valid spare")) )
 	( new CSmartAttributeDefine(0xA2, _T("Child pairs")) )
 	( new CSmartAttributeDefine(0xA3, _T("Init bads")) )
@@ -28,12 +28,35 @@ const CSmartAttrDefTab CLT2244::m_smart_def_2244lt(CSmartAttrDefTab::RULE()
 	( new CSmartAttributeDefine(0xC3, STR_RESERVED, false) )
 	( new CSmartAttributeDefine(0xC4, STR_RESERVED, false) )
 	( new CSmartAttributeDefine(0xC5, STR_RESERVED, false) )
-	( new CSmartAttributeDefine(0xC6, STR_RESERVED, false) )
+	( new CSmartAttributeDefine(0xC6, _T("Offline UNC") ) )
 	( new CSmartAttributeDefine(0xC7, _T("CRC error")) )
 	( new CSmartAttributeDefine(0xC8, STR_RESERVED, false) )
 	( new CSmartAttributeDefine(0xF1, _T("Total write sectors")) )
 	( new CSmartAttributeDefine(0xF2, _T("Total read sectors")) )
 );
+
+const CSmartAttrDefTab CLT2244::m_smart_neci(CSmartAttrDefTab::RULE()
+	( new CSmartAttributeDefine(0x01, STR_RESERVED, false) )
+	( new CSmartAttributeDefine(0x02, STR_RESERVED, false) )
+	( new CSmartAttributeDefine(0x05, _T("New bads")) )
+	( new CSmartAttributeDefine(0x06, STR_RESERVED, false) )
+	( new CSmartAttributeDefine(0x07, STR_RESERVED, false) )
+	( new CSmartAttributeDefine(0x0C, _T("Power cycle")) )
+	( new CSmartAttributeDefine(0xA0, _T("Online UNC")) )
+	( new CSmartAttributeDefine(0xC0, _T("Sudden down")) )
+	( new CSmartAttributeDefine(0xC6, _T("Offline UNC") ) )
+	( new CSmartAttributeDefine(0xC7, _T("CRC error")) )
+	( new CSmartAttributeDefine(0xF1, _T("Max pe")) )
+	( new CSmartAttributeDefine(0xF6, _T("Total read sectors")) )
+	( new CSmartAttributeDefine(0xF7, _T("Total write sectors")) )
+	( new CSmartAttributeDefine(0xF8, _T("Total pe")) )
+	( new CSmartAttributeDefine(0xF9, _T("Init bads")) )
+	( new CSmartAttributeDefine(0xFA, _T("Spare blocks")) )
+	( new CSmartAttributeDefine(0xFB, _T("Child pairs")) )
+	( new CSmartAttributeDefine(0xFC, _T("Min pe")) )
+	( new CSmartAttributeDefine(0xFD, _T("Avg pe")) )
+);
+
 
 CLT2244::CLT2244(IStorageDevice * dev)
 	: CSM2242(dev)
@@ -91,7 +114,14 @@ bool CLT2244::Initialize(void)
 	memset(buf, 0, SECTOR_SIZE);
 	ReadFlashID(buf, 1);
 
-	m_isp_running = (0x02 == buf[0x0A]);
+	switch (buf[0x0A])
+	{
+	case 0x00:	m_isp_mode = ISPM_ROM_CODE; break;
+	case 0x01:	m_isp_mode = ISPM_MPISP; break;
+	case 0x02:	m_isp_mode = ISPM_ISP; break;
+	default:	m_isp_mode = ISPM_UNKNOWN;	break;
+	}
+	//m_isp_running = (0x02 == buf[0x0A]);
 	m_info_block_valid = (0x01 == buf[0x01]);
 
 	m_mu = buf[0];

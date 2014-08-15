@@ -58,7 +58,7 @@ public:
 
 	virtual JCSIZE GetSystemBlockId(JCSIZE id);
 
-	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(void) const {return &m_smart_def_2242;}
+	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(LPCTSTR rev) const {return &m_smart_def_2242;}
 
 // Implement CSmiDeviceComm Interface
 protected:
@@ -102,9 +102,9 @@ public:
 	virtual DWORD GetValue(const CJCStringT & name);
 	virtual void SetValue(const CJCStringT & name, DWORD val);
 	virtual void Save(void);
-	virtual void Format(FILE * file, LPCTSTR format);
-	virtual void WriteHeader(FILE * file) {}
-	virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr);
+	//virtual void Format(FILE * file, LPCTSTR format);
+	//virtual void WriteHeader(FILE * file) {}
+	//virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr);
 
 protected:
 	CBinaryBuffer	* m_buf;

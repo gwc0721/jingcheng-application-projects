@@ -20,7 +20,7 @@ public:
 	virtual void ReadFlash(const CFlashAddress & add, CBinaryBuffer * & buf) {};
 	virtual void ReadSRAM(WORD ram_add, JCSIZE len, CBinaryBuffer * &buf) {};
 	virtual void ReadSmartFromWpro(BYTE * data) {};
-	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(void) const {return &m_smart_def_2232;}
+	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(LPCTSTR rev) const {return &m_smart_def_2232;}
 	virtual JCSIZE GetNewBadBlocks(BAD_BLOCK_LIST & bad_list);
 
 protected:

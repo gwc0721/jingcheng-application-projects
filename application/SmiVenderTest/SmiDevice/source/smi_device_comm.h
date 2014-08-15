@@ -40,10 +40,11 @@ public:
 	virtual void ReadSRAM(WORD ram_add, JCSIZE len, BYTE * buf);
 
 // Others
-	virtual void GetSmartData(BYTE * data);
-	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(void) const {return &m_smart_attr_tab;}
+	virtual bool VendorReadSmart(BYTE * data);
+	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(LPCTSTR rev) const {return &m_smart_attr_tab;}
 		
 	virtual bool GetProperty(LPCTSTR prop_name, UINT & val);
+	virtual bool VendorIdentifyDevice(BYTE * data);
 
 	// virtual functions 
 protected:
@@ -55,6 +56,8 @@ protected:
 	// Read SRAM in 512 bytes;
 	virtual void ReadSRAM(WORD ram_add, BYTE * buf);
 
+	virtual void GetStorageDevice(IStorageDevice * & storage) {JCASSERT(NULL == storage); storage = m_dev;}
+
 // CSmiDeviceComm interface
 	virtual LPCTSTR Name(void) const = 0;
 
@@ -64,8 +67,9 @@ protected:
 
 protected:
 	//-- card info
-	bool	m_isp_running;
-	bool	m_info_block_valid;
+	//bool	m_isp_running;
+	ISP_MODE	m_isp_mode;
+	bool		m_info_block_valid;
 
 	CCardInfo::NAND_TYPE	m_nand_type;	
 	BYTE	m_channel_num;		//
@@ -86,5 +90,6 @@ protected:
 
 	WORD	m_info_index[2];
 	WORD	m_isp_index[2];
+
 
 };

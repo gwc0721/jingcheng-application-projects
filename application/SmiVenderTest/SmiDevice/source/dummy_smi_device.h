@@ -51,6 +51,8 @@ public:
 		return false;
 	}
 
+	virtual void GetStorageDevice(IStorageDevice * & storage) {JCASSERT(NULL == storage); storage = m_dev;}
+
 protected:
 	IStorageDevice * m_dev;
 };

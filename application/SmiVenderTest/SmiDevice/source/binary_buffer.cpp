@@ -23,19 +23,19 @@ CBinaryBuffer::~CBinaryBuffer(void)
 }
 
 
-bool CBinaryBuffer::QueryInterface(const char * if_name, IJCInterface * &if_ptr)
-{
-	JCASSERT(NULL == if_ptr);
-	bool br = false;
-	if ( FastCmpA(jcparam::IF_NAME_VALUE_FORMAT, if_name) )
-	{
-		if_ptr = static_cast<IJCInterface*>(this);
-		if_ptr->AddRef();
-		br = true;
-	}
-	else br = __super::QueryInterface(if_name, if_ptr);
-	return br;
-}
+//bool CBinaryBuffer::QueryInterface(const char * if_name, IJCInterface * &if_ptr)
+//{
+//	JCASSERT(NULL == if_ptr);
+//	bool br = false;
+//	if ( FastCmpA(jcparam::IF_NAME_VALUE_FORMAT, if_name) )
+//	{
+//		if_ptr = static_cast<IJCInterface*>(this);
+//		if_ptr->AddRef();
+//		br = true;
+//	}
+//	else br = __super::QueryInterface(if_name, if_ptr);
+//	return br;
+//}
 
 void _local_itohex(LPTSTR str, JCSIZE dig, UINT d)
 {
@@ -60,85 +60,85 @@ const TCHAR * SPACE = __SPACE + 127;
 //static const JCSIZE ASCII_OFFSET = 57;
 //static const JCSIZE HEX_OFFSET = 8;
 
-void CBinaryBuffer::Format(FILE * file, LPCTSTR format)
-{
-	if ( NULL == format || FastCmpT(EMPTY, format) )	format = _T("text");
-	if ( FastCmpT(_T("bin"), format) )
-	{
-		JCSIZE len = GetSize();
-		BYTE * data = Lock();
-		JCASSERT(data);
-		fwrite (data, len, 1, file);
-		Unlock();
-	}
-	else if ( FastCmpT(_T("text"), format) )
-	{
-		//
-		JCSIZE offset = 0;
-		if ( m_address && m_address->GetType() == IAddress::ADD_MEMORY)
-		{
-			offset = (JCSIZE)(m_address->GetValue() );
-		}
-		BYTE column_offset = (BYTE)(offset & 0xF);
-		JCSIZE add_offset = offset & 0xFFFFFFF0;
-
-		_ftprintf(file, SPACE - 5);
-		JCSIZE ii = 0;
-		for (ii=0; ii < 16; ++ii)	_ftprintf(file, _T("--%01X"), ii);
-		JCSIZE len = GetSize();
-		BYTE* data = Lock();
-		JCASSERT(data);
-		stdext::jc_fprintf(file, _T("\n") );
-
-		ii = 0;		// total count
-		JCSIZE  add = offset;
-		TCHAR	str_buf[STR_BUF_LEN];
-
-		str_buf[STR_BUF_LEN - 3] = _T('\r');
-		str_buf[STR_BUF_LEN - 2] = _T('\n');
-		str_buf[STR_BUF_LEN - 1] = 0;
-
-
-
-		if ( column_offset != 0)
-		{		// Write first line
-			wmemset(str_buf, _T(' '), STR_BUF_LEN - 3);
-			_local_itohex(str_buf, 4, (offset & 0xFFF0));
-			LPTSTR  str1 = str_buf + HEX_OFFSET + column_offset * 3;
-			LPTSTR	str2 = str_buf + ASCII_OFFSET + column_offset;
-
-			for (int cc = column_offset; (cc<0x10) && (ii<len) ; ++ii, ++add, ++cc)
-			{
-				BYTE dd = data[ii];
-				_local_itohex(str1, 2, dd);	str1 += 3;
-				if ( (0x20 <= dd) && (dd < 0x7F) )	str2[0] = dd;
-				else								str2[0] = _T('.');
-				str2++;
-			}
-			stdext::jc_fprintf(file, str_buf);
-		}
-
-		while (ii < len)
-		{	// loop for line
-			wmemset(str_buf, _T(' '), STR_BUF_LEN - 3);
-			wmemset(str_buf + ASCII_OFFSET, _T('.'), 16);
-			_local_itohex(str_buf, 4, add);
-			LPTSTR  str1 = str_buf + HEX_OFFSET;
-			LPTSTR	str2 = str_buf + ASCII_OFFSET;
-
-			for (int cc = 0; (cc<0x10) && (ii<len) ; ++ii, ++add, ++cc)
-			{
-				BYTE dd = data[ii];
-				_local_itohex(str1, 2, dd);	str1 += 3;
-				if ( (0x20 <= dd) && (dd < 0x7F) )	str2[0] = dd;
-				str2++;
-			}
-			stdext::jc_fprintf(file, _T("%s"), str_buf);
-		}
-		Unlock();
-		_ftprintf(file, _T("\n"));
-	}
-}
+//void CBinaryBuffer::Format(FILE * file, LPCTSTR format)
+//{
+//	if ( NULL == format || FastCmpT(EMPTY, format) )	format = _T("text");
+//	if ( FastCmpT(_T("bin"), format) )
+//	{
+//		JCSIZE len = GetSize();
+//		BYTE * data = Lock();
+//		JCASSERT(data);
+//		fwrite (data, len, 1, file);
+//		Unlock();
+//	}
+//	else if ( FastCmpT(_T("text"), format) )
+//	{
+//		//
+//		JCSIZE offset = 0;
+//		if ( m_address && m_address->GetType() == IAddress::ADD_MEMORY)
+//		{
+//			offset = (JCSIZE)(m_address->GetValue() );
+//		}
+//		BYTE column_offset = (BYTE)(offset & 0xF);
+//		JCSIZE add_offset = offset & 0xFFFFFFF0;
+//
+//		_ftprintf(file, SPACE - 5);
+//		JCSIZE ii = 0;
+//		for (ii=0; ii < 16; ++ii)	_ftprintf(file, _T("--%01X"), ii);
+//		JCSIZE len = GetSize();
+//		BYTE* data = Lock();
+//		JCASSERT(data);
+//		stdext::jc_fprintf(file, _T("\n") );
+//
+//		ii = 0;		// total count
+//		JCSIZE  add = offset;
+//		TCHAR	str_buf[STR_BUF_LEN];
+//
+//		str_buf[STR_BUF_LEN - 3] = _T('\r');
+//		str_buf[STR_BUF_LEN - 2] = _T('\n');
+//		str_buf[STR_BUF_LEN - 1] = 0;
+//
+//
+//
+//		if ( column_offset != 0)
+//		{		// Write first line
+//			wmemset(str_buf, _T(' '), STR_BUF_LEN - 3);
+//			_local_itohex(str_buf, 4, (offset & 0xFFF0));
+//			LPTSTR  str1 = str_buf + HEX_OFFSET + column_offset * 3;
+//			LPTSTR	str2 = str_buf + ASCII_OFFSET + column_offset;
+//
+//			for (int cc = column_offset; (cc<0x10) && (ii<len) ; ++ii, ++add, ++cc)
+//			{
+//				BYTE dd = data[ii];
+//				_local_itohex(str1, 2, dd);	str1 += 3;
+//				if ( (0x20 <= dd) && (dd < 0x7F) )	str2[0] = dd;
+//				else								str2[0] = _T('.');
+//				str2++;
+//			}
+//			stdext::jc_fprintf(file, str_buf);
+//		}
+//
+//		while (ii < len)
+//		{	// loop for line
+//			wmemset(str_buf, _T(' '), STR_BUF_LEN - 3);
+//			wmemset(str_buf + ASCII_OFFSET, _T('.'), 16);
+//			_local_itohex(str_buf, 4, add);
+//			LPTSTR  str1 = str_buf + HEX_OFFSET;
+//			LPTSTR	str2 = str_buf + ASCII_OFFSET;
+//
+//			for (int cc = 0; (cc<0x10) && (ii<len) ; ++ii, ++add, ++cc)
+//			{
+//				BYTE dd = data[ii];
+//				_local_itohex(str1, 2, dd);	str1 += 3;
+//				if ( (0x20 <= dd) && (dd < 0x7F) )	str2[0] = dd;
+//				str2++;
+//			}
+//			stdext::jc_fprintf(file, _T("%s"), str_buf);
+//		}
+//		Unlock();
+//		_ftprintf(file, _T("\n"));
+//	}
+//}
 
 void CBinaryBuffer::ToStream(jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt, DWORD param) const
 {
@@ -158,6 +158,7 @@ void CBinaryBuffer::ToStream(jcparam::IJCStream * stream, jcparam::VAL_FORMAT fm
 
 void CBinaryBuffer::OutputBinary(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE out_len) const
 {
+	JCASSERT(stream);
 	JCASSERT(m_array);
 	Lock();
 	JCSIZE len = GetSize();
@@ -168,6 +169,7 @@ void CBinaryBuffer::OutputBinary(jcparam::IJCStream * stream, JCSIZE offset, JCS
 
 void CBinaryBuffer::OutputText(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE out_len) const
 {
+	JCASSERT(stream);
 	JCASSERT(m_array);
 
 	// output head line
@@ -210,6 +212,8 @@ void CBinaryBuffer::OutputText(jcparam::IJCStream * stream, JCSIZE offset, JCSIZ
 		}
 		stream->Put(str_buf, STR_BUF_LEN-2);
 	}
+	stream->Put(_T('\n'));
+
 	Unlock();
 }
 

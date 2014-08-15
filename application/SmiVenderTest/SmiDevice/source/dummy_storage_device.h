@@ -4,9 +4,7 @@
 #include "../include/device_base.h"
 
 class CDummyStorageDevice 
-	: virtual public IStorageDevice
-	, public CStorageDeviceBase
-	, public CJCInterfaceBase
+	: public CStorageDeviceBase
 {
 public:
 	static bool Recognize(HANDLE dev, IStorageDevice * & i_dev)

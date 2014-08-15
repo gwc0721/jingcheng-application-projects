@@ -462,36 +462,36 @@ void C2242CidTab::Save(void)
 	m_buf->Unlock();
 }
 
-void C2242CidTab::Format(FILE * file, LPCTSTR format)
-{
-	JCASSERT(m_buf);
-	if ( NULL == format || FastCmpT(EMPTY, format) )	format = _T("raw");
-	if ( FastCmpT(_T("raw"), format) )
-	{
-		m_buf->Format(file, _T("text") );
-	}
-	else if ( FastCmpT(_T("text"), format) )
-	{
-	}
-	else if ( FastCmpT(_T("bin"), format) )
-	{
-		m_buf->Format(file, format);
-	}
-}
-
-bool C2242CidTab::QueryInterface(const char * if_name, IJCInterface * &if_ptr)
-{
-	JCASSERT(NULL == if_ptr);
-	bool br = false;
-	if ( FastCmpA(jcparam::IF_NAME_VALUE_FORMAT, if_name) )
-	{
-		if_ptr = static_cast<IJCInterface*>(this);
-		if_ptr->AddRef();
-		br = true;
-	}
-	else br = __super::QueryInterface(if_name, if_ptr);
-	return br;
-}
+//void C2242CidTab::Format(FILE * file, LPCTSTR format)
+//{
+//	JCASSERT(m_buf);
+//	if ( NULL == format || FastCmpT(EMPTY, format) )	format = _T("raw");
+//	if ( FastCmpT(_T("raw"), format) )
+//	{
+//		m_buf->Format(file, _T("text") );
+//	}
+//	else if ( FastCmpT(_T("text"), format) )
+//	{
+//	}
+//	else if ( FastCmpT(_T("bin"), format) )
+//	{
+//		m_buf->Format(file, format);
+//	}
+//}
+//
+//bool C2242CidTab::QueryInterface(const char * if_name, IJCInterface * &if_ptr)
+//{
+//	JCASSERT(NULL == if_ptr);
+//	bool br = false;
+//	if ( FastCmpA(jcparam::IF_NAME_VALUE_FORMAT, if_name) )
+//	{
+//		if_ptr = static_cast<IJCInterface*>(this);
+//		if_ptr->AddRef();
+//		br = true;
+//	}
+//	else br = __super::QueryInterface(if_name, if_ptr);
+//	return br;
+//}
 
 bool CSM2242::Initialize(void)
 {
@@ -502,7 +502,13 @@ bool CSM2242::Initialize(void)
 	ReadFlashID(buf, 1);
 	//ReadFlashID(buf);
 
-	m_isp_running = (0x01 == buf[0x0A]);
+	switch (buf[0x0A])
+	{
+	case 0x00:	m_isp_mode = ISPM_ROM_CODE; break;
+	case 0x01:	m_isp_mode = ISPM_ISP; break;
+	default:	m_isp_mode = ISPM_UNKNOWN;	break;
+	}
+
 	m_info_block_valid = (0x01 == buf[0x01]);
 
 	m_mu = buf[0];

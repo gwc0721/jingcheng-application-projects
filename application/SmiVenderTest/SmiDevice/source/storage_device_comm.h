@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../include/istorage_device.h"
 #include "../include/smi_recognizer.h"
 #include "../include/device_base.h"
@@ -28,9 +28,7 @@ typedef struct _SCSI_PASS_THROUGH_WITH_BUFFERS
 } SCSI_PASS_THROUGH_WITH_BUFFERS, *PSCSI_PASS_THROUGH_WITH_BUFFERS;
 
 class CStorageDeviceComm 
-	: virtual public IStorageDevice
-	, public CStorageDeviceBase
-	, public CJCInterfaceBase
+	: public CStorageDeviceBase
 {
 public:
 	CStorageDeviceComm(HANDLE dev);
@@ -46,6 +44,9 @@ public:
 	virtual bool SectorWrite(const BYTE * buf, FILESIZE lba, JCSIZE sectors);
 	virtual bool ScsiRead(BYTE * buf, FILESIZE lba, JCSIZE secs, UINT timeout);
 	virtual bool ScsiWrite(BYTE * buf, FILESIZE lba, JCSIZE secs, UINT timeout);
+	// 用于性能测试，单位us。
+	virtual UINT GetLastInvokeTime(void);
+
 
 	virtual void SetDeviceName(LPCTSTR name)
 	{
@@ -69,6 +70,10 @@ protected:
 	std::vector<HANDLE>	m_logical_drives;
 	CJCStringT	m_device_name;
 	FILESIZE	m_capacity;		// capacitance in sector
+
+	// 用于性能测试，单位us。
+	LONGLONG	m_last_invoke_time;
+
 
 #ifdef _DEBUG
 	virtual HANDLE GetHandle() {return m_dev;};

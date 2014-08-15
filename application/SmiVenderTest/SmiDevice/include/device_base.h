@@ -5,6 +5,7 @@
 
 class CStorageDeviceBase 
 	: virtual public IStorageDevice
+	, public CJCInterfaceBase
 {
 public:
 	virtual bool Inquiry(BYTE * buf, JCSIZE buf_len)	{return error(); }
@@ -27,6 +28,9 @@ public:
 	{return error();};
 	virtual bool Recognize() {return true;}
 	virtual void Detach(HANDLE & dev) {}
+
+	//virtual bool ReadSmartData(BYTE * buf, JCSIZE len) { NOT_SUPPORT(bool); };
+	//virtual bool IdentifyDevice(BYTE * buf, JCSIZE len) { NOT_SUPPORT(bool); };
 
 #ifdef _DEBUG
 	virtual HANDLE GetHandle() {return NULL;};
@@ -83,9 +87,11 @@ public:
 	// Get SMART data from device,
 	//	[OUT] data: return 512 byte SMART data to caller. Caller need to insure data has more than 512 bytes.
 	//	Remart: If storage device support SMART command use it. Else get smart data from WPRO
-	virtual void GetSmartData(BYTE * data)  {error();}
-	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(void) const  {error(); return NULL;}
+	virtual bool VendorReadSmart(BYTE * data)  { NOT_SUPPORT(bool); }
+	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(LPCTSTR rev) const  {error(); return NULL;}
 	virtual void ReadSmartFromWpro(BYTE * data)  {error();}
+
+	virtual bool VendorIdentifyDevice(BYTE * data) { NOT_SUPPORT(bool); }
 
 	virtual bool Initialize(void) {return true;}
 
@@ -96,6 +102,7 @@ public:
 	static LPCTSTR PROP_ISP_BLOCK;		// UINT, hi word: isp 1, lo word: isp 2
 	static LPCTSTR PROP_INFO_PAGE;		// UINT
 	static LPCTSTR PROP_ORG_BAD_INFO;		// UINT
+	static LPCTSTR PROP_ISP_MODE;		// UINT
 
 	//// UINT, hi word: Combined Orphan Page, lo word: Block Index Page
 	//static LPCTSTR PROP_INFO_DIFFADD_PAGE;

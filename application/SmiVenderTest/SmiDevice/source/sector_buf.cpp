@@ -24,7 +24,7 @@ CSectorBuf::~CSectorBuf(void)
 }
 
 const JCSIZE ADD_DIGS = 6; 
-const JCSIZE HEX_OFFSET = ADD_DIGS + 2;
+const JCSIZE HEX_OFFSET = ADD_DIGS + 3;
 const JCSIZE ASCII_OFFSET = HEX_OFFSET + 51;
 
 void CSectorBuf::ToStream(jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt, DWORD param) const
@@ -45,6 +45,7 @@ void CSectorBuf::ToStream(jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt, 
 
 void CSectorBuf::OutputBinary(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE out_len) const
 {
+	JCASSERT(stream);
 	JCASSERT(m_array);
 	Lock();
 	JCSIZE len = SECTOR_SIZE;
@@ -55,6 +56,7 @@ void CSectorBuf::OutputBinary(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE
 
 void CSectorBuf::OutputText(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE out_len) const
 {
+	JCASSERT(stream);
 	JCASSERT(m_array);
 	TCHAR	str_buf[STR_BUF_LEN];
 	str_buf[STR_BUF_LEN - 3] = _T('\n');
@@ -105,6 +107,7 @@ void CSectorBuf::OutputText(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE o
 		add += 16;
 		stream->Put(str_buf, STR_BUF_LEN-2);
 	}
+	stream->Put(_T('\n'));
 	Unlock();
 }
 

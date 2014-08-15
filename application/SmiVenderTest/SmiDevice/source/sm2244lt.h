@@ -45,7 +45,11 @@ protected:
 
 	virtual bool CheckVenderCommand(BYTE * data)	{return CLT2244::LocalRecognize(data); }
 	virtual void FlashAddToPhysicalAdd(const CFlashAddress & add, CSmiCommand & cmd, UINT option);
-	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(void) const {return &m_smart_def_2244lt;}
+	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(LPCTSTR rev) const 
+	{
+		if ( rev && _tcscmp(rev, _T("NECI"))==0 )	return &m_smart_neci;
+		else return &m_smart_def_2244lt;
+	}
 	virtual void GetSpare(CSpareData & spare, BYTE* spare_buf);
 
 	virtual bool GetProperty(LPCTSTR prop_name, UINT & val);
@@ -57,6 +61,7 @@ protected:
 
 protected:
 	static const CSmartAttrDefTab	m_smart_def_2244lt;
+	static const CSmartAttrDefTab	m_smart_neci;
 	BYTE m_info_page, m_bitmap_page, m_orphan_page, m_blockindex_page;
 	WORD m_org_bad_info;
 };
