@@ -29,28 +29,24 @@ END_COLUMN_TABLE()
 LOG_CLASS_SIZE(CAtaTrace)
 LOG_CLASS_SIZE(CAtaTraceRow)
 
-void CTracePayload::GetText(void * row, CJCStringT & str) const
+void CTracePayload::ToStream(void * row, jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt) const
 {
+	JCASSERT(stream);
 	void *  ptr = ((BYTE*)(row) + m_offset);
 	CBinaryBuffer * _buf = *((CBinaryBuffer**)(ptr));
-	//CAtaTrace * trace = reinterpret_cast<CAtaTrace*>(row);
 	if (NULL == _buf) return;
 	BYTE * buf = _buf->Lock();
 	JCASSERT(buf);
 
 	JCSIZE len = min(_buf->GetSize(), TRACE_DATA_OUTPUT);
-	JCSIZE str_len = len * 3 + 1;
 
-	str.resize(len * 3 + 1);
-	TCHAR * _str = const_cast<TCHAR*>(str.data());
 	for (JCSIZE ii = 0; ii < len; ++ii)
 	{
-		JCSIZE written = stdext::jc_sprintf(_str, str_len, _T("%02X "), buf[ii]);
-		_str += written;
-		str_len -= written;
+		stream->Format(_T("%02X "), buf[ii]);
 	}
 	_buf->Unlock();
 }
+
 
 void CTracePayload::CreateValue(BYTE * src, jcparam::IValue * & val) const
 {
@@ -70,8 +66,6 @@ CParamDefTab CPluginTrace::ParserTrace::_BASE::m_param_def_tab(
 	CParamDefTab::RULE()
 	(new CTypedParamDef<CJCStringT>(_T("#filename"), 0, offsetof(CPluginTrace::ParserTrace, m_file_name) ) )
 	);
-
-//const UINT CPluginTrace::ParserTrace::_BASE::m_property = jcscript::OPP_LOOP_SOURCE;
 
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
@@ -105,7 +99,6 @@ CPluginTrace::ParserTrace::ParserTrace()
 	, m_last(NULL)
 	, m_first(NULL)
 	, m_init(false)
-	//, m_running(true)
 {
 	m_col_num = 0;
 	memset(m_col_list, 0, sizeof(m_col_list) );
@@ -119,15 +112,7 @@ CPluginTrace::ParserTrace::~ParserTrace(void)
 	delete [] m_line_buf;
 }
 
-bool CPluginTrace::ParserTrace::Invoke(jcparam::IValue * row, jcscript::IOutPort * outport)
-{
-	if ( !m_init) 
-	{
-		Init();
-		m_init = true;
-	}
-	return InvokeOnce(outport);
-}
+
 
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
@@ -164,7 +149,9 @@ bool CPluginTrace::ParserTrace::ParsePayload(const char * &first, const char * l
 bool CPluginTrace::ParserTrace::Init(void)
 {
 	// 初始化文件缓存
-	JCASSERT(NULL == m_src_file);
+	//JCASSERT(NULL == m_src_file);
+	if (m_src_file)		fclose(m_src_file), m_src_file = NULL;
+
 	if (!m_line_buf) m_line_buf = new char[MAX_LINE_BUF];
 
 	_tfopen_s(&m_src_file, m_file_name.c_str(), _T("r"));
@@ -188,7 +175,19 @@ bool CPluginTrace::ParserTrace::Init(void)
 
 using namespace boost::phoenix;
 
-bool CPluginTrace::ParserTrace::InvokeOnce(jcscript::IOutPort * outport)
+//bool CPluginTrace::ParserTrace::Invoke(jcparam::IValue * row, jcscript::IOutPort * outport)
+//{
+//	if ( !m_init) 
+//	{
+//		Init();
+//		m_init = true;
+//	}
+//	return InvokeOnce(outport);
+//}
+//
+//bool CPluginTrace::ParserTrace::InvokeOnce(jcscript::IOutPort * outport)
+
+bool CPluginTrace::ParserTrace::InternalInvoke(jcparam::IValue *, jcscript::IOutPort * outport)
 {
 	//!! This function is thread UNSAFE!
 	LOG_STACK_TRACE();

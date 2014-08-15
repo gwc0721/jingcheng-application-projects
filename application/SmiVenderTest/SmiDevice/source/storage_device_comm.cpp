@@ -6,6 +6,7 @@ LOCAL_LOGGER_ENABLE(_T("CStorageDeviceComm"), LOGGER_LEVEL_ERROR);
 
 CStorageDeviceComm::CStorageDeviceComm(HANDLE dev)
 	: m_dev(dev), m_capacity(0)
+	, m_last_invoke_time(0)
 {
 	LOG_STACK_TRACE();
 	if (!m_dev || INVALID_HANDLE_VALUE == m_dev ) THROW_ERROR(ERR_APP, _T("invalid handle") );
@@ -82,6 +83,8 @@ bool CStorageDeviceComm::ScsiCommand(READWRITE rd_wr, BYTE *buf, JCSIZE buf_len,
     ULONG	returned = 0;
     BOOL	success;
 
+	LARGE_INTEGER t0, t1;		// 性能计算
+	QueryPerformanceCounter(&t0);
 	success = DeviceIoControl(
 				   m_dev,
 				   IOCTL_SCSI_PASS_THROUGH_DIRECT,
@@ -91,6 +94,10 @@ bool CStorageDeviceComm::ScsiCommand(READWRITE rd_wr, BYTE *buf, JCSIZE buf_len,
 				   llength,
 				   &returned,
 				   FALSE );
+	QueryPerformanceCounter(&t1);		// 性能计算
+	if (t0.QuadPart <= t1.QuadPart)		m_last_invoke_time = t1.QuadPart - t1.QuadPart;
+	else								m_last_invoke_time = 0;
+
 	if (!success) THROW_WIN32_ERROR( _T("send scsi command failed: ") );
     FlushFileBuffers(m_dev);
 	return true;
@@ -163,7 +170,14 @@ bool CStorageDeviceComm::SectorRead(BYTE * buf, FILESIZE lba, JCSIZE sectors)
 	offset.QuadPart = lba * SECTOR_SIZE;
 	SetFilePointerEx(m_dev, offset, &new_pointer, FILE_BEGIN);
 	DWORD read_size = 0;
+
+	LARGE_INTEGER t0, t1;		// 性能计算
+	QueryPerformanceCounter(&t0);
 	BOOL br = ReadFile(m_dev, buf, data_size, &read_size, NULL);
+	QueryPerformanceCounter(&t1);		// 性能计算
+	if (t0.QuadPart <= t1.QuadPart)		m_last_invoke_time = t1.QuadPart - t1.QuadPart;
+	else								m_last_invoke_time = 0;
+
 	if (!br) THROW_WIN32_ERROR(_T("Reading LBA failed! LBA = %u, size = %d"), (UINT)lba, sectors);
 #else
 	// read sector using SCSI driver
@@ -193,7 +207,12 @@ bool CStorageDeviceComm::SectorWrite(const BYTE * buf, FILESIZE lba, JCSIZE sect
 	SetFilePointerEx(m_dev, offset, &new_pointer, FILE_BEGIN);
 	DWORD data_size = sectors * SECTOR_SIZE;
 	DWORD written_size = 0;
+	LARGE_INTEGER t0, t1;		// 性能计算
+	QueryPerformanceCounter(&t0);
 	BOOL br = WriteFile(m_dev, buf, data_size, &written_size, NULL);
+	QueryPerformanceCounter(&t1);		// 性能计算
+	if (t0.QuadPart <= t1.QuadPart)		m_last_invoke_time = t1.QuadPart - t1.QuadPart;
+	else								m_last_invoke_time = 0;
 	if (!br)		THROW_WIN32_ERROR(_T("Writing LBA failed! LBA = %u, size = %d"), (UINT)lba, sectors);
 	return true;
 }
@@ -337,6 +356,12 @@ FILESIZE CStorageDeviceComm::GetCapacity(void)
 	}
 	return m_capacity;
 }
+
+UINT CStorageDeviceComm::GetLastInvokeTime(void)
+{
+	return ( (UINT)(m_last_invoke_time / CJCLogger::GetTimeStampCycleS()) ); 
+}
+
 
 /*
 void CStorageDeviceComm::GetTimeOut(UINT &rd, UINT &wr)

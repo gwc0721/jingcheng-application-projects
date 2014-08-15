@@ -451,6 +451,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source\plugin_debug.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\source\plugin_default.cpp"
 				>
 			</File>

@@ -42,7 +42,7 @@ void CAtaStorageDevice::Create(HANDLE dev, IStorageDevice * & i_dev)
 
 #define DRIVE_HEAD_REG	0xA0
 
-void CAtaStorageDevice::ReadSmartAttribute(BYTE * buf, JCSIZE len)
+bool CAtaStorageDevice::ReadSmartData(BYTE * buf, JCSIZE len)
 {
 	JCASSERT(m_dev);
 	DWORD readsize = 0;
@@ -119,6 +119,7 @@ void CAtaStorageDevice::ReadSmartAttribute(BYTE * buf, JCSIZE len)
 	if (!br) THROW_WIN32_ERROR(_T("SMART receive data. ") );
 
 	memcpy(buf, szOutput->bBuffer, min(READ_ATTRIBUTE_BUFFER_SIZE, len));
+	return true;
 }
 
 bool CAtaStorageDevice::AtaCommand(ATA_REGISTER &reg, READWRITE read_write, bool dma, BYTE * buf, JCSIZE secs)
@@ -299,7 +300,7 @@ BYTE CAtaStorageDevice::WriteDMA(FILESIZE lba, JCSIZE secs, BYTE &error, BYTE * 
 }
 
 
-BYTE CAtaStorageDevice::FlashCache(BYTE & error)
+BYTE CAtaStorageDevice::FlushCache(BYTE & error)
 {
 	ATA_REGISTER reg;
 	reg.command = 0xE7;
@@ -308,6 +309,19 @@ BYTE CAtaStorageDevice::FlashCache(BYTE & error)
 	AtaCommand(reg, read, false, NULL, 0);
 	error = reg.error;
 	return reg.status;
+}
+
+bool CAtaStorageDevice::IdentifyDevice(BYTE * buf, JCSIZE len)
+{
+	JCASSERT(m_dev);
+	JCASSERT(len >= SECTOR_SIZE);
+
+	ATA_REGISTER reg;
+	memset(&reg, 0, sizeof(ATA_REGISTER) );
+
+	reg.command = 0xEC;
+	bool br = AtaCommand(reg, read, false, buf, 1);
+	return br;
 }
 
 

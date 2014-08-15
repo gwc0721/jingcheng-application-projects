@@ -17,7 +17,7 @@ public:
 public:
 	bool QueryInterface(const char * if_name, IJCInterface * &if_ptr);
 	virtual FILESIZE GetCapacity(void) {return m_max_lba;}
-	virtual void ReadSmartAttribute(BYTE * buf, JCSIZE len);
+	//virtual void ReadSmartAttribute(BYTE * buf, JCSIZE len);
 
 	virtual bool AtaCommand(ATA_REGISTER &reg, READWRITE read_write, bool dma, BYTE * buf, JCSIZE secs);
 	virtual void AtaCommand48(ATA_REGISTER &previous, ATA_REGISTER &current, READWRITE read_write, BYTE * buf, JCSIZE secs);
@@ -25,8 +25,11 @@ public:
 	virtual BYTE ReadPIO(FILESIZE lba, BYTE secs, BYTE &error, BYTE * buf);
 	virtual BYTE WritePIO(FILESIZE lba, JCSIZE secs, BYTE &error, BYTE * buf);
 	virtual BYTE WriteDMA(FILESIZE lba, JCSIZE secs, BYTE &error, BYTE * buf);
-	virtual BYTE FlashCache(BYTE & error);
+	virtual BYTE FlushCache(BYTE & error);
 	virtual bool Recognize(void);
+
+	virtual bool ReadSmartData(BYTE * buf, JCSIZE len);
+	virtual bool IdentifyDevice(BYTE * buf, JCSIZE len);
 
 public:
 	static void Create(HANDLE dev, IStorageDevice * &);

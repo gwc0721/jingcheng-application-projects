@@ -48,7 +48,7 @@ class CAtaTrace
 {
 public:
 public:
-	CAtaTrace(void) : m_data(NULL) {memset(this, 0, sizeof(CAtaTrace));}
+	CAtaTrace(void) : m_data(NULL), m_id(UINT_MAX) {memset(this, 0, sizeof(CAtaTrace));}
 	CAtaTrace(const CAtaTrace & trace) 
 		: m_id(trace.m_id), m_start_time(trace.m_start_time), m_busy_time(trace.m_busy_time)
 		, m_feature(trace.m_feature), m_cmd_code(trace.m_cmd_code), m_lba(trace.m_lba)
@@ -90,7 +90,7 @@ public:
 		: jcparam::COLUMN_INFO_BASE(id, jcparam::VT_OTHERS, offset, title) {};
 
 public:
-	virtual void GetText(void * row, CJCStringT & str) const;
+	virtual void ToStream(void * row, jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt) const;
 	virtual void CreateValue(BYTE * src, jcparam::IValue * & val) const;
 };
 
@@ -142,12 +142,13 @@ public:
 
 // IAtomOperate
 public:
-	virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
+	//virtual bool Invoke(jcparam::IValue * row, jcscript::IOutPort * outport);
+	//bool InvokeOnce(jcscript::IOutPort * outport);
 
 // ILoopOperate
 public:
 	virtual bool Init(void);
-	bool InvokeOnce(jcscript::IOutPort * outport);
+	virtual bool InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * outport);
 
 protected:
 	void ParseLine(const CJCStringA & line, JCSIZE length);

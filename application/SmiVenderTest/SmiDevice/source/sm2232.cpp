@@ -73,7 +73,13 @@ bool CSM2232::Initialize(void)
 	memset(buf, 0, SECTOR_SIZE);
 	ReadFlashID(buf, 1);
 
-	m_isp_running = (0x01 == buf[0x0A]);
+	switch (buf[0x0A])
+	{
+	case 0x00:	m_isp_mode = ISPM_ROM_CODE; break;
+	case 0x01:	m_isp_mode = ISPM_ISP; break;
+	default:	m_isp_mode = ISPM_UNKNOWN;	break;
+	}
+
 	m_info_block_valid = (0x01 == buf[0x01]);
 	
 	m_mu = buf[0x00];

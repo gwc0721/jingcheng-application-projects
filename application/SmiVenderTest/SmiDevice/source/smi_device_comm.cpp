@@ -79,14 +79,33 @@ void CSmiDeviceComm::ReadSFR(BYTE * buf, JCSIZE secs)
 }
 
 
-void CSmiDeviceComm::GetSmartData(BYTE * data)
+bool CSmiDeviceComm::VendorReadSmart(BYTE * data)
 {
 	JCASSERT(m_dev);
+	CSmiCommand cmd;
+	cmd.id(0xF03E);
+	cmd.size() = 1;
+	// enable smart
+	cmd.raw_byte(3) = 0xD8;		// featur reg of SMART command
+	VendorCommand(cmd, read, data, 1);
+	// read smart data
+	cmd.raw_byte(3) = 0xD0;
+	VendorCommand(cmd, read, data, 1);
 
-	stdext::auto_cif<IAtaDevice>	storage;
-	m_dev->QueryInterface(IF_NAME_ATA_DEVICE, storage);
-	if (!storage.valid())  THROW_ERROR(ERR_UNSUPPORT, _T("Device doesn't support SMART feature"));
-	storage->ReadSmartAttribute(data, 512);
+	if ( 0xF0==data[0] && 0x3E==data[1] ) return false;
+	else return true;
+}
+
+bool CSmiDeviceComm::VendorIdentifyDevice(BYTE * data)
+{
+	JCASSERT(m_dev);
+	CSmiCommand cmd;
+	cmd.id(0xF03F);
+	cmd.size() = 1;
+
+	VendorCommand(cmd, read, data, 1);
+	if ( 0xF0==data[0] && 0x3F==data[1]) return false;
+	else return true;
 }
 
 void CSmiDeviceComm::ReadSRAM(WORD ram_add, JCSIZE len, BYTE * buf)
@@ -312,6 +331,11 @@ bool CSmiDeviceComm::GetProperty(LPCTSTR prop_name, UINT & val)
 	else if (  FastCmpT(prop_name, CSmiDeviceBase::PROP_ISP_BLOCK) )
 	{
 		val = MAKELONG(m_isp_index[0], m_isp_index[1]);
+		return true;
+	}
+	else if (  FastCmpT(prop_name, CSmiDeviceBase::PROP_ISP_MODE) )
+	{
+		val = MAKELONG((WORD)(m_isp_mode), (WORD)(m_info_block_valid));
 		return true;
 	}
 	

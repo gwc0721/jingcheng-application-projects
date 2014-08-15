@@ -65,6 +65,7 @@ public:
 	virtual bool Recognize() = 0;
 	virtual void Detach(HANDLE & dev) = 0;
 
+
 #ifdef _DEBUG
 	virtual HANDLE GetHandle() = 0;
 #endif
@@ -77,7 +78,7 @@ public:
 class IAtaDevice : public virtual IStorageDevice
 {
 public:
-	virtual void ReadSmartAttribute(BYTE * buf, JCSIZE len) = 0;
+	//virtual void ReadSmartAttribute(BYTE * buf, JCSIZE len) = 0;
 	virtual bool AtaCommand(ATA_REGISTER &reg, READWRITE read_write, bool dma, BYTE * buf, JCSIZE secs) = 0;
 	virtual void AtaCommand48(ATA_REGISTER &previous, ATA_REGISTER &current, READWRITE read_write, BYTE * buf, JCSIZE secs) = 0;
 	// Return error regist in lowest byte
@@ -87,7 +88,10 @@ public:
 
 	virtual BYTE WritePIO(FILESIZE lba, JCSIZE secs, BYTE &error, BYTE * buf) = 0;
 	virtual BYTE WriteDMA(FILESIZE lba, JCSIZE secs, BYTE &error, BYTE * buf) = 0;
-	virtual BYTE FlashCache(BYTE & error) = 0;
+	virtual BYTE FlushCache(BYTE & error) = 0;
+
+	virtual bool ReadSmartData(BYTE * buf, JCSIZE len) = 0;
+	virtual bool IdentifyDevice(BYTE * buf, JCSIZE len) = 0;
 };
 
 typedef void (* STORAGE_CREATOR)(HANDLE, IStorageDevice * &);

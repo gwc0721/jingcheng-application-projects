@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <jcparam.h>
+#include <vector>
 
 #define SECTOR_SIZE	(512)
 
@@ -8,6 +9,12 @@
 
 class CBinaryBuffer;
 class ISmiDevice;
+
+enum ISP_MODE
+{
+	ISPM_UNKNOWN = 0,	ISPM_ROM_CODE = 1,	ISPM_ISP = 2,
+	ISPM_MPISP = 3,
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 //----  CCardInfo  --------------------------------------------------------
@@ -186,7 +193,7 @@ extern const JCSIZE ASCII_OFFSET;
 //		- length	(read only)
 
 class CBinaryBuffer
-	: virtual public jcparam::IValueFormat, virtual public jcparam::IVisibleValue
+	: /*virtual public jcparam::IValueFormat,*/ virtual public jcparam::IVisibleValue
 	, public CJCInterfaceBase
 	, public Factory1<JCSIZE, CBinaryBuffer>
 {
@@ -199,9 +206,9 @@ public:
 	virtual void GetValueText(CJCStringT & str) const {};
 	virtual void SetValueText(LPCTSTR str)  {};
 
-	virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr);
-	virtual void Format(FILE * file, LPCTSTR format);
-	virtual void WriteHeader(FILE * file) {}
+	//virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr);
+	//virtual void Format(FILE * file, LPCTSTR format);
+	//virtual void WriteHeader(FILE * file) {}
 
 	virtual void GetSubValue(LPCTSTR name, jcparam::IValue * & val);
 	virtual void SetSubValue(LPCTSTR name, jcparam::IValue * val);
@@ -306,6 +313,8 @@ public:
 	CJCStringT	m_desc;
 };
 
+typedef jcparam::CTableRowBase<CAttributeItem>		CAttributeRow;
+
 typedef jcparam::CTypedTable<CAttributeItem>		CAttributeTable;
 
 
@@ -323,6 +332,35 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////////
 //----  CFBlockInfo  ----------------------------------------------------------
+class CDataVector
+{
+public:
+	class CDataVectorInfo;
+	typedef std::vector<CSectorBuf*>	VDATA;
+
+public:
+	~CDataVector(void);
+	void PushData(CSectorBuf * data);
+	JCSIZE GetSectors(void) {return m_data.size();};
+	JCSIZE GetOffset(void) {return m_offset;};
+	void SetOffset(JCSIZE offset)	{m_offset = offset;};
+	void ToStream(jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt);
+
+protected:
+	JCSIZE	m_offset;	// offset in file
+	VDATA	m_data;
+};
+
+class CDataVector::CDataVectorInfo	: public jcparam::COLUMN_INFO_BASE
+{
+public:
+	CDataVectorInfo(int id, LPCTSTR name)
+		: jcparam::COLUMN_INFO_BASE(id, jcparam::VT_OTHERS, 0, name) {}
+
+	virtual void ToStream(void * row, jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt) const;
+	virtual void CreateValue(BYTE * src, jcparam::IValue * & val) const;
+};
+
 class CFBlockInfo
 {
 public:
@@ -348,14 +386,16 @@ public:
 
 	void CreateErrorBit(BYTE channels, BYTE chunks);
 	void SetErrorBit(const CSpareData & spare, BYTE chunk);
+	void PushData(CSectorBuf * data);
 
 public:
-	WORD		m_id;
+	WORD			m_id;
 	CFlashAddress	m_f_add;
 	CSpareData		m_spare;
-	//static int		m_channel_num;
-	CErrorBit	* m_error_bit;
+	CErrorBit *		m_error_bit;
+	CDataVector *	m_data;
 };
+
 typedef jcparam::CTableRowBase<CFBlockInfo>		BLOCK_ROW;
 typedef jcparam::CTypedTable<CFBlockInfo>		CBlockTable;
 
@@ -365,24 +405,23 @@ public:
 	CBitErrColInfo(int id, LPCTSTR name)
 		: jcparam::COLUMN_INFO_BASE(id, jcparam::VT_OTHERS, 0, name) {}
 
-	virtual void GetText(void * row, CJCStringT & str) const;
-	//{
-	//	CFBlockInfo * block = reinterpret_cast<CFBlockInfo*>(row);
-	//	TCHAR _str[8];
-	//	for (int ii = 0; ii < CFBlockInfo::m_channel_num; ++ii)
-	//	{
-	//		stdext::jc_sprintf(_str, _T("%02X "), block->m_spare.m_error_bit[ii]);
-	//		str += _str;
-	//	}
-	//}
 
+	virtual void ToStream(void * row, jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt) const;
+	//virtual void GetText(void * row, CJCStringT & str) const;
 	virtual void CreateValue(BYTE * src, jcparam::IValue * & val) const;
-	//{
-	//	CJCStringT str;
-	//	GetText(src, str);
-	//	val = jcparam::CTypedValue<CJCStringT>::Create(str);
-	//}
 };
+
+///////////////////////////////////////////////////////////////////////////////
+// -- Block Erase Count  --------------------------------------------------------
+class CBlockEraseCount
+{
+public:
+	//CBlockEraseCount(UINT fblock, int pe) : m_id(fblock), m_erase_count(pe) {};
+	UINT m_id;		// block id
+	int m_erase_count;
+};
+
+typedef jcparam::CTableRowBase<CBlockEraseCount> CBlockEraseCountRow;
 
 ///////////////////////////////////////////////////////////////////////////////
 //----  CBadBlockInfo  --------------------------------------------------------
