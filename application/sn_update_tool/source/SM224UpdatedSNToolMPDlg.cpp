@@ -136,7 +136,7 @@ BOOL CSM224UpdatedSNToolMPDlg::OnInitDialog()
 		this->SetWindowText(str_title);
 
 		ListView_SetExtendedListViewStyle(m_ListUpdatedSNTool, LVS_EX_GRIDLINES|LVS_EX_FULLROWSELECT);
-		// TODO: Add extra initialization here
+
 		m_ListUpdatedSNTool.InsertColumn(0, _T("Item"), LVCFMT_CENTER, 60, -1);
 		m_ListUpdatedSNTool.InsertColumn(1, _T("Status"), LVCFMT_CENTER, 120, -1);
 		m_ListUpdatedSNTool.InsertColumn(2, _T("Model Name"), LVCFMT_CENTER, 220, -1);
@@ -187,7 +187,6 @@ void CSM224UpdatedSNToolMPDlg::SetStatus(COLORREF cr, LPCTSTR status)
 
 void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN() 
 {
-	// TODO: Add your control notification handler code here
 	CString Sn_H5;
 	BOOL isSN_equal_A=FALSE,isSN_equal_B=FALSE,isVendorModelName=FALSE,isNotSN16Char=FALSE;
 	BOOL isModelFlashID=FALSE; //check if correct flash
@@ -478,7 +477,6 @@ DWORD CSM224UpdatedSNToolMPDlg::ExcuseExternalProcess(const DEVICE_INFO & info)
 	SHELLEXECUTEINFO shell_info = {0};
 	shell_info.cbSize = sizeof(SHELLEXECUTEINFO);
 	shell_info.fMask = SEE_MASK_NOCLOSEPROCESS;
-	//shell_info.hwnd = m_hWnd;
 	shell_info.hwnd = NULL;
 	shell_info.lpVerb = NULL;
 	shell_info.lpFile = m_external_cmd;	
@@ -514,7 +512,6 @@ DWORD CSM224UpdatedSNToolMPDlg::ExcuseExternalProcess(const DEVICE_INFO & info)
 		LOG_ERROR(_T("external test timeout. timer = %dms"), timeout);
 		throw new CUpsnError(UPSN_EXTER_TIMEOUT);
 	}
-	//WaitForSingleObject(shell_info.hProcess, INFINITE);
 	
 	// check return code
 	DWORD exit_code = 0;
@@ -709,7 +706,6 @@ int CSM224UpdatedSNToolMPDlg::UpdatedSNtoDevice(HANDLE device, bool verify_sn)
 
 void CSM224UpdatedSNToolMPDlg::OnQuit() 
 {
-	// TODO: Add your control notification handler code here
 	//K1024 Lance add for save current count to file
 	UpdateData();
 	WritePrivateProfileString(SEC_PARAMETER, KEY_COUNT_CURRENT, m_str_count_current, FILE_COUNT_CURRENT);
@@ -718,7 +714,6 @@ void CSM224UpdatedSNToolMPDlg::OnQuit()
 
 void CSM224UpdatedSNToolMPDlg::OnTimer(UINT nIDEvent) 
 {
-	// TODO: Add your message handler code here and/or call default
 	if(nIDEvent==0x543)//Re ScanDrive until 30 seconds time out
 	{
 		DEVICE_INFO info;
@@ -735,7 +730,6 @@ void CSM224UpdatedSNToolMPDlg::OnTimer(UINT nIDEvent)
 
 BOOL CSM224UpdatedSNToolMPDlg::PreTranslateMessage(MSG* pMsg) 
 {
-	// TODO: Add your specialized code here and/or call the base class
 	if ((pMsg->message == WM_KEYDOWN) || (pMsg->message == WM_SYSKEYDOWN))
 	{
 		TCHAR tszKeyName[100];
@@ -782,7 +776,6 @@ void CSM224UpdatedSNToolMPDlg::OnChangeEDITInputSN()
 
 void CSM224UpdatedSNToolMPDlg::OnBUTTONSetSN() 
 {
-	// TODO: Add your control notification handler code here
 	m_edit_input_sn->GetWindowText(m_input_sn);
 	m_input_sn.TrimRight();
 	m_btn_set_sn->EnableWindow(FALSE);
@@ -794,7 +787,6 @@ void CSM224UpdatedSNToolMPDlg::OnBUTTONSetSN()
 
 void CSM224UpdatedSNToolMPDlg::OnBUTTONClearCnt() 
 {
-	// TODO: Add your control notification handler code here
 	CWnd* pWnd = GetParent();
 	int iLimitCnt=0;
 	int iValMesBox=0;
@@ -807,7 +799,6 @@ HBRUSH CSM224UpdatedSNToolMPDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor
 {
 	HBRUSH hbr = CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
 	pDC->SetBkMode(OPAQUE);
-	// TODO: Change any attributes of the DC here
 	if(nCtlColor == CTLCOLOR_STATIC)
 	{
 		switch(pWnd->GetDlgCtrlID())
@@ -822,7 +813,6 @@ HBRUSH CSM224UpdatedSNToolMPDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor
 			 break;		 
 		}
 	}
-	// TODO: Return a different brush if the default is not desired
 	return hbr;
 }
 
@@ -931,7 +921,6 @@ DWORD CSM224UpdatedSNToolMPDlg::UpsnLoadIspFile(HANDLE device, BYTE * isp_buf, D
 	DWORD check_sum=CheckSum(isp_buf, isplength);
 	LOG_DEBUG(_T("isp checksum=:0x%08X"), check_sum);
 	LOG_DEBUG(_T("checksum in config=:0x%08X"), m_isp_check_sum);
-	//for(DWORD ii=0; ii< isplength; ii++)	check_sum += isp_buf[ii];
 
 	if(m_isp_check_sum != check_sum )		throw new CUpsnError(UPSN_CheckSumNoMatch_FAIL);
 
@@ -1111,7 +1100,7 @@ bool CSM224UpdatedSNToolMPDlg::CheckFlashID(HANDLE device)
 	return success;
 }
 
-bool CSM224UpdatedSNToolMPDlg::LoadGlobalConfig(LPCTSTR sec, LPCTSTR key, CString & val)
+bool CSM224UpdatedSNToolMPDlg::LoadGlobalConfig(LPCTSTR sec, LPCTSTR key, CString & val, bool mandatory)
 {
 	CSM224testBApp * app = dynamic_cast<CSM224testBApp *>(AfxGetApp());
 	JCASSERT(app);
@@ -1119,9 +1108,16 @@ bool CSM224UpdatedSNToolMPDlg::LoadGlobalConfig(LPCTSTR sec, LPCTSTR key, CStrin
 
 	TCHAR str[MAX_STRING_LEN];
 	DWORD ir = GetPrivateProfileString(sec, key, NULL, str, MAX_STRING_LEN, model_file);
-	if (0 == ir) THROW_ERROR(ERR_PARAMETER, _T("failure on loading global config %s/%s"), sec, key);
-	val = str;
-	LOG_DEBUG(_T("global config %s/%s=%s"), sec, key, val);
+	if (0 == ir)
+	{
+		if ( mandatory ) THROW_ERROR(ERR_PARAMETER, _T("failure on loading global config %s/%s"), sec, key);
+		LOG_DEBUG(_T("no global config %s/%s"), sec, key);
+	}
+	else
+	{
+		val = str;
+		LOG_DEBUG(_T("global config %s/%s=%s"), sec, key, val);
+	}
 	return true;
 }
 
@@ -1203,14 +1199,17 @@ bool CSM224UpdatedSNToolMPDlg::LoadConfig(void)
 	str_sec.Format(_T("MODEL%02d"), m_model_index + 1);
 	
 	// serial number prefix for global, ex: EMBZ
-	LoadGlobalConfig(MODLE_LIST_MODELS,		KEY_PREFIX,			m_global_prefix);	
+	LoadGlobalConfig(MODLE_LIST_MODELS,		KEY_PREFIX,			m_global_prefix,	true);	
 	LoadGlobalConfig(SEC_EXTPROC,			KEY_EXT_CMD,		m_external_cmd);	
-	LoadGlobalConfig(SEC_EXTPROC,			KEY_EXT_PATH,		m_external_path);	
-	LoadGlobalConfig(SEC_EXTPROC,			KEY_EXT_PARAM,		m_external_param);	
-	LoadGlobalConfig(SEC_EXTPROC,			KEY_EXT_SHOW,		m_external_show_wnd);	
-	LoadGlobalConfig(SEC_EXTPROC,			KEY_EXT_TIMEOUT,	m_external_timeout);	
-	LoadGlobalConfig(str_sec,				KEY_MODEL_NAME,		m_model_name);
-	LoadGlobalConfig(str_sec,				KEY_CONFIG_FILE,	str_temp);
+	if ( !m_external_cmd.IsEmpty() )
+	{
+		LoadGlobalConfig(SEC_EXTPROC,			KEY_EXT_PATH,		m_external_path);	
+		LoadGlobalConfig(SEC_EXTPROC,			KEY_EXT_PARAM,		m_external_param);	
+		LoadGlobalConfig(SEC_EXTPROC,			KEY_EXT_SHOW,		m_external_show_wnd);	
+		LoadGlobalConfig(SEC_EXTPROC,			KEY_EXT_TIMEOUT,	m_external_timeout);
+	}
+	LoadGlobalConfig(str_sec,				KEY_MODEL_NAME,		m_model_name, true);
+	LoadGlobalConfig(str_sec,				KEY_CONFIG_FILE,	str_temp, true);
 
 	m_config_file = app->GetRunFolder() + str_temp;
 	if ( GetFileAttributes(m_config_file) == -1 )	

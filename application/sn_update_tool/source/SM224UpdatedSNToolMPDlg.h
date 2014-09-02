@@ -102,7 +102,7 @@ protected:
 protected:
 	DWORD CheckSum(BYTE * buf, DWORD len);
 	bool LoadConfig(void);
-	bool LoadGlobalConfig(LPCTSTR sec, LPCTSTR key, CString & val);
+	bool LoadGlobalConfig(LPCTSTR sec, LPCTSTR key, CString & val, bool mandatory = false);
 	bool LoadGlobalConfig(LPCTSTR sec, LPCTSTR key, int & val, int def_val = 0);
 	bool LoadLocalConfig(LPCTSTR sec, LPCTSTR key, CString & val);
 	bool LoadLocalConfig(LPCTSTR sec, LPCTSTR key, BYTE * buf, DWORD &len, int checksum = 0);
