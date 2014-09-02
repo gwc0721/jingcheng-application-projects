@@ -343,11 +343,11 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 
 		SetStatus(COLOR_BLUE, _T("Complete"));
 		//info.m_error_code = UPSN_PASS;
-		UPSN_MessageBox.DoModal( &info );
 
 		// log1
 		br = m_log_file.WriteLog1(info, start_time);
 		br = m_log_file.WriteLog2(info, start_time);
+		UPSN_MessageBox.DoModal( &info );
 	}
 	catch (stdext::CJCException &err)
 	{
@@ -356,10 +356,10 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 	catch (CUpsnError * pe)
 	{	// error
 		SetStatus(COLOR_RED, _T("Fail"));
-		info.m_error_code = pe->GetErrorCode();
-		UPSN_MessageBox.DoModal( &info );
+		//info.m_error_code = pe->GetErrorCode();
 		info.m_error_code = pe->GetErrorCode();
 		bool br = m_log_file.WriteLog1(info, start_time);
+		UPSN_MessageBox.DoModal( &info );
 		pe->Delete();
 	}
 	catch (CUpsnCaution * pe)
