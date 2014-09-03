@@ -336,18 +336,31 @@ void CJCLoggerNode::LogMessageFuncV(LPCSTR function, LPCTSTR format, va_list arg
 		if (ir >=0 )  str+=ir, remain-=ir;
 	}
 #endif
-	if (col_sel & CJCLogger::COL_REAL_TIME)
+	if ( (col_sel & CJCLogger::COL_REAL_TIME) || (col_sel & CJCLogger::COL_REAL_DATE) )
 	{
 		TCHAR strtime[32];
 		time_t now = time(NULL);
 		struct tm now_t;
 		localtime_s(&now_t, &now);
 
-		stdext::jc_strftime(strtime, 32, _T("%H:%M:%S"), &now_t);
-		strtime[24] = 0;
-		ir = stdext::jc_sprintf(str, remain, _T("<%ls> "), strtime);
-		if (ir >=0 )  str+=ir, remain-=ir;
+		if (col_sel & CJCLogger::COL_REAL_DATE)
+		{
+			JCSIZE ll = stdext::jc_strftime(strtime, 32, _T("%Y.%m.%d"), &now_t);
+			strtime[ll] = 0;
+			ir = stdext::jc_sprintf(str, remain, _T("<%ls> "), strtime);
+			if (ir >=0 )  str+=ir, remain-=ir;
+		}
+
+		if (col_sel & CJCLogger::COL_REAL_TIME)
+		{
+			JCSIZE ll = stdext::jc_strftime(strtime, 32, _T("%H:%M:%S"), &now_t);
+			strtime[ll] = 0;
+			ir = stdext::jc_sprintf(str, remain, _T("<%ls> "), strtime);
+			if (ir >=0 )  str+=ir, remain-=ir;
+		}
+
 	}
+
 
 	if (col_sel & CJCLogger::COL_COMPNENT_NAME)
 	{
