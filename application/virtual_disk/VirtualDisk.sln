@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CoreMntWdm", "CoreMntWdm\CoreMntWdm.vcproj", "{4514D744-E774-417C-A558-7B25F4D54B83}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		checked|Win32 = checked|Win32
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4514D744-E774-417C-A558-7B25F4D54B83}.checked|Win32.ActiveCfg = checked|Win32
+		{4514D744-E774-417C-A558-7B25F4D54B83}.checked|Win32.Build.0 = checked|Win32
+		{4514D744-E774-417C-A558-7B25F4D54B83}.Debug|Win32.ActiveCfg = checked|Win32
+		{4514D744-E774-417C-A558-7B25F4D54B83}.Debug|Win32.Build.0 = checked|Win32
+		{4514D744-E774-417C-A558-7B25F4D54B83}.Release|Win32.ActiveCfg = checked|Win32
+		{4514D744-E774-417C-A558-7B25F4D54B83}.Release|Win32.Build.0 = checked|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
