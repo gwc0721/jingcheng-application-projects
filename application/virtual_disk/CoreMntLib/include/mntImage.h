@@ -13,6 +13,10 @@ struct IImage
     void SetId(int devId) {devId_ = devId;}
     wchar_t GetMountPoint() {return mountPoint_;}
     void SetMountPoint(int mountPoint) {mountPoint_ = mountPoint;}
+
+	virtual void AddRef(void) {};
+	virtual void Release(void) {};
+
 private:
     int devId_;
     wchar_t mountPoint_;

@@ -5,7 +5,9 @@
 #include "../../Comm/virtual_disk.h"
 
 
-#define ENABLE_SYNC
+//#define ENABLE_SYNC
+
+inline NTSTATUS CompleteIrp( PIRP Irp, NTSTATUS status, ULONG info);
 
 class CIrpQueue
 {
@@ -16,6 +18,8 @@ public:
 	void Initialize(void);
 	bool push(IN PIRP irp);
 	bool pop(OUT PIRP &irp);
+	// return true if queue is empty, no block;
+	bool empty(void);
 
 protected:
 	bool IncreaseIfNotFull(void);
@@ -28,19 +32,13 @@ protected:
 	KEVENT	m_event;			// 用于当queue的内容改变时，发出通知
 	KSPIN_LOCK	m_size_lock;	// 用于m_size锁
 	FAST_MUTEX	m_mutex;		// 用于队列操作锁
-
-	//KSEMAPHORE	m_semaph;	// 用于队列计数
-	//KMUTEX	m_mutex;	// 用于队列操作锁
-
 };
-
-
 
 struct IrpParam
 {
     IrpParam(DISK_OPERATION_TYPE in_type, UINT32 in_size, UINT64 in_offset, char* in_buffer)
 		: type(in_type), size(in_size), offset(in_offset), buffer(in_buffer){}
-	IrpParam() : type(directOperationEmpty), size(0), offset(0), buffer(0){}
+	IrpParam() : type(DISK_OP_EMPTY), size(0), offset(0), buffer(0){}
 
     DISK_OPERATION_TYPE type;
     UINT32 size;
@@ -48,41 +46,41 @@ struct IrpParam
     char* buffer;
 };
 
-class MountManager;
+class CMountManager;
 
-class MountedDisk
+class CMountedDisk
 {
 public:
-    //MountedDisk(PDRIVER_OBJECT DriverObject,
-    //            MountManager* mountManager,
+    //CMountedDisk(PDRIVER_OBJECT DriverObject,
+    //            CMountManager* mountManager,
     //            int devId,
     //            UINT64 totalLength);
-    //~MountedDisk();
+    //~CMountedDisk();
 
-	void Initialize(IN PDRIVER_OBJECT DriverObject, IN MountManager* mountManager,
-			IN int devId, IN UINT64 totalLength);
+	// length in sectors
+	void Initialize(IN PDRIVER_OBJECT DriverObject, IN CMountManager* mountManager,
+			IN UINT32 devId, IN UINT64 total_sec);
 	void Release(void);
 
     NTSTATUS DispatchIrp(IN PIRP irp);
     NTSTATUS RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, OUT CORE_MNT_EXCHANGE_RESPONSE * response);
-        //UINT32 * type, UINT32 * length, UINT64 * offset);
+	NTSTATUS Disconnect(void);
 
-	void SetDeviceName(const WCHAR * dev_name);
+	//void SetDeviceName(const WCHAR * dev_name);
+	void SetDeviceName(PUNICODE_STRING dev_name, PUNICODE_STRING symbo);
 
 protected:
-	//void GetIrpParam(IN PIRP irp, OUT IrpParam & param);
 	void LocalDispatch(IN PIRP irp);
     void CompleteLastIrp(NTSTATUS status, ULONG information);
 
-public:
-
 protected:
 	WCHAR			m_device_name[MAXIMUM_FILENAME_LENGTH];
+	WCHAR			m_symbo_link[MAXIMUM_FILENAME_LENGTH];
 	CIrpQueue		m_irp_queue;
 	PDRIVER_OBJECT	m_driver_obj;
-	MountManager	* m_mnt_manager;
-	int				m_dev_id;
-	UINT64			m_total_length;
+	CMountManager	* m_mnt_manager;
+	UINT32				m_dev_id;
+	UINT64			m_total_sectors;		// length in sectors
 	PIRP			m_last_irp;
 };
 

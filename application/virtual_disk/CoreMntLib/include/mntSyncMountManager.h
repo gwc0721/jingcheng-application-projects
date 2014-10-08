@@ -1,5 +1,4 @@
-#ifndef MNT_SYNC_MOUNT_MANAGER_H_INCLUDED
-#define MNT_SYNC_MOUNT_MANAGER_H_INCLUDED
+#pragma once
 
 #include <string>
 #include <map>
@@ -11,43 +10,25 @@
 #include <atlsync.h>
 #include "mntDriverControl.h"
 
-class SyncMountManager
+class CSyncMountManager
 {
 public:
-    SyncMountManager(){}
-    DriverControl * GetDriverControl()
-    {
-        return &m_driverControl;
-    }
-    int AsyncMountImage(std::auto_ptr<IImage> image, wchar_t mountPoint);
-    void UnmountImage(int deviceId);
-private:
-    struct DispatchMountContext
-    {
-        DispatchMountContext(SyncMountManager* mntMan, int dev, IImage * img):
-            mountManager(mntMan), devId(dev), image(img){}
-        SyncMountManager* mountManager;
-        int devId;
-        IImage * image;
-    };
-    typedef std::map<int, IImage*> MountedImageMap;
-    typedef MountedImageMap::iterator MountedImageMapIter;
-    typedef std::pair<MountedImageMap::iterator, bool> MountedImageMapPairIB;
+	CSyncMountManager(void) {};
+	~CSyncMountManager(void) {};
+	
+	UINT CreateDevice(ULONG64 total_sec/*, IImage * image*/);		// length in sectors
+	void Connect(UINT dev_id, IImage * image);
+	void MountDriver(UINT dev_id, TCHAR mount_point);
+	void Disconnect(UINT dev_id);
+	void UnmountImage(UINT dev_id);
 
-    ATL::CCriticalSection mountersLock_;
-    MountedImageMap mounters_;
+protected:
+	typedef std::map<UINT, CDriverControl*> DRIVER_MAP;
+	typedef DRIVER_MAP::iterator DRIVER_MAP_IT;
+	//typedef std::pair<DRIVER_MAP_IT, bool>	DRIVER_MAP_PAIR;
+	typedef std::pair<UINT, CDriverControl*> DRIVER_MAP_PAIR;
 
-    DriverControl m_driverControl;
+	DRIVER_MAP	m_driver_map;
 
-    SyncMountManager(SyncMountManager&);
-    SyncMountManager& operator=(SyncMountManager&);
-    static void mountDispatchThread(void* pContext);
-
-    void OnUnmount(IImage * image, const std::string& reason);
-    void Erase(int devId)
-    {
-        ATL::CCritSecLock guard(mountersLock_);
-        mounters_.erase(devId);
-    }
+	//HANDLE m_coremnt_dev;
 };
-#endif

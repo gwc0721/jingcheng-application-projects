@@ -23,16 +23,3 @@ extern "C"
 #define arraysize(p) (sizeof(p)/sizeof((p)[0]))
 
 
-
-
-
-
-
-
-
-//
-//extern "C"
-//NTSTATUS DriverEntry(IN PDRIVER_OBJECT driver_obj,
-//                     IN PUNICODE_STRING RegistryPath);
-
-
