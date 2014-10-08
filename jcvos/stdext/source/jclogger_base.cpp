@@ -242,8 +242,12 @@ void CJCLogger::CreateAppender(LPCTSTR app_type, LPCTSTR file_name, DWORD prop)
 	}
 	else if (_tcscmp(_T("STDERR"), app_type) == 0)
 	{
+		m_appender = static_cast<CJCLoggerAppender*>(new jclogger::CStdErrApd );
 	}
-	JCASSERT(m_appender)
+	else if (_tcscmp(_T("NONE"), app_type) == 0)
+	{
+		m_appender = static_cast<CJCLoggerAppender*>(new jclogger::CNoneApd );
+	}	JCASSERT(m_appender)
 }
 
 void CJCLogger::RegistFunction(const CJCStringT & func, LONGLONG duration)

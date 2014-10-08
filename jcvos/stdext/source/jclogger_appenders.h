@@ -27,6 +27,21 @@ namespace jclogger
 #endif	// WIN32
 	};
 
+	class CStdErrApd : public CJCLoggerAppender
+	{
+	public:
+		virtual void WriteString(LPCTSTR str, JCSIZE len)
+		{ 	fprintf_s(stderr, "%S\r", str);	}
+		virtual void Flush()	{}
+	};
+
+	class CNoneApd : public CJCLoggerAppender
+	{
+	public:
+		virtual void WriteString(LPCTSTR str, JCSIZE len)	{}
+		virtual void Flush()	{}
+	};
+
 #ifdef WIN32
 	class CDebugAppender : public CJCLoggerAppender
 	{
