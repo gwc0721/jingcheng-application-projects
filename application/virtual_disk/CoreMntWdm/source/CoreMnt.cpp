@@ -28,21 +28,19 @@ NTSTATUS IrpHandler( IN PDEVICE_OBJECT fdo, IN PIRP pIrp );
 void CoreMntUnload(IN PDRIVER_OBJECT driver_obj);
 NTSTATUS CoreMntPnp(IN PDEVICE_OBJECT fdo, IN PIRP Irp);
 
-inline NTSTATUS CompleteIrp( PIRP Irp, NTSTATUS status, ULONG info)
-{
-    Irp->IoStatus.Status = status;
-    Irp->IoStatus.Information = info;
-    IoCompleteRequest(Irp,IO_NO_INCREMENT);
-    return status;
-}
 
 PDEVICE_OBJECT g_mount_device = NULL;
 
 
 // local function defination
-NTSTATUS ControlDeviceIrpHandler( IN MountManager * mm,  IN PDEVICE_OBJECT fdo, IN PIRP pIrp );
+NTSTATUS ControlDeviceIrpHandler( IN CMountManager * mm,  IN PDEVICE_OBJECT fdo, IN PIRP pIrp );
 
-//#define COREMNT_PNP_SUPPORT
+#define COREMNT_PNP_SUPPORT
+
+// {54659E9C-B407-4269-99F2-9A20D89E3575}
+static const GUID COREMNT_GUID = COREMNT_CLASS_GUID;
+//{ 0x54659e9c, 0xb407, 0x4269, { 0x99, 0xf2, 0x9a, 0x20, 0xd8, 0x9e, 0x35, 0x75 } };
+
 
 
 /************************************************************************
@@ -61,8 +59,8 @@ extern "C" NTSTATUS DriverEntry(IN PDRIVER_OBJECT driver_obj,
 
 #ifndef COREMNT_PNP_SUPPORT
     /* Start Driver initialization */
-    RtlInitUnicodeString(&gDeviceName,       DEVICE_NAME);
-    RtlInitUnicodeString(&gSymbolicLinkName, SYMBO_LINK_NAME);
+    RtlInitUnicodeString(&gDeviceName,       COREMNT_DEV_NAME);
+    RtlInitUnicodeString(&gSymbolicLinkName, COREMNT_SYMBOLINK);
 
 
 	KdPrint(("Create mount device\n"));
@@ -70,7 +68,7 @@ extern "C" NTSTATUS DriverEntry(IN PDRIVER_OBJECT driver_obj,
     NTSTATUS status;
 	PDEVICE_OBJECT fdo=NULL;
     status = IoCreateDevice(driver_obj,     // pointer on driver_obj
-                            sizeof(MountManager),                // additional size of memory, for device extension
+                            sizeof(CMountManager),                // additional size of memory, for device extension
                             &gDeviceName,     // pointer to UNICODE_STRING
                             FILE_DEVICE_NULL, // Device type
                             0,                // Device characteristic
@@ -78,7 +76,7 @@ extern "C" NTSTATUS DriverEntry(IN PDRIVER_OBJECT driver_obj,
                             &fdo);  // pointer do device object
     if (status != STATUS_SUCCESS)	return STATUS_FAILED_DRIVER_ENTRY;
 	g_mount_device = fdo;
-	MountManager * pdx = (MountManager *)(fdo->DeviceExtension);
+	CMountManager * pdx = (CMountManager *)(fdo->DeviceExtension);
 	pdx->Initialize(driver_obj);
 
 	pdx->fdo = fdo;
@@ -100,6 +98,16 @@ extern "C" NTSTATUS DriverEntry(IN PDRIVER_OBJECT driver_obj,
 	driver_obj->DriverExtension->AddDevice = CoreMntAddDevice;
 	driver_obj->MajorFunction[IRP_MJ_PNP] = CoreMntPnp;
 	driver_obj->DriverUnload = CoreMntUnload;
+
+// comm log information
+	KdPrint(("size: CORE_MNT_COMM = %d\n", sizeof(CORE_MNT_COMM) ));
+	KdPrint(("size: CORE_MNT_MOUNT_REQUEST =%d\n",sizeof(CORE_MNT_MOUNT_REQUEST) ));
+	KdPrint(("size: CORE_MNT_EXCHANGE_REQUEST = %d\n", sizeof(CORE_MNT_EXCHANGE_REQUEST) ));
+	KdPrint(("size: CORE_MNT_EXCHANGE_RESPONSE = %d\n", sizeof(CORE_MNT_EXCHANGE_RESPONSE) ));
+
+
+
+
 	return STATUS_SUCCESS;
 }
 
@@ -173,39 +181,54 @@ NTSTATUS CoreMntAddDevice(IN PDRIVER_OBJECT driver_obj,
 #else
 
 NTSTATUS CoreMntAddDevice(IN PDRIVER_OBJECT driver_obj,
-                           IN PDEVICE_OBJECT PhysicalDeviceObject)
+                           IN PDEVICE_OBJECT pdo)
 { 
 	PAGED_CODE();
-	LOG_STACK_TRACE("");
+	LOG_STACK_TRACE("v3");
 
-    RtlInitUnicodeString(&gDeviceName,       DEVICE_NAME);
-    RtlInitUnicodeString(&gSymbolicLinkName, SYMBO_LINK_NAME);
+    RtlInitUnicodeString(&gDeviceName,       COREMNT_DEV_NAME);
+    RtlInitUnicodeString(&gSymbolicLinkName, COREMNT_SYMBOLINK);
 
 	NTSTATUS status;
 	PDEVICE_OBJECT fdo = NULL;
-	UNICODE_STRING devName;
+	//UNICODE_STRING devName;
     status = IoCreateDevice(driver_obj,     // pointer on driver_obj
-                            sizeof(MountManager),                // additional size of memory, for device extension
-                            &gDeviceName,     // pointer to UNICODE_STRING
-                            FILE_DEVICE_NULL, // Device type
-                            0,                // Device characteristic
-                            FALSE,            // "Exclusive" device
-                            &fdo);  // pointer do device object
+				sizeof(CMountManager),                // additional size of memory, for device extension
+                NULL,     // pointer to UNICODE_STRING
+                FILE_DEVICE_NULL, // Device type
+                0,                // Device characteristic
+                FALSE,            // "Exclusive" device
+                &fdo);  // pointer do device object
 
-	if( !NT_SUCCESS(status))		return status;
+	if( !NT_SUCCESS(status) )
+	{
+		KdPrint(("failure on createing pnp device"));
+		return status;
+	}
 	g_mount_device = fdo;
-	MountManager * pdx = (MountManager *)(fdo->DeviceExtension);
+	CMountManager * pdx = (CMountManager *)(fdo->DeviceExtension);
 
 	pdx->Initialize(driver_obj);
 	pdx->fdo = fdo;
-	pdx->NextStackDevice = IoAttachDeviceToDeviceStack(fdo, PhysicalDeviceObject);
+	pdx->NextStackDevice = IoAttachDeviceToDeviceStack(fdo, pdo);
 	pdx->ustrDeviceName = gDeviceName;
-	pdx->ustrSymLinkName = gSymbolicLinkName;
+	//pdx->ustrSymLinkName = gSymbolicLinkName;
 
-    status = IoCreateSymbolicLink(&gSymbolicLinkName, &gDeviceName);
+    //status = IoCreateSymbolicLink(&gSymbolicLinkName, &gDeviceName);
+
+	status = IoRegisterDeviceInterface(pdo, &COREMNT_GUID, NULL, &pdx->ustrSymLinkName);
     if (status != STATUS_SUCCESS)
 	{
-		return STATUS_FAILED_DRIVER_ENTRY;
+		KdPrint(("failure on registing interface"));
+		return status;
+	}
+	KdPrint(("symbo_link:%wZ", &pdx->ustrSymLinkName));
+
+	status = IoSetDeviceInterfaceState(&pdx->ustrSymLinkName, TRUE);
+	if (status != STATUS_SUCCESS)
+	{
+		KdPrint(("failure on enable interface."));
+		return status;
 	}
 
 	//fdo->Flags |= DO_BUFFERED_IO | DO_POWER_PAGABLE;
@@ -219,7 +242,7 @@ NTSTATUS CoreMntAddDevice(IN PDRIVER_OBJECT driver_obj,
 
 /************************************************************************
 *************************************************************************/ 
-#pragma PAGECODE
+#pragma PAGEDCODE
 
 NTSTATUS IrpHandler(IN PDEVICE_OBJECT fdo, IN PIRP pIrp )
 {
@@ -234,123 +257,76 @@ NTSTATUS IrpHandler(IN PDEVICE_OBJECT fdo, IN PIRP pIrp )
     }
 	else if (fdo == g_mount_device)
 	{
-		KdPrint(("irp handler for g_mount_device\n"));
-		MountManager * mm = reinterpret_cast<MountManager *>(fdo->DeviceExtension);		ASSERT(mm);
+		//KdPrint(("irp handler for g_mount_device\n"));
+		CMountManager * mm = reinterpret_cast<CMountManager *>(fdo->DeviceExtension);		ASSERT(mm);
 		status = ControlDeviceIrpHandler(mm, fdo, pIrp);
 		return status;
 	}
 	else
 	{
-		KdPrint(("irp handler for drive device\n"));
-		MountedDisk * mnt_disk = reinterpret_cast<MountedDisk*>(fdo->DeviceExtension);
+		//KdPrint(("irp handler for drive device\n"));
+		CMountedDisk * mnt_disk = reinterpret_cast<CMountedDisk*>(fdo->DeviceExtension);
 		status = mnt_disk->DispatchIrp(pIrp);
 		return status;
 	}
 }
 
-NTSTATUS ControlDeviceIrpHandler( IN MountManager * mm, IN PDEVICE_OBJECT fdo, IN PIRP pIrp )
+NTSTATUS ControlDeviceIrpHandler( IN CMountManager * mm, IN PDEVICE_OBJECT fdo, IN PIRP pIrp )
 {
 	PAGED_CODE();
 	LOG_STACK_TRACE("");
 
     PIO_STACK_LOCATION irpStack = IoGetCurrentIrpStackLocation(pIrp);
-	KdPrint( ("major func: %X\n", irpStack->MajorFunction) );
+	//KdPrint( ("major func: %X\n", irpStack->MajorFunction) );
     switch(irpStack->MajorFunction)
     {
     case IRP_MJ_CREATE:
-			KdPrint( ("major func: IRP_MJ_CREATE\n") );
-			return CompleteIrp(pIrp, STATUS_SUCCESS,0);
-    case IRP_MJ_CLOSE:
-			KdPrint( ("major func: IRP_MJ_CLOSE\n") );
-			return CompleteIrp(pIrp, STATUS_SUCCESS,0);
-    case IRP_MJ_CLEANUP:
-			KdPrint( ("major func: IRP_MJ_CLEANUP\n") );
+		KdPrint( ("[IRP] mnt <- IRP_MJ_CREATE\n") );
+		return CompleteIrp(pIrp, STATUS_SUCCESS,0);
+    
+	case IRP_MJ_CLOSE:
+		KdPrint( ("[IRP] mnt <- IRP_MJ_CLOSE\n") );
+		return CompleteIrp(pIrp, STATUS_SUCCESS,0);
+    
+	case IRP_MJ_CLEANUP:
+		KdPrint( ("[IRP] mnt <- IRP_MJ_CLEANUP\n") );
         return CompleteIrp(pIrp, STATUS_SUCCESS,0);
 
     case IRP_MJ_DEVICE_CONTROL:	        {
-			KdPrint( ("major func: IRP_MJ_DEVICE_CONTROL\n") );
-			ASSERT(mm);
-            ULONG code = irpStack->Parameters.DeviceIoControl.IoControlCode;
-            PVOID buffer = pIrp->AssociatedIrp.SystemBuffer;
-            ULONG outputBufferLength = irpStack->Parameters.DeviceIoControl.OutputBufferLength;    
-            ULONG inputBufferLength = irpStack->Parameters.DeviceIoControl.InputBufferLength; 
-            NTSTATUS status = STATUS_SUCCESS;
-            switch (code)
-            {
-            case CORE_MNT_MOUNT_IOCTL:	{
-				KdPrint( ("ioctrl: CORE_MNT_MOUNT_IOCTL\n"));
-				KdPrint( ("request size=%d, response size=%d\n",sizeof(CORE_MNT_MOUNT_REQUEST), sizeof(CORE_MNT_MOUNT_RESPONSE) ) );
-				KdPrint( ("input buffer len=%d, output buf len=%d\n", inputBufferLength, outputBufferLength) );
+		NTSTATUS status = mm->DispatchDeviceControl(pIrp, irpStack);
+		return status;					}
+	default:
+		KdPrint(("[IRP] mnt <- UNKNOW_MAJOR_FUNC(0x%08X)", irpStack->MajorFunction));
 
-
-				//if(inputBufferLength < sizeof(CORE_MNT_MOUNT_REQUEST) || 
-				//	outputBufferLength < sizeof(CORE_MNT_MOUNT_RESPONSE) )
-				if(inputBufferLength <= 0 || outputBufferLength <= 0 )
-				{
-					KdPrint( ("input or output buffer size mismatch\n") );
-					status = STATUS_UNSUCCESSFUL;
-					break;
-				}
-
-				CORE_MNT_MOUNT_REQUEST * request = (CORE_MNT_MOUNT_REQUEST *)buffer;
-				UINT64 totalLength = request->totalLength;
-				KdPrint( ("disk size=%I64d, mount point=%lc\n", totalLength, request->mountPojnt) );
-
-				int dev_id = -1;
-				status = mm->Mount(totalLength, dev_id);
-				if ( !NT_SUCCESS(status) )		{	KdPrint( ("disk map is full\n") );		}
-
-				CORE_MNT_MOUNT_RESPONSE * response = (CORE_MNT_MOUNT_RESPONSE *)buffer;
-				response->deviceId = dev_id;
-				break;					}
-
-			case CORE_MNT_EXCHANGE_IOCTL:		{
-				KdPrint( ("ioctrl CORE_MNT_EXCHANGE_IOCTL\n"));
-				KdPrint( ("request size=%d, response size=%d\n",sizeof(CORE_MNT_EXCHANGE_REQUEST), sizeof(CORE_MNT_EXCHANGE_RESPONSE) ) );
-				KdPrint( ("input buffer len=%d, output buf len=%d\n", inputBufferLength, outputBufferLength) );
-				//if(	inputBufferLength < sizeof(CORE_MNT_EXCHANGE_REQUEST) || 
-				//	outputBufferLength < sizeof(CORE_MNT_EXCHANGE_RESPONSE) )
-				if(inputBufferLength <= 0 || outputBufferLength <= 0 )
-				{
-					KdPrint( ("input or output buffer size mismatch\n") );
-					status = STATUS_UNSUCCESSFUL;
-					break;
-				}
-				CORE_MNT_EXCHANGE_REQUEST * request = (CORE_MNT_EXCHANGE_REQUEST *)buffer;
-				CORE_MNT_EXCHANGE_RESPONSE response = {0};
-				//mm->RequestExchange(request->deviceId,
-				//		request->lastType, request->lastStatus, request->lastSize, 
-				//		request->data, request->dataSize, 
-				//		&response.type, &response.size, &response.offset);
-				mm->RequestExchange(request, &response);
-				KdPrint(("response: type=%d, size=%d\n", response.type, response.size));
-				RtlCopyMemory(buffer, &response, sizeof(CORE_MNT_EXCHANGE_RESPONSE) );
-				status = STATUS_SUCCESS;
-				//return STATUS_SUCCESS;
-				break;								}
-
-			case CORE_MNT_UNMOUNT_IOCTL:		{
-				KdPrint( ("ioctrl CORE_MNT_UNMOUNT_IOCTL\n"));
-				KdPrint( ("request size=%d\n",sizeof(CORE_MNT_UNMOUNT_REQUEST) ) );
-				KdPrint( ("input buffer len=%d\n", inputBufferLength) );
-		        //if(inputBufferLength < sizeof(CORE_MNT_UNMOUNT_REQUEST))
- 		        if(inputBufferLength <= 0)
-				{
-					KdPrint( ("input buffer size mismatch\n") );
-					status = STATUS_UNSUCCESSFUL;
-					break;
-				}
-				CORE_MNT_UNMOUNT_REQUEST * request = (CORE_MNT_UNMOUNT_REQUEST *)buffer;
-				status = mm->Unmount(request->deviceId);
-				break;		}
-            }
-            return CompleteIrp(pIrp,status,outputBufferLength);
-        }
     }
     __asm int 3;
     return CompleteIrp(pIrp, STATUS_UNSUCCESSFUL, 0);
 }
 
+
+#pragma LOCKEDCODE
+NTSTATUS OnPnpIrpComplete(PDEVICE_OBJECT fdo, PIRP irp, PKEVENT evt)
+{
+	KdPrint(("pnp irp completed.\n"));
+	KeSetEvent(evt, 0, FALSE);
+	return STATUS_MORE_PROCESSING_REQUIRED;
+}
+
+#pragma PAGEDCODE
+NTSTATUS ForwardAndWait(CMountManager * mm, PIRP irp)
+{
+	PAGED_CODE();
+	LOG_STACK_TRACE("");
+	
+	KEVENT evt;
+	KeInitializeEvent(&evt, NotificationEvent, FALSE);
+	IoCopyCurrentIrpStackLocationToNext(irp);
+	IoSetCompletionRoutine(irp, (PIO_COMPLETION_ROUTINE)(OnPnpIrpComplete), (PVOID)(&evt), TRUE, TRUE, TRUE);
+	IoCallDriver(mm->NextStackDevice, irp);
+	KdPrint(("waiting for irp complete\n"));
+	KeWaitForSingleObject(&evt, Executive, KernelMode, FALSE, NULL);
+	return irp->IoStatus.Status;
+}
 
 /************************************************************************
 * 函数名称:DefaultPnpHandler
@@ -361,13 +337,13 @@ NTSTATUS ControlDeviceIrpHandler( IN MountManager * mm, IN PDEVICE_OBJECT fdo, I
 * 返回 值:返回状态
 *************************************************************************/ 
 #pragma PAGEDCODE
-NTSTATUS DefaultPnpHandler(PDEVICE_EXTENSION pdx, PIRP Irp)
+NTSTATUS DefaultPnpHandler(CMountManager * pdx, PIRP irp)
 {
 	PAGED_CODE();
-	KdPrint(("Enter DefaultPnpHandler\n"));
-	IoSkipCurrentIrpStackLocation(Irp);
-	KdPrint(("Leave DefaultPnpHandler\n"));
-	return IoCallDriver(pdx->NextStackDevice, Irp);
+	LOG_STACK_TRACE("");
+	IoSkipCurrentIrpStackLocation(irp);
+	return IoCallDriver(pdx->NextStackDevice, irp);
+	//return ForwardAndWait(pdx, irp);
 }
 
 /************************************************************************
@@ -379,23 +355,38 @@ NTSTATUS DefaultPnpHandler(PDEVICE_EXTENSION pdx, PIRP Irp)
 * 返回 值:返回状态
 *************************************************************************/
 #pragma PAGEDCODE
-NTSTATUS HandleRemoveDevice(PDEVICE_EXTENSION pdx, PIRP Irp)
+NTSTATUS HandleRemoveDevice(CMountManager * pdx, PIRP Irp)
 {
 	PAGED_CODE();
-	KdPrint(("Enter HandleRemoveDevice\n"));
+	LOG_STACK_TRACE("");
 
 	Irp->IoStatus.Status = STATUS_SUCCESS;
 	NTSTATUS status = DefaultPnpHandler(pdx, Irp);
-	IoDeleteSymbolicLink(&(UNICODE_STRING)pdx->ustrSymLinkName);
+	//IoDeleteSymbolicLink(&(UNICODE_STRING)pdx->ustrSymLinkName);
+
+	IoSetDeviceInterfaceState(&pdx->ustrSymLinkName, FALSE);
+	RtlFreeUnicodeString(&pdx->ustrSymLinkName);
 
     //调用IoDetachDevice()把fdo从设备栈中脱开：
-    if (pdx->NextStackDevice)
-        IoDetachDevice(pdx->NextStackDevice);
+    if (pdx->NextStackDevice) IoDetachDevice(pdx->NextStackDevice);
+
+	pdx->Release();
 	
     //删除fdo：
     IoDeleteDevice(pdx->fdo);
-	KdPrint(("Leave HandleRemoveDevice\n"));
 	return status;
+}
+
+NTSTATUS CoreMntQueryRemoveDevice(CMountManager * pdx, PIRP irp)
+{
+	PAGED_CODE();
+	LOG_STACK_TRACE("");
+	bool removable = pdx->CanBeRemoved();
+	KdPrint(("core mnt is %s\n", removable?"removable":"un-removable"));
+	
+	irp->IoStatus.Status = STATUS_SUCCESS;
+	IoCompleteRequest(irp, IO_NO_INCREMENT);
+	return STATUS_SUCCESS;
 }
 
 /************************************************************************
@@ -415,67 +406,12 @@ NTSTATUS CoreMntPnp(IN PDEVICE_OBJECT fdo,
 
 	NTSTATUS status = STATUS_SUCCESS;
 	PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(Irp);
-
-#ifndef COREMNT_PNP_SUPPORT
-	if (fdo != gDeviceObject)
-	{
-		if (fdo == g_mount_device)	KdPrint(("pnp handler for mount device\n"));
-		else						KdPrint(("pnp handler for disk device\n"));
-		KdPrint(("minor:%d\n", stack->MinorFunction));
-		Irp->IoStatus.Status = STATUS_SUCCESS;
-		Irp->IoStatus.Information = 0;
-		IoCompleteRequest(Irp, IO_NO_INCREMENT);
-		return status;
-	}
-#else
-	if (fdo != g_mount_device)
-	{
-		KdPrint(("pnp handler for disk device\n"));
-		KdPrint(("minor:%d\n", stack->MinorFunction));
-		Irp->IoStatus.Status = STATUS_SUCCESS;
-		Irp->IoStatus.Information = 0;
-		IoCompleteRequest(Irp, IO_NO_INCREMENT);
-		return status;
-	}
-#endif
-
-	PDEVICE_EXTENSION pdx = (PDEVICE_EXTENSION) fdo->DeviceExtension;
-	static NTSTATUS (*fcntab[])(PDEVICE_EXTENSION pdx, PIRP Irp) = 
-	{
-		DefaultPnpHandler,		// IRP_MN_START_DEVICE
-		DefaultPnpHandler,		// IRP_MN_QUERY_REMOVE_DEVICE
-		HandleRemoveDevice,		// IRP_MN_REMOVE_DEVICE
-		DefaultPnpHandler,		// IRP_MN_CANCEL_REMOVE_DEVICE
-		DefaultPnpHandler,		// IRP_MN_STOP_DEVICE
-		DefaultPnpHandler,		// IRP_MN_QUERY_STOP_DEVICE
-		DefaultPnpHandler,		// IRP_MN_CANCEL_STOP_DEVICE
-		DefaultPnpHandler,		// IRP_MN_QUERY_DEVICE_RELATIONS
-		DefaultPnpHandler,		// IRP_MN_QUERY_INTERFACE
-		DefaultPnpHandler,		// IRP_MN_QUERY_CAPABILITIES
-		DefaultPnpHandler,		// IRP_MN_QUERY_RESOURCES
-		DefaultPnpHandler,		// IRP_MN_QUERY_RESOURCE_REQUIREMENTS
-		DefaultPnpHandler,		// IRP_MN_QUERY_DEVICE_TEXT
-		DefaultPnpHandler,		// IRP_MN_FILTER_RESOURCE_REQUIREMENTS
-		DefaultPnpHandler,		// 
-		DefaultPnpHandler,		// IRP_MN_READ_CONFIG
-		DefaultPnpHandler,		// IRP_MN_WRITE_CONFIG
-		DefaultPnpHandler,		// IRP_MN_EJECT
-		DefaultPnpHandler,		// IRP_MN_SET_LOCK
-		DefaultPnpHandler,		// IRP_MN_QUERY_ID
-		DefaultPnpHandler,		// IRP_MN_QUERY_PNP_DEVICE_STATE
-		DefaultPnpHandler,		// IRP_MN_QUERY_BUS_INFORMATION
-		DefaultPnpHandler,		// IRP_MN_DEVICE_USAGE_NOTIFICATION
-		DefaultPnpHandler,		// IRP_MN_SURPRISE_REMOVAL
-	};
-
 	ULONG fcn = stack->MinorFunction;
-	if (fcn >= arraysize(fcntab))
-	{						// unknown function
-		status = DefaultPnpHandler(pdx, Irp); // some function we don't know about
-		return status;
-	}						// unknown function
+
 
 #if DBG
+	char * str_dev =NULL;
+	char * str_func = NULL;
 	static char* fcnname[] = 
 	{
 		"IRP_MN_START_DEVICE",
@@ -503,9 +439,70 @@ NTSTATUS CoreMntPnp(IN PDEVICE_OBJECT fdo,
 		"IRP_MN_DEVICE_USAGE_NOTIFICATION",
 		"IRP_MN_SURPRISE_REMOVAL",
 	};
+	if (fdo == gDeviceObject)			str_dev = "dev";
+	else if (fdo == g_mount_device)		str_dev = "mount";
+	else								str_dev = "disk";
+	if (fcn < arraysize(fcnname) )		str_func = fcnname[fcn];
+	else								str_func = "UNKNOWN_PNP_REQUEST";
+	KdPrint(("[IRP] %s <- PNP::%s\n", str_dev, str_func));
+#endif
 
-	KdPrint(("PNP Request (%s)\n", fcnname[fcn]));
-#endif // DBG
+
+
+
+#ifndef COREMNT_PNP_SUPPORT
+	if (fdo != gDeviceObject)
+	{
+		Irp->IoStatus.Status = STATUS_SUCCESS;
+		Irp->IoStatus.Information = 0;
+		IoCompleteRequest(Irp, IO_NO_INCREMENT);
+		return status;
+	}
+	PDEVICE_EXTENSION pdx = (PDEVICE_EXTENSION) fdo->DeviceExtension;
+#else
+	if (fdo != g_mount_device)
+	{
+		Irp->IoStatus.Status = STATUS_SUCCESS;
+		Irp->IoStatus.Information = 0;
+		IoCompleteRequest(Irp, IO_NO_INCREMENT);
+		return status;
+	}
+	CMountManager * pdx = reinterpret_cast<CMountManager *>(fdo->DeviceExtension);
+#endif
+
+	static NTSTATUS (*fcntab[])(CMountManager * pdx, PIRP Irp) = 
+	{
+		DefaultPnpHandler,		// IRP_MN_START_DEVICE
+		CoreMntQueryRemoveDevice,		// IRP_MN_QUERY_REMOVE_DEVICE
+		HandleRemoveDevice,		// IRP_MN_REMOVE_DEVICE
+		DefaultPnpHandler,		// IRP_MN_CANCEL_REMOVE_DEVICE
+		DefaultPnpHandler,		// IRP_MN_STOP_DEVICE
+		DefaultPnpHandler,		// IRP_MN_QUERY_STOP_DEVICE
+		DefaultPnpHandler,		// IRP_MN_CANCEL_STOP_DEVICE
+		DefaultPnpHandler,		// IRP_MN_QUERY_DEVICE_RELATIONS
+		DefaultPnpHandler,		// IRP_MN_QUERY_INTERFACE
+		DefaultPnpHandler,		// IRP_MN_QUERY_CAPABILITIES
+		DefaultPnpHandler,		// IRP_MN_QUERY_RESOURCES
+		DefaultPnpHandler,		// IRP_MN_QUERY_RESOURCE_REQUIREMENTS
+		DefaultPnpHandler,		// IRP_MN_QUERY_DEVICE_TEXT
+		DefaultPnpHandler,		// IRP_MN_FILTER_RESOURCE_REQUIREMENTS
+		DefaultPnpHandler,		// 
+		DefaultPnpHandler,		// IRP_MN_READ_CONFIG
+		DefaultPnpHandler,		// IRP_MN_WRITE_CONFIG
+		DefaultPnpHandler,		// IRP_MN_EJECT
+		DefaultPnpHandler,		// IRP_MN_SET_LOCK
+		DefaultPnpHandler,		// IRP_MN_QUERY_ID
+		DefaultPnpHandler,		// IRP_MN_QUERY_PNP_DEVICE_STATE
+		DefaultPnpHandler,		// IRP_MN_QUERY_BUS_INFORMATION
+		DefaultPnpHandler,		// IRP_MN_DEVICE_USAGE_NOTIFICATION
+		DefaultPnpHandler,		// IRP_MN_SURPRISE_REMOVAL
+	};
+
+	if (fcn >= arraysize(fcntab))
+	{						// unknown function
+		status = DefaultPnpHandler(pdx, Irp); // some function we don't know about
+		return status;
+	}						// unknown function
 
 	status = (*fcntab[fcn])(pdx, Irp);
 	return status;
@@ -523,8 +520,16 @@ void CoreMntUnload(IN PDRIVER_OBJECT driver_obj)
 {
 	PAGED_CODE();
 	LOG_STACK_TRACE("");
+
+#ifndef COREMNT_PNP_SUPPORT
+	ASSERT(g_mount_device);
+	CMountManager * mm = reinterpret_cast<CMountManager *>(g_mount_device->DeviceExtension);		
+	ASSERT(mm);
+	mm->Release();
+
 	IoDeleteSymbolicLink(&gSymbolicLinkName);
     IoDeleteDevice(g_mount_device);
+#endif
 }
 
 

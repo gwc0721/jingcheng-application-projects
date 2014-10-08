@@ -11,7 +11,17 @@ extern "C"
 #include "mountdev.h"
 }
 
+// dummy irp for internal operation
+#define DIRP_DISCONNECT		1
 
+#pragma PAGEDCODE
+inline NTSTATUS CompleteIrp( PIRP irp, NTSTATUS status, ULONG info)
+{
+    irp->IoStatus.Status = status;
+    irp->IoStatus.Information = info;
+    IoCompleteRequest(irp, IO_NO_INCREMENT);
+    return status;
+}
 
 PVOID GetIrpBuffer(PIRP irp)
 {
@@ -27,34 +37,43 @@ PVOID GetIrpBuffer(PIRP irp)
 void GetIrpParam(IN PIRP irp, OUT IrpParam * param)
 {
 	PAGED_CODE();
-	LOG_STACK_TRACE("");
+	//LOG_STACK_TRACE("");
+
+	if ( (UINT32)irp == DIRP_DISCONNECT )
+	{
+		param->type = DISK_OP_DISCONNECT;
+		param->buffer = NULL;
+		param->offset = 0;
+		param->size = 0;
+		return;
+	}
 	
 	PIO_STACK_LOCATION ioStack = IoGetCurrentIrpStackLocation(irp);
 
     param->offset = 0;
-    param->type = directOperationEmpty;
+    param->type = DISK_OP_EMPTY;
     param->buffer = (char*)GetIrpBuffer(irp);
 
     if (ioStack->MajorFunction == IRP_MJ_READ)
     {
-		KdPrint(("major: IRP_MJ_READ\n"));
-        param->type = directOperationRead;
+		//KdPrint(("major: IRP_MJ_READ\n"));
+        param->type = DISK_OP_READ;
         param->size = ioStack->Parameters.Read.Length;
         param->offset = ioStack->Parameters.Read.ByteOffset.QuadPart; 
     }
 	else if(ioStack->MajorFunction == IRP_MJ_WRITE)
     {
-		KdPrint(("major: IRP_MJ_WRITE\n"));
-        param->type = directOperationWrite;
+		//KdPrint(("major: IRP_MJ_WRITE\n"));
+        param->type = DISK_OP_WRITE;
         param->size = ioStack->Parameters.Write.Length;
         param->offset = ioStack->Parameters.Write.ByteOffset.QuadPart; 
     }
     return;    
 }
 
-//MountedDisk::MountedDisk(PDRIVER_OBJECT	DriverObject, 
-//                         MountManager* mountManager, 
-//                         int devId, 
+//CMountedDisk::CMountedDisk(PDRIVER_OBJECT	DriverObject, 
+//                         CMountManager* mountManager, 
+//                         UINT32 devId, 
 //                         UINT64 totalLength)
 //              : irpQueue_(irpQueueNotEmpty_), 
 //                m_last_irp(0), 
@@ -62,7 +81,7 @@ void GetIrpParam(IN PIRP irp, OUT IrpParam * param)
 //{
 //}
 
-//MountedDisk::~MountedDisk()
+//CMountedDisk::~CMountedDisk()
 //{
 //    stopEvent_.set();
 //    //complete all IRP
@@ -73,29 +92,36 @@ void GetIrpParam(IN PIRP irp, OUT IrpParam * param)
 //        CompleteLastIrp(STATUS_DEVICE_NOT_READY, 0);
 //}
 
-void MountedDisk::Initialize(PDRIVER_OBJECT DriverObject, MountManager* mountManager,
-			int devId, UINT64 totalLength)
+void CMountedDisk::Initialize(PDRIVER_OBJECT DriverObject, CMountManager* mountManager,
+			UINT32 devId, UINT64 total_sec)
 {
 	m_driver_obj = DriverObject;
 	m_mnt_manager = mountManager;
 	m_dev_id = devId;
-	m_total_length = totalLength;
+	m_total_sectors = total_sec;		// length in sectors
 	m_last_irp = NULL;
 	
+	RtlFillMemory(m_device_name, sizeof(WCHAR) * MAXIMUM_FILENAME_LENGTH, 0);
+	RtlFillMemory(m_symbo_link, sizeof(WCHAR) * MAXIMUM_FILENAME_LENGTH, 0);
+
 	m_irp_queue.Initialize();
 }
 
-void MountedDisk::Release(void)
+void CMountedDisk::Release(void)
 {
-
-	//while (m_last_irp)
-	//{
-	//	CompleteLastIrp(STATUS_DEVICE_NOT_READY, 0);
-	//	m_irp_queue.pop(m_last_irp);
-	//}
+	while (! m_irp_queue.empty() )
+	{
+		PIRP irp;
+		m_irp_queue.pop(irp);
+		if ( (UINT32)irp > 0x10000)	CompleteIrp(irp, STATUS_DEVICE_NOT_READY, 0);
+	}
+	UNICODE_STRING _symbo_;
+	RtlInitUnicodeString(&_symbo_, m_symbo_link);
+	IoDeleteSymbolicLink(&_symbo_);
+	//m_irp_queue.Release();
 }
 
-NTSTATUS MountedDisk::DispatchIrp(IN PIRP irp)
+NTSTATUS CMountedDisk::DispatchIrp(IN PIRP irp)
 {
 	PAGED_CODE();
 	LOG_STACK_TRACE("");
@@ -103,10 +129,10 @@ NTSTATUS MountedDisk::DispatchIrp(IN PIRP irp)
     IrpParam irp_param;
 	GetIrpParam(irp, &irp_param);
 
-	KdPrint(("operation type: %d\n", irp_param.type));
+	//KdPrint(("operation type: %d\n", irp_param.type));
 
 	NTSTATUS status;
-    if(irp_param.type == directOperationEmpty)
+    if(irp_param.type == DISK_OP_EMPTY)
     {
 		LocalDispatch(irp);
         status = irp->IoStatus.Status;
@@ -114,6 +140,10 @@ NTSTATUS MountedDisk::DispatchIrp(IN PIRP irp)
     }
 	else
 	{
+#if DBG
+		if (irp_param.type == DISK_OP_READ)	KdPrint(("[IRP] disk <- IRP_MJ_READ\n"));
+		else if (irp_param.type == DISK_OP_WRITE)	KdPrint(("[IRP] disk <- IRP_MJ_WRITE\n"));
+#endif
 		IoMarkIrpPending( irp );
 		KdPrint(("push irp to queue\n"));
 		m_irp_queue.push(irp);
@@ -123,7 +153,7 @@ NTSTATUS MountedDisk::DispatchIrp(IN PIRP irp)
 }
 
 /*
-void MountedDisk::GetIrpParam(IN PIRP irp, OUT IrpParam & param)
+void CMountedDisk::GetIrpParam(IN PIRP irp, OUT IrpParam & param)
 {
 	PAGED_CODE();
 	LOG_STACK_TRACE("");
@@ -131,20 +161,20 @@ void MountedDisk::GetIrpParam(IN PIRP irp, OUT IrpParam & param)
 	PIO_STACK_LOCATION ioStack = IoGetCurrentIrpStackLocation(irp);
 
     param.offset = 0;
-    param.type = directOperationEmpty;
+    param.type = DISK_OP_EMPTY;
     param.buffer = (char*)GetIrpBuffer(irp);
 
     if (ioStack->MajorFunction == IRP_MJ_READ)
     {
 		KdPrint(("major: IRP_MJ_READ\n"));
-        param.type = directOperationRead;
+        param.type = DISK_OP_READ;
         param.size = ioStack->Parameters.Read.Length;
         param.offset = ioStack->Parameters.Read.ByteOffset.QuadPart; 
     }
 	else if(ioStack->MajorFunction == IRP_MJ_WRITE)
     {
 		KdPrint(("major: IRP_MJ_WRITE\n"));
-        param.type = directOperationWrite;
+        param.type = DISK_OP_WRITE;
         param.size = ioStack->Parameters.Write.Length;
         param.offset = ioStack->Parameters.Write.ByteOffset.QuadPart; 
     }
@@ -153,7 +183,7 @@ void MountedDisk::GetIrpParam(IN PIRP irp, OUT IrpParam & param)
 */
 
 // 处理简单的irp，在驱动内处理完并且Complete
-void MountedDisk::LocalDispatch(IN PIRP irp)
+void CMountedDisk::LocalDispatch(IN PIRP irp)
 {
 	PAGED_CODE();
 	LOG_STACK_TRACE("");
@@ -163,66 +193,65 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
     {
     case IRP_MJ_CREATE:
     case IRP_MJ_CLOSE:
-		KdPrint( ("major: IRP_MJ_CREATE / IRP_MJ_CLOSE\n") );
+		KdPrint( ("[IRP] disk <- IRP_MJ_CREATE / IRP_MJ_CLOSE\n") );
         irp->IoStatus.Status = STATUS_SUCCESS;
         irp->IoStatus.Information = 0;
         break;
 
     case IRP_MJ_QUERY_VOLUME_INFORMATION:
-        KdPrint( ("major: IRP_MJ_QUERY_VOLUME_INFORMATION\n") );
+        KdPrint( ("[IRP] disk <- IRP_MJ_QUERY_VOLUME_INFORMATION\n") );
         irp->IoStatus.Status = STATUS_INVALID_DEVICE_REQUEST;
         irp->IoStatus.Information = 0;
         break;
 
 	case IRP_MJ_DEVICE_CONTROL: {
 		ULONG code = io_stack->Parameters.DeviceIoControl.IoControlCode;
-		KdPrint( ("major: IRP_MJ_DEVICE_CONTROL, minor: 0x%X\n", code) );
+		//KdPrint(("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::"));
 		switch (code)
 		{
-		case IOCTL_DISK_GET_DRIVE_LAYOUT:
-			KdPrint( ("minor: IOCTL_DISK_GET_DRIVE_LAYOUT\n") );
+		case IOCTL_DISK_GET_DRIVE_LAYOUT:		{
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_DISK_GET_DRIVE_LAYOUT\n") );
 			if (io_stack->Parameters.DeviceIoControl.OutputBufferLength <
 				sizeof (DRIVE_LAYOUT_INFORMATION))
 			{
 				irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
 				irp->IoStatus.Information = 0;
+				break;
 			}
-			else
-			{
-				PDRIVE_LAYOUT_INFORMATION outputBuffer = (PDRIVE_LAYOUT_INFORMATION)
+			PDRIVE_LAYOUT_INFORMATION outputBuffer = (PDRIVE_LAYOUT_INFORMATION)
 					irp->AssociatedIrp.SystemBuffer;
 
-				outputBuffer->PartitionCount = 1;
-				outputBuffer->Signature = 0;
+			outputBuffer->PartitionCount = 1;
+			outputBuffer->Signature = 0;
 
-				outputBuffer->PartitionEntry->PartitionType = PARTITION_ENTRY_UNUSED;
-				outputBuffer->PartitionEntry->BootIndicator = FALSE;
-				outputBuffer->PartitionEntry->RecognizedPartition = TRUE;
-				outputBuffer->PartitionEntry->RewritePartition = FALSE;
-				outputBuffer->PartitionEntry->StartingOffset = RtlConvertUlongToLargeInteger (0);
-				outputBuffer->PartitionEntry->PartitionLength.QuadPart= m_total_length;
-				outputBuffer->PartitionEntry->HiddenSectors = 1L;
+			outputBuffer->PartitionEntry->PartitionType = PARTITION_ENTRY_UNUSED;
+			outputBuffer->PartitionEntry->BootIndicator = FALSE;
+			outputBuffer->PartitionEntry->RecognizedPartition = TRUE;
+			outputBuffer->PartitionEntry->RewritePartition = FALSE;
+			outputBuffer->PartitionEntry->StartingOffset = RtlConvertUlongToLargeInteger (0);
+			// length in sectors
+			outputBuffer->PartitionEntry->PartitionLength.QuadPart= m_total_sectors * SECTOR_SIZE;
+			outputBuffer->PartitionEntry->HiddenSectors = 1L;
 
-				irp->IoStatus.Status = STATUS_SUCCESS;
-				irp->IoStatus.Information = sizeof (PARTITION_INFORMATION);
-			}
-			break;
+			irp->IoStatus.Status = STATUS_SUCCESS;
+			irp->IoStatus.Information = sizeof (PARTITION_INFORMATION);
+			break;		}
 
 		case IOCTL_DISK_CHECK_VERIFY:
 		case IOCTL_CDROM_CHECK_VERIFY:
 		case IOCTL_STORAGE_CHECK_VERIFY:
 		case IOCTL_STORAGE_CHECK_VERIFY2:	{
-			KdPrint( ("minor: IOCTL_xxx_CHECK_VERIFY\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_xxx_CHECK_VERIFY\n") );
 			irp->IoStatus.Status = STATUS_SUCCESS;
 			irp->IoStatus.Information = 0;
 			break;							}
 
 		case IOCTL_DISK_GET_DRIVE_GEOMETRY:
 		case IOCTL_CDROM_GET_DRIVE_GEOMETRY:		{
-			KdPrint( ("minor: IOCTL_xxx_GET_DRIVE_GEOMETRY\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_xxx_GET_DRIVE_GEOMETRY\n") );
 
 			PDISK_GEOMETRY  disk_geometry;
-			ULONGLONG       length;
+			//ULONGLONG       length;
 
 			if (io_stack->Parameters.DeviceIoControl.OutputBufferLength <
 				sizeof(DISK_GEOMETRY))
@@ -232,8 +261,9 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 				break;
 			}
 			disk_geometry = (PDISK_GEOMETRY) irp->AssociatedIrp.SystemBuffer;
-			length = m_total_length;
-			disk_geometry->Cylinders.QuadPart = length / SECTOR_SIZE / 0x20 / 0x80;
+			//length = m_total_length;
+			//disk_geometry->Cylinders.QuadPart = length / SECTOR_SIZE / 0x20 / 0x80;
+			disk_geometry->Cylinders.QuadPart = m_total_sectors / 0x20 / 0x80;			// length in sectors
 			disk_geometry->MediaType = FixedMedia;
 			disk_geometry->TracksPerCylinder = 0x80;
 			disk_geometry->SectorsPerTrack = 0x20;
@@ -243,7 +273,7 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 			break;								}
 
 		case IOCTL_DISK_GET_LENGTH_INFO:		{
-			KdPrint( ("minor: IOCTL_DISK_GET_LENGTH_INFO\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_DISK_GET_LENGTH_INFO\n") );
 			PGET_LENGTH_INFORMATION get_length_information;
 			if (io_stack->Parameters.DeviceIoControl.OutputBufferLength <
 				sizeof(GET_LENGTH_INFORMATION))
@@ -253,16 +283,16 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 				break;
 			}
 			get_length_information = (PGET_LENGTH_INFORMATION) irp->AssociatedIrp.SystemBuffer;
-			get_length_information->Length.QuadPart = m_total_length;
+			get_length_information->Length.QuadPart = m_total_sectors * SECTOR_SIZE;		// length in sectors
 			irp->IoStatus.Status = STATUS_SUCCESS;
 			irp->IoStatus.Information = sizeof(GET_LENGTH_INFORMATION);
 			break;								}
 
 		case IOCTL_DISK_GET_PARTITION_INFO:		{
-			KdPrint( ("minor: IOCTL_DISK_GET_PARTITION_INFO\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_DISK_GET_PARTITION_INFO\n") );
 
 			PPARTITION_INFORMATION  partition_information;
-			ULONGLONG               length;
+			//ULONGLONG               length;
 			if (io_stack->Parameters.DeviceIoControl.OutputBufferLength <
 				sizeof(PARTITION_INFORMATION))
 			{
@@ -271,9 +301,9 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 				break;
 			}
 			partition_information = (PPARTITION_INFORMATION) irp->AssociatedIrp.SystemBuffer;
-			length = m_total_length;
+			//length = m_total_length;
 			partition_information->StartingOffset.QuadPart = 0;
-			partition_information->PartitionLength.QuadPart = length;
+			partition_information->PartitionLength.QuadPart = m_total_sectors * SECTOR_SIZE;
 			partition_information->HiddenSectors = 0;
 			partition_information->PartitionNumber = 0;
 			partition_information->PartitionType = 0;
@@ -285,10 +315,10 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 			break;								}
 
 		case IOCTL_DISK_GET_PARTITION_INFO_EX:	{
-			KdPrint( ("minor: IOCTL_DISK_GET_PARTITION_INFO_EX\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_DISK_GET_PARTITION_INFO_EX\n") );
 
 			PPARTITION_INFORMATION_EX   partition_information_ex;
-			ULONGLONG                   length;
+			//ULONGLONG                   length;
 			if (io_stack->Parameters.DeviceIoControl.OutputBufferLength <
 				sizeof(PARTITION_INFORMATION_EX))
 			{
@@ -297,10 +327,10 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 				break;
 			}
 			partition_information_ex = (PPARTITION_INFORMATION_EX) irp->AssociatedIrp.SystemBuffer;
-			length = m_total_length;
+			//length = m_total_length;
 			partition_information_ex->PartitionStyle = PARTITION_STYLE_MBR;
 			partition_information_ex->StartingOffset.QuadPart = 0;
-			partition_information_ex->PartitionLength.QuadPart = length;
+			partition_information_ex->PartitionLength.QuadPart = m_total_sectors * SECTOR_SIZE;
 			partition_information_ex->PartitionNumber = 0;
 			partition_information_ex->RewritePartition = FALSE;
 			partition_information_ex->Mbr.PartitionType = 0;
@@ -312,20 +342,20 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 			break;								}
 
 		case IOCTL_DISK_IS_WRITABLE:			{
-			KdPrint( ("minor: IOCTL_DISK_IS_WRITABLE\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_DISK_IS_WRITABLE\n") );
 			irp->IoStatus.Status = STATUS_SUCCESS;
 			irp->IoStatus.Information = 0;
 			break;								}
 
 		case IOCTL_DISK_MEDIA_REMOVAL:
 		case IOCTL_STORAGE_MEDIA_REMOVAL:		{
-			KdPrint( ("minor: IOCTL_xxx_MEDIA_REMOVAL\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_xxx_MEDIA_REMOVAL\n") );
 			irp->IoStatus.Status = STATUS_SUCCESS;
 			irp->IoStatus.Information = 0;
 			break;								}
 
 		case IOCTL_CDROM_READ_TOC:				{
-			KdPrint( ("minor: IOCTL_CDROM_READ_TOC\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_CDROM_READ_TOC\n") );
 			PCDROM_TOC cdrom_toc;
 			if (io_stack->Parameters.DeviceIoControl.OutputBufferLength <
 				sizeof(CDROM_TOC))
@@ -344,7 +374,7 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 			break;								}
 
 		case IOCTL_DISK_SET_PARTITION_INFO:		{
-			KdPrint( ("minor: IOCTL_DISK_SET_PARTITION_INFO\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_DISK_SET_PARTITION_INFO\n") );
 			if (io_stack->Parameters.DeviceIoControl.InputBufferLength <
 				sizeof(SET_PARTITION_INFORMATION))
 			{
@@ -357,7 +387,7 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 			break;							}
 
 		case IOCTL_DISK_VERIFY:					{
-			KdPrint( ("minor: IOCTL_DISK_VERIFY\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_DISK_VERIFY\n") );
 			PVERIFY_INFORMATION verify_information;
 			if (io_stack->Parameters.DeviceIoControl.InputBufferLength <
 				sizeof(VERIFY_INFORMATION))
@@ -372,7 +402,7 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 			break;								}	
 
 		case IOCTL_MOUNTDEV_QUERY_DEVICE_NAME:	{
-			KdPrint( ("minor: IOCTL_MOUNTDEV_QUERY_DEVICE_NAME\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_MOUNTDEV_QUERY_DEVICE_NAME\n") );
 			if(io_stack->Parameters.DeviceIoControl.OutputBufferLength < sizeof (MOUNTDEV_NAME))
 			{
 				irp->IoStatus.Information = sizeof (MOUNTDEV_NAME);
@@ -381,15 +411,11 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 			else
 			{
 				PMOUNTDEV_NAME devName = (PMOUNTDEV_NAME)irp->AssociatedIrp.SystemBuffer;
-
-				//WCHAR device_name_buffer[MAXIMUM_FILENAME_LENGTH];
-				//swprintf(device_name_buffer, DIRECT_DISK_PREFIX L"%u", devId_);
-
 				UNICODE_STRING deviceName;
 				RtlInitUnicodeString(&deviceName, m_device_name);
 
 				devName->NameLength = deviceName.Length;
-				int outLength = sizeof(USHORT) + deviceName.Length;
+				ULONG outLength = sizeof(USHORT) + deviceName.Length;
 				if(io_stack->Parameters.DeviceIoControl.OutputBufferLength < outLength)
 				{
 					irp->IoStatus.Status = STATUS_BUFFER_OVERFLOW;
@@ -405,7 +431,7 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 			break;								}
 
 		case IOCTL_MOUNTDEV_QUERY_UNIQUE_ID:	{
-			KdPrint( ("minor: IOCTL_MOUNTDEV_QUERY_UNIQUE_ID\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_MOUNTDEV_QUERY_UNIQUE_ID\n") );
 			if(io_stack->Parameters.DeviceIoControl.OutputBufferLength < sizeof (MOUNTDEV_UNIQUE_ID))
 			{
 				irp->IoStatus.Information = sizeof (MOUNTDEV_UNIQUE_ID);
@@ -417,15 +443,12 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 				PMOUNTDEV_UNIQUE_ID mountDevId = (PMOUNTDEV_UNIQUE_ID)irp->AssociatedIrp.SystemBuffer;
 	            
 				USHORT unique_id_length;
-				//WCHAR unique_id_buffer[MAXIMUM_FILENAME_LENGTH];
-				//swprintf(unique_id_buffer, DIRECT_DISK_PREFIX L"%u", devId_);
-	            
 				UNICODE_STRING uniqueId;
 				RtlInitUnicodeString(&uniqueId, m_device_name);
 				unique_id_length = uniqueId.Length;
 	            
 				mountDevId->UniqueIdLength = uniqueId.Length;
-				int outLength = sizeof(USHORT) + uniqueId.Length;
+				ULONG outLength = sizeof(USHORT) + uniqueId.Length;
 				if(io_stack->Parameters.DeviceIoControl.OutputBufferLength < outLength)
 				{
 					irp->IoStatus.Status = STATUS_BUFFER_OVERFLOW;
@@ -441,14 +464,14 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 			break;								}
 
 		case IOCTL_MOUNTDEV_QUERY_STABLE_GUID:	{
-			KdPrint( ("minor: IOCTL_MOUNTDEV_QUERY_STABLE_GUID\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_MOUNTDEV_QUERY_STABLE_GUID\n") );
 			irp->IoStatus.Status = STATUS_INVALID_DEVICE_REQUEST;
 			irp->IoStatus.Information = 0;
 			break;	}
 
 
 		case IOCTL_STORAGE_GET_HOTPLUG_INFO:			{
-			KdPrint( ("minor: IOCTL_STORAGE_GET_HOTPLUG_INFO\n") );
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_STORAGE_GET_HOTPLUG_INFO\n") );
 			if (io_stack->Parameters.DeviceIoControl.OutputBufferLength < 
 				sizeof(STORAGE_HOTPLUG_INFO)) 
 			{
@@ -481,30 +504,18 @@ void MountedDisk::LocalDispatch(IN PIRP irp)
 		*/
 
 		default:
-			KdPrint( ("code: Unknown PNP minor function= 0x%x\n", io_stack->MinorFunction));
+			irp->IoStatus.Information = 0;
+			irp->IoStatus.Status = STATUS_SUCCESS;
+			KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::UNKNOW_MINOR_FUNC(0x%08X)\n", io_stack->MinorFunction));
 		}
 		break; }
 
     default:
-		KdPrint( ("major: Unknown MJ fnc = 0x%x\n", io_stack->MajorFunction));
+		KdPrint( ("[IRP] disk <- UNKNOW_MAJOR_FUNC(0x%08X)\n", io_stack->MajorFunction));
      }
 }
 
-void MountedDisk::CompleteLastIrp(NTSTATUS status, ULONG information)
-{
-    ASSERT(m_last_irp);
-    //irpDispatcher_.onCompleteIrp(m_last_irp, status, information);
-    m_last_irp->IoStatus.Status = status;
-    m_last_irp->IoStatus.Information = information;
-    IoCompleteRequest( m_last_irp, IO_NO_INCREMENT);
-    m_last_irp = NULL;
-}
-
-
-
-
-NTSTATUS MountedDisk::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, OUT CORE_MNT_EXCHANGE_RESPONSE * response)
-                     //UINT32 * type, UINT32 * length, UINT64 * offset)
+NTSTATUS CMountedDisk::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, OUT CORE_MNT_EXCHANGE_RESPONSE * response)
 {
 	PAGED_CODE();
 	LOG_STACK_TRACE("");
@@ -512,12 +523,12 @@ NTSTATUS MountedDisk::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, OU
 	DISK_OPERATION_TYPE last_type = (DISK_OPERATION_TYPE)(request->lastType);
 
 	// 返回上次处理结果
-    if(last_type != directOperationEmpty)
+    if(last_type != DISK_OP_EMPTY)
     {
 		KdPrint(("processing last irp\n"));
         ASSERT(m_last_irp);
         m_last_irp->IoStatus.Status = request->lastStatus;
-        if(request->lastStatus == STATUS_SUCCESS && last_type == directOperationRead)
+        if(request->lastStatus == STATUS_SUCCESS && last_type == DISK_OP_READ)
         {
 			KdPrint(("last irp is read cmd\n"));
             IrpParam irp_param;
@@ -525,14 +536,13 @@ NTSTATUS MountedDisk::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, OU
             if(irp_param.buffer)	RtlCopyMemory(irp_param.buffer, request->data, request->lastSize);
             else					m_last_irp->IoStatus.Status = STATUS_INSUFFICIENT_RESOURCES;
         }
-        CompleteLastIrp(m_last_irp->IoStatus.Status, request->lastSize);
+        CompleteIrp(m_last_irp, m_last_irp->IoStatus.Status, request->lastSize);
+		m_last_irp = NULL;
     }
 
 	// 处理本次请求
-    ASSERT(!m_last_irp);
-	response->type = directOperationEmpty;
-	
-	//PIRP irp;
+    ASSERT(m_last_irp == NULL);
+	response->type = DISK_OP_EMPTY;
 	m_irp_queue.pop(m_last_irp);
 	ASSERT(m_last_irp);
 
@@ -543,34 +553,53 @@ NTSTATUS MountedDisk::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, OU
     response->type = (UINT32)(irp_param.type);
 	response->size = irp_param.size;
     response->offset = irp_param.offset;
-    ASSERT(response->type != directOperationEmpty);
+    ASSERT(response->type != DISK_OP_EMPTY);
 
-    if((DISK_OPERATION_TYPE)(response->type) == directOperationWrite)
+	if (irp_param.type == DISK_OP_DISCONNECT) m_last_irp = NULL;
+	else if( irp_param.type == DISK_OP_WRITE )
     {
 		KdPrint(("current irp is write cmd\n"));
-        IrpParam irp_param;
-		GetIrpParam(m_last_irp, &irp_param);
-
 		if(irp_param.buffer) RtlCopyMemory(request->data, irp_param.buffer, response->size);
         else 
         {
-            CompleteLastIrp(STATUS_INSUFFICIENT_RESOURCES, 0);
-            response->type = (UINT32)(directOperationEmpty);
+            CompleteIrp(m_last_irp, STATUS_INSUFFICIENT_RESOURCES, 0);
+			m_last_irp = NULL;
+            response->type = (UINT32)(DISK_OP_EMPTY);
         }
     }
 
 	return STATUS_SUCCESS;
 }
 
-void MountedDisk::SetDeviceName(const WCHAR *dev_name)
+NTSTATUS CMountedDisk::Disconnect(void)
 {
-	int jj=0;
-	while ( dev_name[jj] !=0 )
-	{
-		m_device_name[jj] = dev_name[jj];
-		++jj;
-	}
-	m_device_name[jj] = 0;
+	m_irp_queue.push( (PIRP) DIRP_DISCONNECT);
+	return STATUS_SUCCESS;
+}
+
+void CMountedDisk::SetDeviceName(PUNICODE_STRING dev_name, PUNICODE_STRING symbo)
+{
+	PAGED_CODE();
+	LOG_STACK_TRACE("");
+
+	//KdPrint(("source length = %d\n", dev_name->Length));
+	//KdPrint(("source max lne = %d\n", dev_name->MaximumLength));
+
+	UNICODE_STRING _dev_name;
+	RtlInitUnicodeString(&_dev_name, m_device_name);
+	//KdPrint(("unicode length = %d\n", _dev_name.Length));
+	//KdPrint(("unicode max len= %d\n", _dev_name.MaximumLength));
+	_dev_name.MaximumLength = MAXIMUM_FILENAME_LENGTH -1;
+	RtlCopyUnicodeString(&_dev_name, dev_name);
+	//KdPrint(("device name input:%wZ\n", dev_name));
+	//KdPrint(("device name copy: %wZ\n", _dev_name));
+	KdPrint(("device name saved:%S\n", m_device_name));
+
+	UNICODE_STRING _symbo_;
+	RtlInitUnicodeString(&_symbo_, m_symbo_link);
+	_symbo_.MaximumLength = MAXIMUM_FILENAME_LENGTH -1;
+	RtlCopyUnicodeString(&_symbo_, symbo);
+	KdPrint(("symbo link set:%S\n", m_symbo_link));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -584,14 +613,11 @@ CIrpQueue::CIrpQueue(void)
 	m_head = 0, m_tail = 0;
 	m_size = 0;
 
-	//
-	//KeInitializeSemaphore(&m_semaph, 0, MAX_IRP_QUEUE);
-	//KeInitializeMutex(&m_mutex, 0);
-#ifdef ENABLE_SYNC
+//#ifdef ENABLE_SYNC
 	KeInitializeEvent(&m_event, SynchronizationEvent, FALSE);
 	KeInitializeSpinLock(&m_size_lock);
 	ExInitializeFastMutex(&m_mutex);
-#endif
+//#endif
 }
 
 void CIrpQueue::Initialize(void)
@@ -601,14 +627,11 @@ void CIrpQueue::Initialize(void)
 	m_head = 0, m_tail = 0;
 	m_size = 0;
 
-	//
-	//KeInitializeSemaphore(&m_semaph, 0, MAX_IRP_QUEUE);
-	//KeInitializeMutex(&m_mutex, 0);
-#ifdef ENABLE_SYNC
+//#ifdef ENABLE_SYNC
 	KeInitializeEvent(&m_event, SynchronizationEvent, FALSE);
 	KeInitializeSpinLock(&m_size_lock);
 	ExInitializeFastMutex(&m_mutex);
-#endif
+//#endif
 }
 CIrpQueue::~CIrpQueue(void)
 {
@@ -631,79 +654,83 @@ bool CIrpQueue::IncreaseIfNotFull(void)
 bool CIrpQueue::DecreaseIfNotEmpty(void)
 {
 	KIRQL old_irq;
-	bool empty = true;
+	bool _empty = true;
 	KeAcquireSpinLock(&m_size_lock, &old_irq);
 	if (m_size > 0)
 	{
 		m_size --;
-		empty = false;
+		_empty = false;
 	}
 	KeReleaseSpinLock(&m_size_lock, old_irq);
-	return empty;
+	return _empty;
+}
+
+bool CIrpQueue::empty(void)
+{
+	KIRQL old_irq;
+	bool _empty = true;
+	KeAcquireSpinLock(&m_size_lock, &old_irq);
+	_empty = (m_size == 0);
+	KeReleaseSpinLock(&m_size_lock, old_irq);
+	return _empty;
 }
 
 bool CIrpQueue::push(IN PIRP irp)
 {
-#ifdef ENABLE_SYNC
+//#ifdef ENABLE_SYNC
 	while ( IncreaseIfNotFull() )
 	{
 		KdPrint(("queue::push, queue is full\n"));
 		KeWaitForSingleObject(&m_event, Executive, KernelMode, FALSE, NULL);
 	}
 
-	//<TODO> need mutex
 	ExAcquireFastMutex(&m_mutex);
-#else
-	while (m_size >= MAX_IRP_QUEUE)
-	{
-		LARGE_INTEGER my_interval;
-		my_interval.QuadPart = -10*1000 * 100;
-		KeDelayExecutionThread(KernelMode,0,&my_interval);
-	}
-	//if (m_size >= MAX_IRP_QUEUE) return false;
-	m_size ++;
-#endif
+//#else
+//	while (m_size >= MAX_IRP_QUEUE)
+//	{
+//		LARGE_INTEGER my_interval;
+//		my_interval.QuadPart = -10*1000 * 100;
+//		KeDelayExecutionThread(KernelMode,0,&my_interval);
+//	}
+//	m_size ++;
+//#endif
 	m_queue[m_tail] = irp;
 	m_tail ++;
 	if (m_tail >= MAX_IRP_QUEUE) m_tail = 0;
 
-#ifdef ENABLE_SYNC
+//#ifdef ENABLE_SYNC
 	ExReleaseFastMutex(&m_mutex);
-	// end mutex
 	KeSetEvent(&m_event, 0, FALSE);
-#endif
+//#endif
 
 	return true;
 }
 
 bool CIrpQueue::pop(OUT PIRP &irp)
 {
-#ifdef ENABLE_SYNC
+//#ifdef ENABLE_SYNC
 	while (DecreaseIfNotEmpty() )
 	{
 		KdPrint(("queue::pop, queue is empty, waiting for irp\n"));
 		KeWaitForSingleObject(&m_event, Executive, KernelMode, FALSE, NULL);
 	}
-	//<TODO> need mutex
 	ExAcquireFastMutex(&m_mutex);
-#else
-	while (m_size <= 0)
-	{
-		LARGE_INTEGER my_interval;
-		my_interval.QuadPart = -10*1000 * 100;
-		KeDelayExecutionThread(KernelMode,0,&my_interval);
-	}
-	//if (m_size <= 0) return false;
-	m_size --;
-#endif
+//#else
+//	while (m_size <= 0)
+//	{
+//		LARGE_INTEGER my_interval;
+//		my_interval.QuadPart = -10*1000 * 100;
+//		KeDelayExecutionThread(KernelMode,0,&my_interval);
+//	}
+//	m_size --;
+//#endif
 	irp = m_queue[m_head];
 	m_head ++;
 	if (m_head >= MAX_IRP_QUEUE)	m_head = 0;
 
-#ifdef ENABLE_SYNC
+//#ifdef ENABLE_SYNC
 	ExReleaseFastMutex(&m_mutex);
-	// end mutex
 	KeSetEvent(&m_event, 0, FALSE);
-#endif
+//#endif
 	return true;
 }

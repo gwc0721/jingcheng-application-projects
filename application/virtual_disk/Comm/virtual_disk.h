@@ -4,17 +4,18 @@
 
 enum DISK_OPERATION_TYPE
 {
-    directOperationSuccess = 0,
-    directOperationEmpty = 0,
-    directOperationRead = 1,
-    directOperationWrite = 2,
-    directOperationFail = 3,
-    directOperationMax = directOperationFail,
+    //directOperationSuccess = 0,
+    DISK_OP_EMPTY = 0,
+    DISK_OP_READ = 1,
+    DISK_OP_WRITE = 2,
+	DISK_OP_DISCONNECT = 3,
+    //directOperationFail = 4,
+    DISK_OP_MAX = DISK_OP_DISCONNECT,
 };
 
 struct CORE_MNT_EXCHANGE_REQUEST
 {
-    ULONG32 deviceId;
+    ULONG32 dev_id;
     ULONG32 lastType; 
     ULONG32 lastStatus; 
     ULONG32 lastSize; 
@@ -31,19 +32,18 @@ struct CORE_MNT_EXCHANGE_RESPONSE
 
 struct CORE_MNT_MOUNT_REQUEST
 {
-    ULONG64 totalLength;
-    WCHAR   mountPojnt;
+    ULONG64 total_sec;	// in sectors
+    //WCHAR   mountPojnt;
 };
 
-struct CORE_MNT_MOUNT_RESPONSE
+// comm for request and response
+struct CORE_MNT_COMM
 {
-    ULONG32 deviceId;
+	UINT32 dev_id;
 };
 
-struct CORE_MNT_UNMOUNT_REQUEST
-{
-    ULONG32 deviceId;
-};
+#define CORE_MNT_MOUNT_RESPONSE		CORE_MNT_COMM
+#define CORE_MNT_UNMOUNT_REQUEST	CORE_MNT_COMM
 
 #define SECTOR_SIZE		512
 
@@ -59,3 +59,6 @@ struct CORE_MNT_UNMOUNT_REQUEST
 
 #define CORE_MNT_UNMOUNT_IOCTL \
     CTL_CODE(CORE_MNT_DISPATCHER, 0x802, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
+#define CORE_MNT_DISCONNECT_IOCTL \
+    CTL_CODE(CORE_MNT_DISPATCHER, 0x803, METHOD_BUFFERED, FILE_ANY_ACCESS)

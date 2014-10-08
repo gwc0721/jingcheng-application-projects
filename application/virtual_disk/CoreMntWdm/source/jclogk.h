@@ -30,12 +30,12 @@ class CJCKStackTrace
 public:
     CJCKStackTrace(const char * func_name, const char * msg)
 	{
-		KdPrint( ("[TRACE IN] %s\n", func_name ));
+		KdPrint( ("[TRACE IN] %s, %s\n", func_name, msg ));
 		ANSI_STRING		str_func_name;
 
 		RtlInitAnsiString(&str_func_name, func_name);
 		m_str_func.Buffer = m_func_name;
-		m_str_func.MaximumLength = MAX_FUNC_NAME;
+		m_str_func.MaximumLength = MAX_FUNC_NAME-1;
 		RtlCopyString(&m_str_func, &str_func_name);
 		m_func_name[m_str_func.Length] = 0;
 	}
