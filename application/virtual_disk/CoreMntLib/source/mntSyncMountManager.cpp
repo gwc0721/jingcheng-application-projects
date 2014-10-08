@@ -5,7 +5,6 @@ LOCAL_LOGGER_ENABLE(_T("SyncMntManager"), LOGGER_LEVEL_DEBUGINFO);
 
 
 #include "../include/mntSyncMountmanager.h"
-#include "../include/SyncMounter.h"
 #include "process.h"
 #include <sstream>
 #include "boost\scope_exit.hpp"

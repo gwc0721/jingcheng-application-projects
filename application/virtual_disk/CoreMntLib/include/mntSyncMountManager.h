@@ -4,7 +4,6 @@
 #include <map>
 #include <algorithm>
 #include "windows.h"
-#include "SyncMounter.h"
 #include "mntImage.h"
 #include "windows.h"
 #include <atlsync.h>
