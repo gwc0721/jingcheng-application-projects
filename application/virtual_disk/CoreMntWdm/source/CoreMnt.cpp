@@ -297,10 +297,10 @@ NTSTATUS ControlDeviceIrpHandler( IN CMountManager * mm, IN PDEVICE_OBJECT fdo, 
 		return status;					}
 	default:
 		KdPrint(("[IRP] mnt <- UNKNOW_MAJOR_FUNC(0x%08X)", irpStack->MajorFunction));
-
+		return CompleteIrp(pIrp, STATUS_SUCCESS, 0);
     }
-    __asm int 3;
-    return CompleteIrp(pIrp, STATUS_UNSUCCESSFUL, 0);
+    //__asm int 3;
+    //return CompleteIrp(pIrp, STATUS_UNSUCCESSFUL, 0);
 }
 
 
@@ -341,6 +341,7 @@ NTSTATUS DefaultPnpHandler(CMountManager * pdx, PIRP irp)
 {
 	PAGED_CODE();
 	LOG_STACK_TRACE("");
+	irp->IoStatus.Status = STATUS_SUCCESS;
 	IoSkipCurrentIrpStackLocation(irp);
 	return IoCallDriver(pdx->NextStackDevice, irp);
 	//return ForwardAndWait(pdx, irp);
@@ -361,6 +362,7 @@ NTSTATUS HandleRemoveDevice(CMountManager * pdx, PIRP Irp)
 	LOG_STACK_TRACE("");
 
 	Irp->IoStatus.Status = STATUS_SUCCESS;
+
 	NTSTATUS status = DefaultPnpHandler(pdx, Irp);
 	//IoDeleteSymbolicLink(&(UNICODE_STRING)pdx->ustrSymLinkName);
 
@@ -383,10 +385,10 @@ NTSTATUS CoreMntQueryRemoveDevice(CMountManager * pdx, PIRP irp)
 	LOG_STACK_TRACE("");
 	bool removable = pdx->CanBeRemoved();
 	KdPrint(("core mnt is %s\n", removable?"removable":"un-removable"));
-	
+
 	irp->IoStatus.Status = STATUS_SUCCESS;
-	IoCompleteRequest(irp, IO_NO_INCREMENT);
-	return STATUS_SUCCESS;
+	IoSkipCurrentIrpStackLocation(irp);
+	return IoCallDriver(pdx->NextStackDevice, irp);
 }
 
 /************************************************************************
