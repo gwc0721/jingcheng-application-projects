@@ -1,8 +1,8 @@
 #include "../include/mntSparseImage.h"
 #include <assert.h>
 
-SparseImage::SparseImage(std::auto_ptr<IImage> impl, Uint32 headerOffset, 
-                               Uint64 logicSize, Uint32 blockSize, Uint32 granulity, bool fCreate):
+SparseImage::SparseImage(std::auto_ptr<IImage> impl, ULONG32 headerOffset, 
+                               ULONG64 logicSize, ULONG32 blockSize, ULONG32 granulity, bool fCreate):
     impl_(impl),
     headerOffset_(headerOffset),
     logicSize_(logicSize), blockSize_(blockSize),
@@ -24,23 +24,23 @@ void SparseImage::ReadTable()
     impl_->Read(indexTable_.getBuf(), headerOffset_, indexTable_.getSize());
     indexTable_.getLogBlock();
 }
-void SparseImage::ReadFromBlock(char* pBuffer, Uint32 blockIndex, Uint32 offset, Uint32 size)
+void SparseImage::ReadFromBlock(char* pBuffer, ULONG32 blockIndex, ULONG32 offset, ULONG32 size)
 {
-    Uint32 blockToken = indexTable_.at(blockIndex);
+    ULONG32 blockToken = indexTable_.at(blockIndex);
     assert(blockToken != s_unusedBlokToken);
-    Uint64 read_offset = headerOffset_ + indexTable_.getSize() + blockToken * blockSize_ + offset;
+    ULONG64 read_offset = headerOffset_ + indexTable_.getSize() + blockToken * blockSize_ + offset;
     impl_->Read(pBuffer, read_offset, size);
 }
-void SparseImage::WriteToBlock(const char* pBuffer, Uint32 blockIndex, Uint32 offset, Uint32 size)
+void SparseImage::WriteToBlock(const char* pBuffer, ULONG32 blockIndex, ULONG32 offset, ULONG32 size)
 {
-    Uint32 blockToken = indexTable_.at(blockIndex);
+    ULONG32 blockToken = indexTable_.at(blockIndex);
     assert(blockToken != s_unusedBlokToken);
-    Uint64 write_offset = headerOffset_ + indexTable_.getSize() + blockToken * blockSize_ + offset;
+    ULONG64 write_offset = headerOffset_ + indexTable_.getSize() + blockToken * blockSize_ + offset;
     impl_->Write(pBuffer, write_offset, size);
 }
-void SparseImage::AddNewBlock(Uint32 index)
+void SparseImage::AddNewBlock(ULONG32 index)
 {
-    Uint32 usedCount = indexTable_.getUsedCount();
+    ULONG32 usedCount = indexTable_.getUsedCount();
     indexTable_.set(index, usedCount);
     try
     {
@@ -52,27 +52,27 @@ void SparseImage::AddNewBlock(Uint32 index)
         throw;
     }
 }
-void SparseImage::Read(char*  pBuffer,
-                          Uint64 offset,
-                          Uint32 length)
+bool SparseImage::Read(char*  pBuffer,
+                          ULONG64 offset,
+                          ULONG32 length)
 {
-    Uint32 firstBlockIndex = boost::numeric_cast<Uint32>(offset / blockSize_);
-    Uint32 lastBlockIndex = boost::numeric_cast<Uint32>((offset + length) / blockSize_);
-    Uint32 firstBlockOffset = offset % blockSize_;
-    Uint32 lastBlockOffset = (offset + length) % blockSize_;
+    ULONG32 firstBlockIndex = boost::numeric_cast<ULONG32>(offset / blockSize_);
+    ULONG32 lastBlockIndex = boost::numeric_cast<ULONG32>((offset + length) / blockSize_);
+    ULONG32 firstBlockOffset = offset % blockSize_;
+    ULONG32 lastBlockOffset = (offset + length) % blockSize_;
 
-    Uint32 bytesWriten = 0;
-    for(Uint32 currentBlockIndex = firstBlockIndex;
+    ULONG32 bytesWriten = 0;
+    for(ULONG32 currentBlockIndex = firstBlockIndex;
         currentBlockIndex <= lastBlockIndex && bytesWriten < length;
         ++currentBlockIndex)
     {
         if(currentBlockIndex == lastBlockIndex && lastBlockOffset == 0)
             break;
-        Uint32 currentBlockToken = indexTable_.at(currentBlockIndex);
+        ULONG32 currentBlockToken = indexTable_.at(currentBlockIndex);
         if(currentBlockToken != s_unusedBlokToken)
         {
-            Uint32 begin = 0;
-            Uint32 end = blockSize_;
+            ULONG32 begin = 0;
+            ULONG32 end = blockSize_;
             if(currentBlockIndex == firstBlockIndex)
                 begin = firstBlockOffset;
             if(currentBlockIndex == lastBlockIndex)
@@ -84,28 +84,29 @@ void SparseImage::Read(char*  pBuffer,
             bytesWriten += (end - begin);
         }
     }
+	return true;
 }
 
-void SparseImage::Write(const char*   pBuffer,
-                           Uint64 offset,
-                           Uint32 length)
+bool SparseImage::Write(const char*   pBuffer,
+                           ULONG64 offset,
+                           ULONG32 length)
 {
-    Uint32 firstBlockIndex = boost::numeric_cast<Uint32>(offset / blockSize_);
-    Uint32 lastBlockIndex = boost::numeric_cast<Uint32>((offset + length) / blockSize_);
-    Uint32 firstBlockOffset = offset % blockSize_;
-    Uint32 lastBlockOffset = (offset + length) % blockSize_;
+    ULONG32 firstBlockIndex = boost::numeric_cast<ULONG32>(offset / blockSize_);
+    ULONG32 lastBlockIndex = boost::numeric_cast<ULONG32>((offset + length) / blockSize_);
+    ULONG32 firstBlockOffset = offset % blockSize_;
+    ULONG32 lastBlockOffset = (offset + length) % blockSize_;
 
-    Uint32 bytesWriten = 0;
-    for(Uint32 currentBlockIndex = firstBlockIndex;
+    ULONG32 bytesWriten = 0;
+    for(ULONG32 currentBlockIndex = firstBlockIndex;
         currentBlockIndex <= lastBlockIndex && bytesWriten < length;
         ++currentBlockIndex)
     {
-        Uint32 currentBlockToken = indexTable_.at(currentBlockIndex);
+        ULONG32 currentBlockToken = indexTable_.at(currentBlockIndex);
         if(currentBlockToken == s_unusedBlokToken)
             AddNewBlock(currentBlockIndex);
 
-        Uint32 begin = 0;
-        Uint32 end = blockSize_;
+        ULONG32 begin = 0;
+        ULONG32 end = blockSize_;
         if(currentBlockIndex == firstBlockIndex)
             begin = firstBlockOffset;
         if(currentBlockIndex == lastBlockIndex)
@@ -116,4 +117,5 @@ void SparseImage::Write(const char*   pBuffer,
         pBuffer += (end - begin);
         bytesWriten += (end - begin);
     }
+	return true;
 }

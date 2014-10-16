@@ -8,28 +8,28 @@ class SparseImage: public IImage
 {
     std::auto_ptr<IImage> impl_;
 
-    const Uint64 logicSize_;
-    const Uint32 blockSize_;
-    const Uint32 headerOffset_;
+    const ULONG64 logicSize_;
+    const ULONG32 blockSize_;
+    const ULONG32 headerOffset_;
 
     CResparseIndexTable indexTable_;
 
     void WriteTable();
     void ReadTable();
-    void AddNewBlock(Uint32 index);
-    void ReadFromBlock(char* pBuffer, Uint32 blockIndex, Uint32 offset, Uint32 size);
-    void WriteToBlock(const char* pBuffer, Uint32 blockIndex, Uint32 offset, Uint32 size);
+    void AddNewBlock(ULONG32 index);
+    void ReadFromBlock(char* pBuffer, ULONG32 blockIndex, ULONG32 offset, ULONG32 size);
+    void WriteToBlock(const char* pBuffer, ULONG32 blockIndex, ULONG32 offset, ULONG32 size);
 
     SparseImage();
     SparseImage(const SparseImage&);
     SparseImage operator=(const SparseImage&);
 public:
-    SparseImage::SparseImage(std::auto_ptr<IImage> impl, Uint32 headerOffset, 
-        Uint64 logicSize, Uint32 blockSize, Uint32 granulity, bool fCreate);
-    void Read(char* out_buf, Uint64 offset, Uint32 bytesToRead);
-    void Write(const char*   pBuffer,Uint64 offset,Uint32 length);
+    SparseImage::SparseImage(std::auto_ptr<IImage> impl, ULONG32 headerOffset, 
+        ULONG64 logicSize, ULONG32 blockSize, ULONG32 granulity, bool fCreate);
+    bool Read(char* out_buf, ULONG64 offset, ULONG32 bytesToRead);
+    bool Write(const char*   pBuffer,ULONG64 offset,ULONG32 length);
 
-    Uint64 Size()
+    ULONG64 GetSize() const
     {
         return logicSize_;
     }

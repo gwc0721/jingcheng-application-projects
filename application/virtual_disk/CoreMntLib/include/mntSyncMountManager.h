@@ -15,7 +15,7 @@ public:
 	CSyncMountManager(void) {};
 	~CSyncMountManager(void) {};
 	
-	UINT CreateDevice(ULONG64 total_sec/*, IImage * image*/);		// length in sectors
+	UINT CreateDevice(ULONG64 total_sec);		// length in sectors
 	void Connect(UINT dev_id, IImage * image);
 	void MountDriver(UINT dev_id, TCHAR mount_point);
 	void Disconnect(UINT dev_id);
@@ -24,10 +24,6 @@ public:
 protected:
 	typedef std::map<UINT, CDriverControl*> DRIVER_MAP;
 	typedef DRIVER_MAP::iterator DRIVER_MAP_IT;
-	//typedef std::pair<DRIVER_MAP_IT, bool>	DRIVER_MAP_PAIR;
 	typedef std::pair<UINT, CDriverControl*> DRIVER_MAP_PAIR;
-
 	DRIVER_MAP	m_driver_map;
-
-	//HANDLE m_coremnt_dev;
 };

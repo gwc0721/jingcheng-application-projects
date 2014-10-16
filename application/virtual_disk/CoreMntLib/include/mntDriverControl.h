@@ -6,7 +6,7 @@
 class CDriverControl
 {
 public:
-	CDriverControl(ULONG64 total_sec/*, IImage * image*/);		// length in sectors
+	CDriverControl(ULONG64 total_sec);		// length in sectors
 	CDriverControl(UINT dev_id, bool dummy);		// length in sectors
 	~CDriverControl(void);
 
@@ -28,7 +28,6 @@ protected:
 protected:
 	UINT	m_dev_id;
 	HANDLE	m_ctrl;			// device handle for control
-	//HANDLE	m_exchange;		// handle for exchage request thread
 	HANDLE  m_thd;	// thread of exchange request
 	HANDLE  m_thd_event;	
 	IImage	* m_image;		// image interface

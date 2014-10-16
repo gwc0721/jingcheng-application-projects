@@ -24,9 +24,7 @@ LOCAL_LOGGER_ENABLE(_T("CoreMntTest"), LOGGER_LEVEL_DEBUGINFO);
 class CCoreMntTestApp : public jcapp::CJCAppBase<jcapp::AppArguSupport>
 {
 public:
-	CCoreMntTestApp(void) : jcapp::CJCAppBase<jcapp::AppArguSupport>(ARGU_SUPPORT_HELP | ARGU_SUPPORT_OUTFILE),
-		m_dev_id(UINT_MAX), m_file_size(0x100000LL), m_mnt_point(0)
-		, m_exit_event(NULL), m_connect(false), m_remove(UINT_MAX) {};
+	CCoreMntTestApp(void);
 
 public:
 	bool Initialize(void);
@@ -34,6 +32,7 @@ public:
 	void CleanUp(void);
 
 protected:
+	void CreateParameter(jcparam::CParamSet * &param);
 
 public:
 	// 挂载点，如果没有指定，则不挂载
@@ -48,6 +47,10 @@ public:
 	bool	m_connect;
 	HANDLE	m_exit_event;
 
+	CJCStringT	m_driver;
+
+	HMODULE	m_driver_module;
+
 protected:
 };
 
@@ -56,12 +59,13 @@ static CApplication the_app;
 #define _class_name_	CApplication
 
 BEGIN_ARGU_DEF_TABLE()
-	ARGU_DEF_ITEM(_T("mount"),		_T('m'), TCHAR,	m_mnt_point, _T("mount point.") )
-	ARGU_DEF_ITEM(_T("deviceid"),	_T('d'), UINT,	m_dev_id, _T("deviceid.") )
-	ARGU_DEF_ITEM(_T("filesize"),	_T('s'), FILESIZE,	m_file_size, _T("image file size in sectors.") )
-	ARGU_DEF_ITEM(_T("filename"),	_T('f'), CJCStringT,	m_filename, _T("image file name.") )
-	ARGU_DEF_ITEM(_T("connect"),	_T('c'), bool,	m_connect, _T("connect user mode driver to device.") )
-	ARGU_DEF_ITEM(_T("remove"),	_T('r'), UINT,	m_remove, _T("remove dead device.") )
+	ARGU_DEF_ITEM(_T("driver"),		_T('p'), CJCStringT,	m_driver,		_T("load user mode driver.") )
+	ARGU_DEF_ITEM(_T("mount"),		_T('m'), TCHAR,			m_mnt_point,	_T("mount point.") )
+	ARGU_DEF_ITEM(_T("deviceid"),	_T('d'), UINT,			m_dev_id,		_T("deviceid.") )
+	ARGU_DEF_ITEM(_T("filesize"),	_T('s'), FILESIZE,		m_file_size,	_T("image file size in sectors.") )
+	ARGU_DEF_ITEM(_T("filename"),	_T('f'), CJCStringT,	m_filename,		_T("image file name.") )
+	ARGU_DEF_ITEM(_T("connect"),	_T('c'), bool,			m_connect,		_T("connect user mode driver to device.") )
+	ARGU_DEF_ITEM(_T("remove"),		_T('r'), UINT,			m_remove,		_T("remove dead device.") )
 	//ARGU_DEF_ITEM(_T("open"),	_T('o'), CJCStringT,	m_device, _T("image file size in byte.") )
 
 	//ARGU_DEF_ITEM(_T("length"),		_T('l'), int,		m_length, _T("set length.") )
@@ -83,12 +87,48 @@ BOOL WINAPI HandlerRoutine(DWORD dwCtrlType)
 
 //#define LOCAL_DEBUG
 
+CCoreMntTestApp::CCoreMntTestApp(void) 
+	: jcapp::CJCAppBase<jcapp::AppArguSupport>(ARGU_SUPPORT_HELP | ARGU_SUPPORT_OUTFILE)
+	, m_dev_id(UINT_MAX), m_file_size(0x100000LL), m_mnt_point(0)
+	, m_exit_event(NULL), m_connect(false), m_remove(UINT_MAX)
+	, m_driver_module(NULL) 
+{
+}
+
 int CCoreMntTestApp::Run(void)
 {
 	LOG_STACK_TRACE();
 	SetConsoleCtrlHandler(HandlerRoutine, TRUE);
 
-#ifndef LOCAL_DEBUG
+	stdext::auto_interface<IImage>	img;
+
+	if ( m_driver.empty() )		THROW_ERROR(ERR_USER, _T("driver must be set."));
+	// load driver
+	// get app dir
+	CJCStringT drv_path;
+	__super::GetAppPath(drv_path);
+
+	drv_path += (CJCStringT(_T("\\")) + m_driver + _T(".dll") );
+	m_driver_module = LoadLibrary(drv_path.c_str());
+	if (m_driver_module == NULL) THROW_WIN32_ERROR(_T(" failure on loading driver %s "), drv_path.c_str() );
+
+	// load entry
+	GET_DRV_FACT_PROC proc = (GET_DRV_FACT_PROC) (GetProcAddress(m_driver_module, "GetDriverFactory") );
+	if (proc == NULL)	THROW_WIN32_ERROR(_T("file %s is not a virtual disk driver."), drv_path.c_str() );
+
+	stdext::auto_interface<IDriverFactory> factory;
+	BOOL br = (proc)(CJCLogger::Instance(), factory);
+	if (!br) THROW_ERROR(ERR_APP, _T("failure on getting factory."));
+	JCASSERT( factory.valid() );
+
+	// create parameters
+	if (m_filename.empty() )	m_filename = L"tst_img01";
+	stdext::auto_interface<jcparam::CParamSet> param;
+	CreateParameter(param);
+
+	factory->CreateDriver(_T(""), static_cast<jcparam::IValue*>(param), img);
+	JCASSERT( img.valid() );
+
 	if (m_remove < UINT_MAX)
 	{
 		CDriverControl * driver = new CDriverControl(m_remove, true);
@@ -97,20 +137,25 @@ int CCoreMntTestApp::Run(void)
 		return 0;
 	}
 
+#ifdef LOCAL_DEBUG
+	LOG_DEBUG(_T("open image file: %s"), m_filename.c_str() );
+	img = new FileImage(m_filename.c_str(), m_file_size );
 
-	if (m_filename.empty() )	m_filename = L"tst_img01";
-	LOG_DEBUG(_T("open image file: %s"), m_filename.c_str() )
-	std::auto_ptr<IImage> img(new FileImage(m_filename.c_str() ) );
-    std::auto_ptr<IImage> sparse(new SparseImage(img, 0, m_file_size * SECTOR_SIZE, BLOCK_LENGTH, 512, true));
+	//std::auto_ptr<IImage> img(new FileImage(m_filename.c_str() ) );
+ //   std::auto_ptr<IImage> sparse(new SparseImage(img, 0, m_file_size * SECTOR_SIZE, BLOCK_LENGTH, 512, true));
+#endif
 
+#ifndef LOCAL_DEBUG
 	CSyncMountManager mount_manager;
-	m_dev_id = mount_manager.CreateDevice(m_file_size/*, sparse.get()*/);		// length in sectors;
-	sparse.get()->SetId(m_dev_id);
+	m_dev_id = mount_manager.CreateDevice(m_file_size);		// length in sectors;
+
+	_tprintf( _T("device: %s%d was created.\n") SYMBO_DIRECT_DISK, m_dev_id);
+	//sparse.get()->SetId(m_dev_id);
 
 	if (m_connect)
 	{
 		LOG_DEBUG(_T("connect to device %d"), m_dev_id);
-		mount_manager.Connect(m_dev_id, sparse.get());
+		mount_manager.Connect(m_dev_id, img);
 	}
 
 	if (m_mnt_point)
@@ -121,37 +166,38 @@ int CCoreMntTestApp::Run(void)
 #endif
 
 	printf("press ctrl+c for unmount...\n");
-	WaitForSingleObject(m_exit_event, -1);
 	//_getch();
 	
-	LOG_DEBUG(_T("unmount device"))
 #ifndef LOCAL_DEBUG
+	WaitForSingleObject(m_exit_event, -1);
+	LOG_DEBUG(_T("unmount device"))
 	mount_manager.Disconnect(m_dev_id);
 	mount_manager.UnmountImage(m_dev_id);
+#else
+	_getch();
 #endif
 
-
 	return 0;
-
-	
-
-    //int devId = mountManager.AsyncMountImage(sparse, L'z');
-    //std::cout << "Image was mounted. Press any key for unmount.\n";
-    //for(bool isUnmounted = false;!isUnmounted;)
-    //{
-    //    _getch();
-    //    try
-    //    {
-    //        mountManager.UnmountImage(devId);
-    //        isUnmounted = true;
-    //        std::cout << "Image was unmounted. Press any key for exit.\n";
-    //    }
-    //    catch(const std::exception & ex)
-    //    {
-    //        std::cout << ex.what() << "\n";
-    //    }
-    //}
 }
+
+void CCoreMntTestApp::CreateParameter(jcparam::CParamSet * &param)
+{
+	JCASSERT(param == NULL);
+	jcparam::CParamSet::Create(param);
+
+	jcparam::IValue * val = NULL;
+
+	//m_cmd_parser.m_remain.GetSubValue(_T("filename"), val);
+	val = jcparam::CTypedValue<CJCStringT>::Create(m_filename);
+	param->SetSubValue(_T("FILENAME"), val);
+	val->Release(); val = NULL;
+
+	val = jcparam::CTypedValue<ULONG64>::Create(m_file_size);
+	//m_cmd_parser.m_remain.GetSubValue(_T("filesize"), val);
+	param->SetSubValue(_T("FILESIZE"), val);
+	val->Release(); val = NULL;
+}
+
 
 bool CCoreMntTestApp::Initialize(void)
 {
@@ -163,6 +209,7 @@ bool CCoreMntTestApp::Initialize(void)
 void CCoreMntTestApp::CleanUp(void)
 {
 	CloseHandle(m_exit_event);
+	FreeLibrary(m_driver_module);
 	__super::CleanUp();
 }
 
