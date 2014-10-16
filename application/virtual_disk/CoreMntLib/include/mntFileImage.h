@@ -1,15 +1,23 @@
-#ifndef MNT_FILE_IMAGE_H_INCLUDED
-#define MNT_FILE_IMAGE_H_INCLUDED
+#pragma once
+
 #include "mntImage.h"
-#include "windows.h"
+#include <windows.h>
+
 class FileImage : public IImage
 {
-    HANDLE m_hFile;
 public:
-    FileImage(const wchar_t * fileName);
+    FileImage(const wchar_t * fileName, ULONG64 secs);
     ~FileImage();
-    void Read(char* buf, Uint64 offset, Uint32 bytesCount);
-    void Write(const char* buf, Uint64 offset, Uint32 bytesCount);
-    Uint64 Size();
+
+	IMPLEMENT_INTERFACE;
+
+public:
+    virtual bool Read(char* buf, ULONG64 lba, ULONG32 secs);
+    virtual bool Write(const char* buf, ULONG64 lba, ULONG32 secs);
+	virtual ULONG64 GetSize(void) const {return m_file_size;} ;
+
+protected:
+    HANDLE m_hFile;
+	ULONG64 m_file_size;	// in sector
+
 };
-#endif

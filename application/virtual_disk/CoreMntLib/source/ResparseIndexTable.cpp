@@ -1,14 +1,14 @@
 #include "../include/ResparseIndexTable.h"
 #include <algorithm>
 
-inline Uint32 CalcDataOffset(Uint64 logicSize, Uint32 blockSize, Uint32 granulity)
+inline ULONG32 CalcDataOffset(ULONG64 logicSize, ULONG32 blockSize, ULONG32 granulity)
 {
-    Uint64 ungranulParam = sizeof(IndexTableHeader) + 
-                           s_integer_div(logicSize, blockSize)*sizeof(Uint32);
+    ULONG64 ungranulParam = sizeof(IndexTableHeader) + 
+                           s_integer_div(logicSize, blockSize)*sizeof(ULONG32);
     return s_granulity_to(ungranulParam, granulity);
 }
 
-CResparseIndexTable::CResparseIndexTable(Uint64 logicSize, Uint32 blockSize, Uint32 granulity):
+CResparseIndexTable::CResparseIndexTable(ULONG64 logicSize, ULONG32 blockSize, ULONG32 granulity):
     blockSize_(blockSize), 
     dataOffset_(CalcDataOffset(logicSize, blockSize, granulity))
 {
@@ -24,35 +24,35 @@ CResparseIndexTable::CResparseIndexTable(Uint64 logicSize, Uint32 blockSize, Uin
 }
 void CResparseIndexTable::getLogBlock()
 {
-    std::set<Uint32> usedBlock;
-    for(Uint32 i = 0; i < tableHeader_->indexTableSize; ++i)
+    std::set<ULONG32> usedBlock;
+    for(ULONG32 i = 0; i < tableHeader_->indexTableSize; ++i)
         if(tableHeader_->table[i] != s_unusedBlokToken)
             usedBlock.insert(tableHeader_->table[i]);
 
     if(tableHeader_->currentLogBlock != s_unusedBlokToken)
-        for(Uint32 i = 0; i < tableHeader_->currentLogBlock; ++i)
+        for(ULONG32 i = 0; i < tableHeader_->currentLogBlock; ++i)
             if(usedBlock.find(i) == usedBlock.end())
                 logBlocks_.insert(i);
 }
-Uint64 CResparseIndexTable::getMessageBlocksSize()
+ULONG64 CResparseIndexTable::getMessageBlocksSize()
 {
-    Uint64 retOffset = 0;
-    for(std::set<Uint32>::iterator i = logBlocks_.begin();i != logBlocks_.end(); ++i)
+    ULONG64 retOffset = 0;
+    for(std::set<ULONG32>::iterator i = logBlocks_.begin();i != logBlocks_.end(); ++i)
         retOffset += blockSize_;
     if(tableHeader_->currentLogBlock != s_unusedBlokToken)
         retOffset += tableHeader_->currentLogOffset;
     return retOffset;
 }
-Uint64 CResparseIndexTable::LogMessageOffset2FileOffset(Uint64 virtualOffset)
+ULONG64 CResparseIndexTable::LogMessageOffset2FileOffset(ULONG64 virtualOffset)
 {
-    Uint64 maxRange = getMessageBlocksSize();
+    ULONG64 maxRange = getMessageBlocksSize();
     if(maxRange < virtualOffset)
         throw std::runtime_error("Offset out of range ");
-    Uint32 logBlockIndex = boost::numeric_cast<Uint32>(virtualOffset/blockSize_);
-    Uint32 logBlockOffset = virtualOffset%blockSize_;
-    Uint32 logBlockNum = s_unusedBlokToken;
-    Uint32 index = 0;
-    for(std::set<Uint32>::iterator i = logBlocks_.begin();i != logBlocks_.end(); ++i, ++index)
+    ULONG32 logBlockIndex = boost::numeric_cast<ULONG32>(virtualOffset/blockSize_);
+    ULONG32 logBlockOffset = virtualOffset%blockSize_;
+    ULONG32 logBlockNum = s_unusedBlokToken;
+    ULONG32 index = 0;
+    for(std::set<ULONG32>::iterator i = logBlocks_.begin();i != logBlocks_.end(); ++i, ++index)
         if(index == logBlockIndex)
             logBlockNum = *i;
     if(logBlockIndex == logBlocks_.size())
@@ -60,7 +60,7 @@ Uint64 CResparseIndexTable::LogMessageOffset2FileOffset(Uint64 virtualOffset)
 
     return logBlockNum*blockSize_ + logBlockOffset;
 }
-Uint64 CResparseIndexTable::getNextLogMessagePosition(Uint32 messageSize)
+ULONG64 CResparseIndexTable::getNextLogMessagePosition(ULONG32 messageSize)
 {
     if(messageSize > blockSize_ - tableHeader_->currentLogOffset)
     {//need add new block
@@ -74,17 +74,17 @@ Uint64 CResparseIndexTable::getNextLogMessagePosition(Uint32 messageSize)
     }
     if(messageSize > blockSize_ - tableHeader_->currentLogOffset)
         throw std::runtime_error("Message too long.");    
-    Uint64 offset = tableHeader_->currentLogBlock * blockSize_ + tableHeader_->currentLogOffset;
+    ULONG64 offset = tableHeader_->currentLogBlock * blockSize_ + tableHeader_->currentLogOffset;
     tableHeader_->currentLogOffset += messageSize;
     return offset;
 }
-Uint32 CResparseIndexTable::at(Uint32 index)
+ULONG32 CResparseIndexTable::at(ULONG32 index)
 {
     if(index >= tableHeader_->indexTableSize)
         throw std::runtime_error("Index out of range.");
     return tableHeader_->table[index];
 }
-void CResparseIndexTable::set(Uint32 index, Uint32 val)
+void CResparseIndexTable::set(ULONG32 index, ULONG32 val)
 {
     if(index >= tableHeader_->indexTableSize)
         throw std::runtime_error("Index out of range.");
@@ -93,7 +93,7 @@ void CResparseIndexTable::set(Uint32 index, Uint32 val)
     tableHeader_->table[index] = val;
     ++(tableHeader_->usedBlockCount);
 }
-void CResparseIndexTable::reset(Uint32 index)
+void CResparseIndexTable::reset(ULONG32 index)
 {
     if(index >= tableHeader_->indexTableSize)
         throw std::runtime_error("Index out of range.");

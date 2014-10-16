@@ -1,0 +1,6 @@
+LIBRARY	"CoreMntDriverFile"
+
+EXPORTS
+	GetDriverFactory	PRIVATE
+;	SECTIONS
+;	Shared READ WRITE SHARED

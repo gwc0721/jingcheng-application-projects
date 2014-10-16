@@ -153,7 +153,7 @@ void CDriverControl::Mount(TCHAR mnt_point)
 	LOG_STACK_TRACE();
 
 	JCASSERT(m_image);
-	m_image->SetMountPoint(mnt_point);
+	//m_image->SetMountPoint(mnt_point);
 	m_mount_point = mnt_point;
 
 	// define logical drive
@@ -291,14 +291,19 @@ DWORD CDriverControl::Run(void)
 				break;
 			}
 
+			ULONG64 offset = response.offset / SECTOR_SIZE;		// byte to sector
+			ULONG32 size = response.size / SECTOR_SIZE;			// byte to sector
+
 			switch (response.type)
 			{
 			case DISK_OP_READ:
-				m_image->Read(buf, response.offset, response.size);
+				//m_image->Read(buf, response.offset, response.size);
+				m_image->Read(buf, offset, size);
 				break;
 
 			case DISK_OP_WRITE:
-				m_image->Write(buf, response.offset, response.size);
+				//m_image->Write(buf, response.offset, response.size);
+				m_image->Write(buf, offset, size);
 				break;
 			}
 
