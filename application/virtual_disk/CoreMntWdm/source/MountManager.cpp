@@ -221,13 +221,13 @@ NTSTATUS CMountManager::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, 
 	CMountedDisk *mnt_disk = NULL;
 	if ( !DiskId2Ptr(request->dev_id, mnt_disk) ) return STATUS_UNSUCCESSFUL;
 
-	KdPrint(("exchange:dev_id=%d, last_type=%d, last_status=%d, last_size=%d\n",
-		request->dev_id, request->lastType, request->lastStatus, request->lastSize));
+	//KdPrint(("exchange:dev_id=%d, last_type=%d, last_status=%d, last_size=%d\n",
+	//	request->dev_id, request->lastType, request->lastStatus, request->lastSize));
 
 	NTSTATUS status = mnt_disk->RequestExchange(request, response);
 
-	KdPrint(("exchange:dev_id=%d, next_type=%d, next_size=%d\n",
-		request->dev_id, response->type, response->size));
+	//KdPrint(("exchange:dev_id=%d, next_type=%d, next_size=%d\n",
+	//	request->dev_id, response->type, response->size));
 
 	return status;
 }
@@ -292,7 +292,7 @@ NTSTATUS CMountManager::DispatchDeviceControl(IN PIRP irp, IN PIO_STACK_LOCATION
 		CORE_MNT_EXCHANGE_REQUEST * request = (CORE_MNT_EXCHANGE_REQUEST *)buffer;
 		CORE_MNT_EXCHANGE_RESPONSE response = {0};
 		RequestExchange(request, &response);
-		KdPrint(("response: type=%d, size=%d\n", response.type, response.size));
+		//KdPrint(("response: type=%d, size=%d\n", response.type, response.size));
 		RtlCopyMemory(buffer, &response, sizeof(CORE_MNT_EXCHANGE_RESPONSE) );
 		status = STATUS_SUCCESS;
 		break;								}

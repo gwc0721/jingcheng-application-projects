@@ -23,7 +23,6 @@
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
-			InheritedPropertySheets="..\enviornment.vsprops"
 			CharacterSet="1"
 			>
 			<Tool
@@ -113,7 +112,6 @@
 			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
-			InheritedPropertySheets="..\enviornment.vsprops"
 			CharacterSet="1"
 			>
 			<Tool
@@ -204,7 +202,6 @@
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
-			InheritedPropertySheets="..\enviornment.vsprops"
 			CharacterSet="1"
 			>
 			<Tool
@@ -294,7 +291,6 @@
 			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
-			InheritedPropertySheets="..\enviornment.vsprops"
 			CharacterSet="1"
 			>
 			<Tool
