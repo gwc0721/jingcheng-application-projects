@@ -30,7 +30,11 @@ class CJCKStackTrace
 public:
     CJCKStackTrace(const char * func_name, const char * msg)
 	{
-		KdPrint( ("[TRACE IN] %s, %s\n", func_name, msg ));
+		// Get Progress name
+		PEPROCESS ps = PsGetCurrentProcess();
+		char * ps_name = (char *)((ULONG)ps + 0x16C);
+
+		KdPrint( ("[TRACE][IN] %s (caller: %s), %s\n", func_name, ps_name, msg ));
 		ANSI_STRING		str_func_name;
 
 		RtlInitAnsiString(&str_func_name, func_name);
@@ -42,8 +46,7 @@ public:
 
     ~CJCKStackTrace(void)
 	{
-		//KdPrint( ("[TRACE OUT1] %Z\n", m_str_func) );  !!DO NOT WORK
-		KdPrint( ("[TRACE OUT] %s\n", m_func_name) );
+		KdPrint( ("[TRACE][OUT] %s\n", m_func_name) );
 	}
 	
 	//SetExitMsg(const char * msg) {}
