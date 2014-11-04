@@ -79,6 +79,12 @@ protected:
 	bool LocalDispatch(IN PIRP irp);
 	bool LocalDispatchIoCtrl(IN PIRP irp);
     void CompleteLastIrp(NTSTATUS status, ULONG information);
+	void AsyncExchange(IN PIRP irp, IN UCHAR mj, IN ULONG mi, IN READ_WRITE rw, IN ULONG buf_size,
+			IN ULONG64 offset, IN UCHAR* buf);
+	void SynchExchangeInitBuf(IN PIRP irp, IN UCHAR mj, IN ULONG mi, IN READ_WRITE rw, IN ULONG buf_size,
+			IN ULONG64 offset, OUT IRP_EXCHANGE_REQUEST & ier);
+	void SynchExchange(IN IRP_EXCHANGE_REQUEST & ier);
+	void SynchExchangeClean(IN IRP_EXCHANGE_REQUEST & ier, IN ULONG data_len);
 
 protected:
 	WCHAR			m_device_name[MAXIMUM_FILENAME_LENGTH];

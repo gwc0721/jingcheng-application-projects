@@ -32,8 +32,11 @@ public:
 	{
 		// Get Progress name
 		PEPROCESS ps = PsGetCurrentProcess();
+#ifdef _X86_
 		char * ps_name = (char *)((ULONG)ps + 0x16C);
-
+#else
+		char * ps_name = "";
+#endif
 		KdPrint( ("[TRACE][IN] %s (caller: %s), %s\n", func_name, ps_name, msg ));
 		ANSI_STRING		str_func_name;
 
