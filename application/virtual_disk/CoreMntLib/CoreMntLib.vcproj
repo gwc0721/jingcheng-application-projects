@@ -24,7 +24,6 @@
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\enviornment.vsprops"
 			UseOfMFC="1"
 			CharacterSet="1"
 			>
@@ -89,7 +88,6 @@
 			OutputDirectory="..\..\lib\$(ConfigurationName)"
 			IntermediateDirectory="..\..\obj\$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\enviornment.vsprops"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
@@ -153,7 +151,6 @@
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\enviornment.vsprops"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
@@ -218,7 +215,6 @@
 			OutputDirectory="$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\enviornment.vsprops"
 			UseOfMFC="0"
 			CharacterSet="1"
 			>
@@ -282,7 +278,6 @@
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\enviornment.vsprops"
 			UseOfMFC="0"
 			CharacterSet="1"
 			>
@@ -354,19 +349,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\mntFileImage.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\source\mntSparseImage.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\source\mntSyncMountManager.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\source\ResparseIndexTable.cpp"
 				>
 			</File>
 		</Filter>
@@ -378,23 +361,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\mntFileImage.h"
-				>
-			</File>
-			<File
 				RelativePath=".\include\mntImage.h"
 				>
 			</File>
 			<File
-				RelativePath=".\include\mntSparseImage.h"
-				>
-			</File>
-			<File
 				RelativePath=".\include\mntSyncMountManager.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\ResparseIndexTable.h"
 				>
 			</File>
 			<File

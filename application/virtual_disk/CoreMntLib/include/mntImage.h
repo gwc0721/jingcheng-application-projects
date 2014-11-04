@@ -2,12 +2,16 @@
 
 #include <stdext.h>
 #include <jcparam.h>
+#include "../../Comm/virtual_disk.h"
 
 class IImage : public IJCInterface
 {
 public:
-	virtual bool	Read(char * buf, ULONG64 lba, ULONG32 secs) = 0;
-	virtual bool	Write(const char * buf, ULONG64 lba, ULONG32 secs) = 0;
+	virtual ULONG32	Read(UCHAR * buf, ULONG64 lba, ULONG32 secs) = 0;
+	virtual ULONG32	Write(const UCHAR * buf, ULONG64 lba, ULONG32 secs) = 0;
+	virtual ULONG32	FlushCache(void) = 0;
+	// data size is in byte
+	virtual ULONG32	DeviceControl(ULONG code, READ_WRITE read_write, UCHAR * buf, ULONG32 & data_size, ULONG32 buf_size) = 0;
 	virtual ULONG64	GetSize(void) const = 0;
 };
 
