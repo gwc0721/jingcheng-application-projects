@@ -205,17 +205,10 @@ void CMountedDisk::Release(void)
 		IRP_EXCHANGE_REQUEST *ier;
 		m_irp_queue.pop(ier);
 		CompleteLastIrp(ier);
-		//if (ier->m_complete)
-		//{
-		//	if ( ier->m_irp )	CompleteIrp(ier->m_irp, STATUS_DEVICE_NOT_READY, 0);
-		//	ExFreePool(ier);
-		//}
-		//else	KeSetEvent(&ier->m_event, 0, FALSE);
 	}
 	UNICODE_STRING _symbo_;
 	RtlInitUnicodeString(&_symbo_, m_symbo_link);
 	IoDeleteSymbolicLink(&_symbo_);
-	//m_irp_queue.Release();
 }
 
 void CMountedDisk::CompleteLastIrp(IRP_EXCHANGE_REQUEST * ier)
@@ -224,7 +217,7 @@ void CMountedDisk::CompleteLastIrp(IRP_EXCHANGE_REQUEST * ier)
 	if (ier->m_complete)
 	{	// 由exchange负责完成IRP
 		KdPrint(("complete irp\n"));
-		if ( ier->m_irp )	CompleteIrp(ier->m_irp, STATUS_DEVICE_NOT_READY, 0);
+		if ( ier->m_irp )	CompleteIrp(ier->m_irp, ier->m_status, ier->m_data_len);
 		ExFreePool(ier);
 	}
 	else
@@ -234,20 +227,142 @@ void CMountedDisk::CompleteLastIrp(IRP_EXCHANGE_REQUEST * ier)
 	}
 }
 
-/*
+void CMountedDisk::SynchExchangeInitBuf(IN PIRP irp, IN UCHAR mj, IN ULONG mi, IN READ_WRITE rw, IN ULONG buf_len,
+			IN ULONG64 offset, OUT IRP_EXCHANGE_REQUEST & ier)
+{
+	ier.m_irp = irp;
+	ier.m_major_func = mj;
+	ier.m_minor_code = mi;
+	ier.m_read_write = rw;
+	ier.m_data_len = buf_len;
+	ier.m_offset = offset;
+	ier.m_complete = false;
+	ier.m_kernel_buf = (UCHAR*)ExAllocatePoolWithTag(PagedPool, ier.m_data_len, 0);
+	KeInitializeEvent(&(ier.m_event), SynchronizationEvent, FALSE);
+}
+
+void CMountedDisk::SynchExchange(IN IRP_EXCHANGE_REQUEST & ier)
+{
+	m_irp_queue.push(&ier);
+	KeWaitForSingleObject(&(ier.m_event), Executive, KernelMode, FALSE, NULL);
+}
+
+void CMountedDisk::SynchExchangeClean(IN IRP_EXCHANGE_REQUEST & ier, IN ULONG data_len)
+{
+	ExFreePool(ier.m_kernel_buf);
+	ier.m_irp->IoStatus.Status = ier.m_status;
+	ier.m_irp->IoStatus.Information = data_len;
+}
+
+void CMountedDisk::AsyncExchange(IN PIRP irp, IN UCHAR mj, IN ULONG mi, IN READ_WRITE rw, IN ULONG buf_size,
+			IN ULONG64 offset, IN UCHAR* buf)
+{
+	IRP_EXCHANGE_REQUEST *ier = (IRP_EXCHANGE_REQUEST *)ExAllocatePool(PagedPool, sizeof(IRP_EXCHANGE_REQUEST));
+	ier->m_irp = irp;
+	ier->m_major_func = mj;
+	ier->m_minor_code = mi;
+	ier->m_read_write = rw;
+	ier->m_kernel_buf = buf;
+	ier->m_data_len = buf_size;
+	ier->m_offset = offset;
+	ier->m_complete = true;
+	if (irp)	IoMarkIrpPending( irp );
+	m_irp_queue.push(ier);
+}
+
+// 处理简单的irp，在驱动内处理完并且Complete
 NTSTATUS CMountedDisk::DispatchIrp(IN PIRP irp)
 {
 	PAGED_CODE();
 	LOG_STACK_TRACE("");
-	LogProcessName();
 
-	NTSTATUS status;
-	bool ir = LocalDispatch(irp);
-    status = irp->IoStatus.Status;
-    IoCompleteRequest(irp, IO_NO_INCREMENT);
+    PIO_STACK_LOCATION io_stack = IoGetCurrentIrpStackLocation(irp);
+
+	// default result;
+    irp->IoStatus.Status = STATUS_SUCCESS;
+    irp->IoStatus.Information = 0;
+
+    switch(io_stack->MajorFunction)
+    {
+    case IRP_MJ_CREATE:
+		KdPrint( ("[IRP] disk <- IRP_MJ_CREATE\n") );
+		break;
+
+    case IRP_MJ_CLOSE:
+		KdPrint( ("[IRP] disk <- IRP_MJ_CLOSE\n") );
+        break;
+
+	case IRP_MJ_CLEANUP:
+		KdPrint( ("[IRP] disk <- IRP_MJ_CLEANUP\n") );
+        break;
+
+	case IRP_MJ_READ: {
+		KdPrint(("[IRP] disk <- IRP_MJ_READ\n"));
+		AsyncExchange(irp, IRP_MJ_READ, 0, READ, io_stack->Parameters.Read.Length, 
+			io_stack->Parameters.Read.ByteOffset.QuadPart, 
+			(UCHAR*)MmGetSystemAddressForMdlSafe(irp->MdlAddress, NormalPagePriority));
+			//(UCHAR*)GetIrpBuffer(irp));
+		return STATUS_PENDING;
+		break;}
+
+	case IRP_MJ_WRITE:
+		KdPrint(("[IRP] disk <- IRP_MJ_WRITE\n"));
+		AsyncExchange(irp, IRP_MJ_WRITE, 0, WRITE, io_stack->Parameters.Write.Length, 
+			io_stack->Parameters.Write.ByteOffset.QuadPart, 
+			(UCHAR*)MmGetSystemAddressForMdlSafe(irp->MdlAddress, NormalPagePriority));
+			//(UCHAR*)GetIrpBuffer(irp));
+		return STATUS_PENDING;
+
+		//IRP_EXCHANGE_REQUEST ier;
+		//ier.m_irp = irp;
+		//ier.m_major_func = IRP_MJ_WRITE;
+		//ier.m_minor_code = 0;
+		//ier.m_read_write = WRITE;
+		//ier.m_kernel_buf = (UCHAR*)GetIrpBuffer(irp);
+		//ier.m_data_len = io_stack->Parameters.Write.Length;
+		//ier.m_offset = io_stack->Parameters.Write.ByteOffset.QuadPart;
+		//ier.m_complete = false;
+		//KeInitializeEvent(&(ier.m_event), SynchronizationEvent, FALSE);
+		//m_irp_queue.push(&ier);
+		//KeWaitForSingleObject(&(ier.m_event), Executive, KernelMode, FALSE, NULL);
+		////
+		//irp->IoStatus.Status = ier.m_status;
+		//irp->IoStatus.Information = ier.m_data_len;
+		break;
+
+	case IRP_MJ_FLUSH_BUFFERS:
+		KdPrint(("[IRP] disk <- IRP_MJ_FLUSH_BUFFERS\n"));
+		break;
+
+    case IRP_MJ_QUERY_VOLUME_INFORMATION:
+        KdPrint( ("[IRP] disk <- IRP_MJ_QUERY_VOLUME_INFORMATION\n") );
+        irp->IoStatus.Status = STATUS_INVALID_DEVICE_REQUEST;
+        irp->IoStatus.Information = 0;
+        break;
+
+	case IRP_MJ_PNP:	{
+		switch (io_stack->MinorFunction)
+		{
+		case IRP_MN_QUERY_DEVICE_RELATIONS: {
+			DEVICE_RELATION_TYPE type = io_stack->Parameters.QueryDeviceRelations.Type;
+			KdPrint(("DEVICE_RELATION_TYPE : %d\n", type));
+			break;							}
+		}
+		break;			}
+		
+
+	case IRP_MJ_DEVICE_CONTROL: 
+		LocalDispatchIoCtrl(irp);
+		break;
+
+    default:
+		KdPrint( ("[IRP] disk <- UNKNOW_MAJOR_FUNC(0x%08X)\n", io_stack->MajorFunction));
+	}
+	NTSTATUS status = irp->IoStatus.Status;
+	IoCompleteRequest(irp, IO_NO_INCREMENT);
 	return status;
 }
-*/
+
 
 bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 {
@@ -260,45 +375,41 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 	{
 	case IOCTL_SCSI_PASS_THROUGH_DIRECT: {
 		KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_SCSI_PASS_THROUGH_DIRECT\n") );
-		SCSI_PASS_THROUGH_DIRECT_WITH_BUFFER * sptdwb = reinterpret_cast<
-			SCSI_PASS_THROUGH_DIRECT_WITH_BUFFER *>(irp->AssociatedIrp.SystemBuffer);
-		SCSI_PASS_THROUGH_DIRECT & sptd = sptdwb->sptd;
+		SCSI_PASS_THROUGH_DIRECT * sptd = reinterpret_cast<SCSI_PASS_THROUGH_DIRECT*>(
+				irp->AssociatedIrp.SystemBuffer);
 
+		ULONG32 spt_len = sizeof(SCSI_PASS_THROUGH_DIRECT);
+		UCHAR sense_len = sptd->SenseInfoLength;
+		ULONG sense_offset = sptd->SenseInfoOffset;
 
-		ULONG32 spt_len = sizeof(SCSI_PASS_THROUGH_DIRECT_WITH_BUFFER);
+		ULONG data_len = sptd->DataTransferLength;
+		PVOID data_buf = sptd->DataBuffer;
 
 		IRP_EXCHANGE_REQUEST ier;
-		ier.m_irp = irp;
-		ier.m_major_func = IRP_MJ_DEVICE_CONTROL;
-		ier.m_minor_code = IOCTL_SCSI_PASS_THROUGH_DIRECT;
-		ier.m_read_write = READ | WRITE;
-		ier.m_data_len = spt_len + sptd.DataTransferLength;
-		ier.m_offset = 0;
-		ier.m_kernel_buf = (UCHAR*)ExAllocatePoolWithTag(PagedPool, ier.m_data_len, 0);
-		KdPrint(("allocaled pool: 0x%08X\n", ier.m_kernel_buf));
-		RtlCopyMemory(ier.m_kernel_buf, sptdwb, spt_len);
-		if (sptd.DataIn == SCSI_IOCTL_DATA_OUT) 
+		SynchExchangeInitBuf(irp, IRP_MJ_DEVICE_CONTROL, IOCTL_SCSI_PASS_THROUGH_DIRECT, READ_AND_WRITE, 
+			spt_len + sense_len + data_len, 0, ier);
+
+		UCHAR * buf = ier.m_kernel_buf;
+		RtlCopyMemory(buf, sptd, spt_len);	buf+= spt_len;
+		RtlCopyMemory(buf, sptd + sense_offset, sense_len);	buf+=sense_len;
+		if (sptd->DataIn == SCSI_IOCTL_DATA_OUT) 
 		{
-			KdPrint(("copy data for write, len = %d\n", sptd.DataTransferLength));
-			RtlCopyMemory(ier.m_kernel_buf + spt_len, sptd.DataBuffer, sptd.DataTransferLength);
+			KdPrint(("copy data for write, len = %d\n", data_len));
+			RtlCopyMemory(buf, data_buf, data_len);
 		}
-		ier.m_complete = false;
-		KeInitializeEvent(&(ier.m_event), SynchronizationEvent, FALSE);
-		m_irp_queue.push(&ier);
-		KeWaitForSingleObject(&(ier.m_event), Executive, KernelMode, FALSE, NULL);
+		SynchExchange(ier);
 
 		// 返回data
-		RtlCopyMemory(irp->AssociatedIrp.SystemBuffer, ier.m_kernel_buf, spt_len);
-		if (sptd.DataIn == SCSI_IOCTL_DATA_IN)	// read
-		{
-			KdPrint(("copy data for write, len = %d\n", sptd.DataTransferLength));
-			RtlCopyMemory(sptd.DataBuffer, ier.m_kernel_buf + spt_len, sptd.DataTransferLength);
-		}
-		KdPrint(("free pool: 0x%08X\n", ier.m_kernel_buf));
-		ExFreePool(ier.m_kernel_buf);
-		irp->IoStatus.Status = ier.m_status;
-		irp->IoStatus.Information = spt_len;
+		buf = ier.m_kernel_buf;
+		RtlCopyMemory(irp->AssociatedIrp.SystemBuffer, buf, spt_len); buf+= spt_len;
+		RtlCopyMemory(sptd + sense_offset, buf, sense_len);	buf += sense_len;
 
+		if (sptd->DataIn == SCSI_IOCTL_DATA_IN)	// read
+		{
+			KdPrint(("copy data for write, len = %d\n", data_len));
+			RtlCopyMemory(data_buf, buf, data_len);
+		}
+		SynchExchangeClean(ier, spt_len + sense_len);
 		break;									 }
 
 	case IOCTL_DISK_GET_DRIVE_LAYOUT:		{
@@ -585,94 +696,6 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 	return true;
 }
 
-// 处理简单的irp，在驱动内处理完并且Complete
-NTSTATUS CMountedDisk::DispatchIrp(IN PIRP irp)
-//bool CMountedDisk::LocalDispatch(IN PIRP irp)
-{
-	PAGED_CODE();
-	LOG_STACK_TRACE("");
-
-    PIO_STACK_LOCATION io_stack = IoGetCurrentIrpStackLocation(irp);
-
-	// default result;
-    irp->IoStatus.Status = STATUS_SUCCESS;
-    irp->IoStatus.Information = 0;
-
-    switch(io_stack->MajorFunction)
-    {
-    case IRP_MJ_CREATE:
-		KdPrint( ("[IRP] disk <- IRP_MJ_CREATE\n") );
-		break;
-
-    case IRP_MJ_CLOSE:
-		KdPrint( ("[IRP] disk <- IRP_MJ_CLOSE\n") );
-        break;
-
-	case IRP_MJ_CLEANUP:
-		KdPrint( ("[IRP] disk <- IRP_MJ_CLEANUP\n") );
-        break;
-
-	case IRP_MJ_READ: {
-		KdPrint(("[IRP] disk <- IRP_MJ_READ\n"));
-		IRP_EXCHANGE_REQUEST ier;
-		ier.m_irp = irp;
-		ier.m_major_func = IRP_MJ_READ;
-		ier.m_minor_code = 0;
-		ier.m_read_write = READ;
-		ier.m_kernel_buf = (UCHAR*)GetIrpBuffer(irp);
-		ier.m_data_len = io_stack->Parameters.Read.Length;
-		ier.m_offset = io_stack->Parameters.Read.ByteOffset.QuadPart;
-		ier.m_complete = false;
-		KeInitializeEvent(&(ier.m_event), SynchronizationEvent, FALSE);
-		m_irp_queue.push(&ier);
-		KeWaitForSingleObject(&(ier.m_event), Executive, KernelMode, FALSE, NULL);
-		//
-		irp->IoStatus.Status = ier.m_status;
-		irp->IoStatus.Information = ier.m_data_len;
-		break;}
-
-	case IRP_MJ_WRITE:
-		KdPrint(("[IRP] disk <- IRP_MJ_WRITE\n"));
-		IRP_EXCHANGE_REQUEST ier;
-		ier.m_irp = irp;
-		ier.m_major_func = IRP_MJ_WRITE;
-		ier.m_minor_code = 0;
-		ier.m_read_write = WRITE;
-		ier.m_kernel_buf = (UCHAR*)GetIrpBuffer(irp);
-		ier.m_data_len = io_stack->Parameters.Write.Length;
-		ier.m_offset = io_stack->Parameters.Write.ByteOffset.QuadPart;
-		ier.m_complete = false;
-		KeInitializeEvent(&(ier.m_event), SynchronizationEvent, FALSE);
-		m_irp_queue.push(&ier);
-		KeWaitForSingleObject(&(ier.m_event), Executive, KernelMode, FALSE, NULL);
-		//
-		irp->IoStatus.Status = ier.m_status;
-		irp->IoStatus.Information = ier.m_data_len;
-		break;
-
-	case IRP_MJ_FLUSH_BUFFERS:
-		KdPrint(("[IRP] disk <- IRP_MJ_FLUSH_BUFFERS\n"));
-		break;
-
-    case IRP_MJ_QUERY_VOLUME_INFORMATION:
-        KdPrint( ("[IRP] disk <- IRP_MJ_QUERY_VOLUME_INFORMATION\n") );
-		//complete = false;
-        //irp->IoStatus.Status = STATUS_INVALID_DEVICE_REQUEST;
-        //irp->IoStatus.Information = 0;
-        break;
-
-	case IRP_MJ_DEVICE_CONTROL: 
-		LocalDispatchIoCtrl(irp);
-		break;
-
-    default:
-		KdPrint( ("[IRP] disk <- UNKNOW_MAJOR_FUNC(0x%08X)\n", io_stack->MajorFunction));
-		//complete = false;
-	}
-	NTSTATUS status = irp->IoStatus.Status;
-	IoCompleteRequest(irp, IO_NO_INCREMENT);
-	return status;
-}
 
 NTSTATUS CMountedDisk::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, OUT CORE_MNT_EXCHANGE_RESPONSE * response)
 {
@@ -690,23 +713,9 @@ NTSTATUS CMountedDisk::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, O
         {	// 需要返回 data
 			KdPrint(("return data to irp, len=%d\n", request->lastSize));
 			ASSERT(m_last_irp->m_kernel_buf);
-			if (m_last_irp->m_kernel_buf)
-			{
-				RtlCopyMemory(m_last_irp->m_kernel_buf, request->data, request->lastSize);
-			}
+			if (m_last_irp->m_kernel_buf)		RtlCopyMemory(m_last_irp->m_kernel_buf, request->data, request->lastSize);
         }
 		CompleteLastIrp(m_last_irp);
-		//if (m_last_irp->m_complete)
-		//{	// 由exchange负责完成IRP
-		//	KdPrint(("complete irp\n"));
-		//	if (m_last_irp->m_irp) CompleteIrp(m_last_irp->m_irp, m_last_irp->m_status, request->lastSize);
-		//	ExFreePool(m_last_irp);
-		//}
-		//else
-		//{	// 由dispatch负责完成IRP
-		//	KdPrint(("set event of irp\n"));
-		//	KeSetEvent(&(m_last_irp->m_event), 0, FALSE);
-		//}
 		m_last_irp = NULL;
     }
 
@@ -741,16 +750,7 @@ NTSTATUS CMountedDisk::Disconnect(void)
 	LOG_STACK_TRACE("");
 	LogProcessName();
 
-	IRP_EXCHANGE_REQUEST * ier = (IRP_EXCHANGE_REQUEST *)ExAllocatePool(PagedPool, sizeof(IRP_EXCHANGE_REQUEST));
-	ier->m_major_func = IRP_MJ_DISCONNECT;
-	ier->m_minor_code = 0;
-	ier->m_complete = true;
-	ier->m_data_len = 0;
-	ier->m_irp = NULL;
-	ier->m_kernel_buf = NULL;
-	ier->m_read_write = 0;
-	m_irp_queue.push( ier );
-
+	AsyncExchange(NULL, IRP_MJ_DISCONNECT, 0, NO_READ_WRITE, 0, 0, NULL);
 	return STATUS_SUCCESS;
 }
 
