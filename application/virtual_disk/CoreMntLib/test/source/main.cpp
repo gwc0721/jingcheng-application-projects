@@ -13,9 +13,9 @@
 
 LOCAL_LOGGER_ENABLE(_T("CoreMntTest"), LOGGER_LEVEL_DEBUGINFO);
 
-#include "../../include/mntFileImage.h"
-#include "../../include/mntSparseImage.h"
+
 #include "../../include/mntSyncMountmanager.h"
+#include "../../include/mntImage.h"
 
 #define _STATIC_CPPLIB
 #define BLOCK_LENGTH         0x1000
@@ -73,13 +73,17 @@ END_ARGU_DEF_TABLE()
 
 BOOL WINAPI HandlerRoutine(DWORD dwCtrlType)
 {
-	if(dwCtrlType == CTRL_C_EVENT)
+	switch (dwCtrlType)
 	{
+	case CTRL_C_EVENT:
+	case CTRL_BREAK_EVENT:
+	case CTRL_CLOSE_EVENT:
+	case CTRL_LOGOFF_EVENT:
+	case CTRL_SHUTDOWN_EVENT:
 		LOG_DEBUG(_T("Ctrl + C has been pressed."));
 		SetEvent(the_app.m_exit_event);
-	}
-	else
-	{
+		break;
+	default:
 		LOG_DEBUG(_T("console event 0x%X"), dwCtrlType);
 	}
 	return TRUE;
@@ -99,6 +103,14 @@ int CCoreMntTestApp::Run(void)
 {
 	LOG_STACK_TRACE();
 	SetConsoleCtrlHandler(HandlerRoutine, TRUE);
+
+	if (m_remove < UINT_MAX)
+	{
+		CDriverControl * driver = new CDriverControl(m_remove, true);
+		driver->Disconnect();
+		delete driver;
+		return 0;
+	}
 
 	stdext::auto_interface<IImage>	img;
 
@@ -129,13 +141,6 @@ int CCoreMntTestApp::Run(void)
 	factory->CreateDriver(_T(""), static_cast<jcparam::IValue*>(param), img);
 	JCASSERT( img.valid() );
 
-	if (m_remove < UINT_MAX)
-	{
-		CDriverControl * driver = new CDriverControl(m_remove, true);
-		driver->Disconnect();
-		delete driver;
-		return 0;
-	}
 
 #ifdef LOCAL_DEBUG
 	LOG_DEBUG(_T("open image file: %s"), m_filename.c_str() );
@@ -149,7 +154,7 @@ int CCoreMntTestApp::Run(void)
 	CSyncMountManager mount_manager;
 	m_dev_id = mount_manager.CreateDevice(m_file_size);		// length in sectors;
 
-	_tprintf( _T("device: %s%d was created.\n") SYMBO_DIRECT_DISK, m_dev_id);
+	_tprintf( _T("device: %s%d was created.\n"), SYMBO_DIRECT_DISK, m_dev_id);
 	//sparse.get()->SetId(m_dev_id);
 
 	if (m_connect)

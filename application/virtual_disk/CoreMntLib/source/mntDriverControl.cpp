@@ -6,13 +6,22 @@ LOCAL_LOGGER_ENABLE(_T("SyncMntManager"), LOGGER_LEVEL_DEBUGINFO);
 
 #include "../include/mntDriverControl.h"
 #include "../../Comm/virtual_disk.h"
+//#include <ntstatus.h>
+
+#define IRP_MJ_READ                     0x03
+#define IRP_MJ_WRITE                    0x04
+#define IRP_MJ_QUERY_INFORMATION        0x05
+#define IRP_MJ_DEVICE_CONTROL           0x0e
+#define IRP_MJ_FLUSH_BUFFERS            0x09
+
+#define STATUS_INVALID_DEVICE_REQUEST    ((NTSTATUS)0xC0000010L)
+
 
 #include <setupapi.h>
 
 static const GUID COREMNT_GUID = COREMNT_CLASS_GUID;
-//{ 0x54659e9c, 0xb407, 0x4269, { 0x99, 0xf2, 0x9a, 0x20, 0xd8, 0x9e, 0x35, 0x75 } };
 
-void SearchForDevice(/*GUID * guid, */CJCStringT & symbo)
+void SearchForDevice(CJCStringT & symbo)
 {
 	LOG_STACK_TRACE();
 	const GUID * guid = &COREMNT_GUID;
@@ -60,14 +69,11 @@ void SearchForDevice(/*GUID * guid, */CJCStringT & symbo)
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- 
-CDriverControl::CDriverControl(ULONG64 total_sec/*, IImage * image*/)		// length in sectors
+CDriverControl::CDriverControl(ULONG64 total_sec)		// length in sectors
 	: m_ctrl(NULL), m_image(NULL), m_dev_id(UINT_MAX)
 	, m_thd(NULL), m_mount_point(0), m_thd_event(NULL)
 {
 	LOG_STACK_TRACE();
-
-	//JCASSERT(m_image);
-	//m_image->AddRef();
 
 	CJCStringT symbo_link;
 	SearchForDevice(symbo_link);
@@ -124,7 +130,6 @@ CDriverControl::~CDriverControl(void)
 		if (!br) LOG_ERROR(_T("failure on unmounting disk device"));
 	}
 
-	//CloseHandle(m_exchange);
 	CloseHandle(m_ctrl);
 	if (m_image) m_image->Release();
 	if (m_thd) CloseHandle(m_thd);
@@ -145,7 +150,16 @@ void CDriverControl::Connect(IImage * image)
 	if (!m_thd) THROW_WIN32_ERROR(_T("failure on creating exchange thread."));
 	DWORD ir = WaitForSingleObject(m_thd_event, 10000);
 	if (ir == WAIT_TIMEOUT)	{ THROW_ERROR(ERR_APP, _T("creating thread time out."));}
-	//return m_dev_id;
+
+	// test
+	//CJCStringT device_name = DIRECT_DISK_PREFIX;
+	//device_name += (_T('0') + m_dev_id);
+	//LOG_DEBUG(_T("device_name = %s"), device_name.c_str() );
+
+	//CJCStringT symbo_link = _T("core_mount_disk_001");
+	//BOOL br = DefineDosDevice(DDD_RAW_TARGET_PATH, symbo_link.c_str(), device_name.c_str() );
+	//if (!br) THROW_WIN32_ERROR(_T(" failure on define dos device, vol:%s, dev:%s "),
+	//	symbo_link, device_name);
 }
 
 void CDriverControl::Mount(TCHAR mnt_point)
@@ -153,7 +167,6 @@ void CDriverControl::Mount(TCHAR mnt_point)
 	LOG_STACK_TRACE();
 
 	JCASSERT(m_image);
-	//m_image->SetMountPoint(mnt_point);
 	m_mount_point = mnt_point;
 
 	// define logical drive
@@ -243,7 +256,7 @@ DWORD CDriverControl::Run(void)
 {
 	LOG_STACK_TRACE();
 	DWORD ir=0;
-	char * buf = NULL;
+	UCHAR * buf = NULL;
 
 	HANDLE exchange_dev = NULL;
 	try
@@ -256,12 +269,15 @@ DWORD CDriverControl::Run(void)
 		LOG_DEBUG(_T("open core mnt dev: name %s, handle: 0x%08X"), COREMNT_USER_NAME, exchange_dev);
 		if (exchange_dev == INVALID_HANDLE_VALUE) THROW_WIN32_ERROR(_T("failure on opening core mnt (%s)"), COREMNT_USER_NAME);
 		
-		buf = new char[EXCHANGE_BUFFER_SIZE];
+		buf = new UCHAR[EXCHANGE_BUFFER_SIZE];
 
 		CORE_MNT_EXCHANGE_REQUEST request;
 
 		request.dev_id = m_dev_id;
-		request.lastType = DISK_OP_EMPTY;
+		request.m_major_func = IRP_MJ_NOP;
+		request.m_minor_code = 0;
+		request.m_read_write = 0;
+
 		request.lastStatus = 0;
 		request.lastSize = 0;
 		request.data = buf;
@@ -270,12 +286,13 @@ DWORD CDriverControl::Run(void)
 		SetEvent(m_thd_event);
 		while (true)
 		{
-			//LOG_DEBUG(_T("request exchange"));
 			CORE_MNT_EXCHANGE_RESPONSE response;
-			response.type = DISK_OP_EMPTY;
+			response.m_major_func = IRP_MJ_NOP;
+			response.m_minor_code = 0;
+			response.m_read_write = 0;
+
 			response.size = 0;
 			response.offset = 0;
-
 
 			DWORD written = 0;
 			BOOL br = DeviceIoControl(exchange_dev, CORE_MNT_EXCHANGE_IOCTL,
@@ -283,9 +300,8 @@ DWORD CDriverControl::Run(void)
 						&written, NULL);
 			if (!br) THROW_WIN32_ERROR(_T("send exchange request failed."));
 
-			//RequestExchange(request, response);
-
-			if ((DISK_OPERATION_TYPE)(response.type) == DISK_OP_DISCONNECT) 
+			//if ((DISK_OPERATION_TYPE)(response.type) == DISK_OP_DISCONNECT) 
+			if ( response.m_major_func == IRP_MJ_DISCONNECT)
 			{
 				LOG_DEBUG(_T("disconnect reflected."));
 				break;
@@ -294,22 +310,40 @@ DWORD CDriverControl::Run(void)
 			ULONG64 offset = response.offset / SECTOR_SIZE;		// byte to sector
 			ULONG32 size = response.size / SECTOR_SIZE;			// byte to sector
 
-			switch (response.type)
+			ULONG32 status = STATUS_INVALID_DEVICE_REQUEST;
+			switch (response.m_major_func)
 			{
-			case DISK_OP_READ:
-				//m_image->Read(buf, response.offset, response.size);
-				m_image->Read(buf, offset, size);
+			case IRP_MJ_READ:
+				status = m_image->Read(buf, offset, size);
+				request.lastSize = response.size;
 				break;
 
-			case DISK_OP_WRITE:
-				//m_image->Write(buf, response.offset, response.size);
-				m_image->Write(buf, offset, size);
+			case IRP_MJ_WRITE:
+				status = m_image->Write(buf, offset, size);
+				request.lastSize = response.size;
+				break;
+
+			case IRP_MJ_FLUSH_BUFFERS:
+				break;
+
+			case IRP_MJ_DEVICE_CONTROL:	{
+				ULONG32 data_size = response.size;
+				status = m_image->DeviceControl(response.m_minor_code, (READ_WRITE)(response.m_read_write), buf, data_size, EXCHANGE_BUFFER_SIZE);
+				request.lastSize = data_size;
+				break;						}
+
+			case IRP_MJ_QUERY_INFORMATION:
+				break;
+
+			default:
+				LOG_DEBUG(_T("unknow major func: %d"), response.m_major_func);
 				break;
 			}
 
-			request.lastType = response.type;
-			request.lastSize = response.size;
-			request.lastStatus = 0; //STATUS_SUCCESS;
+			request.m_major_func = response.m_major_func;
+			request.m_minor_code = response.m_minor_code;
+			request.m_read_write = response.m_read_write;
+			request.lastStatus = status;
 		}
 	}
 	catch (stdext::CJCException & err)
@@ -322,6 +356,7 @@ DWORD CDriverControl::Run(void)
 	return ir;
 }
 
+/*
 void CDriverControl::RequestExchange(CORE_MNT_EXCHANGE_REQUEST &request, CORE_MNT_EXCHANGE_RESPONSE &response)
 {
 	//LOG_STACK_TRACE();
@@ -331,3 +366,5 @@ void CDriverControl::RequestExchange(CORE_MNT_EXCHANGE_REQUEST &request, CORE_MN
 	//			&request, sizeof(request), &response, sizeof(response), &written, NULL);
 	//if (!br) THROW_WIN32_ERROR(_T("send exchange request failed."));
 }
+*/
+

@@ -1,7 +1,7 @@
 #pragma once
 
+//#include "../../Comm/virtual_disk.h"
 #include "mntImage.h"
-#include "../../Comm/virtual_disk.h"
 
 class CDriverControl
 {
@@ -21,7 +21,7 @@ public:
 protected:
 	static DWORD WINAPI StaticRun(LPVOID param); 
 	DWORD Run(void);
-	void RequestExchange(CORE_MNT_EXCHANGE_REQUEST &request, CORE_MNT_EXCHANGE_RESPONSE &response);
+	//void RequestExchange(CORE_MNT_EXCHANGE_REQUEST &request, CORE_MNT_EXCHANGE_RESPONSE &response);
 	
 	
 
