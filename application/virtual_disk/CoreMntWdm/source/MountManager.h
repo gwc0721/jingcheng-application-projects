@@ -20,8 +20,7 @@ public:
 	void Initialize(IN PDRIVER_OBJECT driverObject);
 	void Release(void);
 
-	// return device id
-    NTSTATUS Mount(IN UINT64 totalLength, OUT UINT32 & dev_id);
+    NTSTATUS Mount(IN OUT CORE_MNT_MOUNT_REQUEST & request);
     NTSTATUS Unmount(IN UINT32 devId);
     NTSTATUS DispatchIrp(IN UINT32 devId, IN PIRP irp);
     NTSTATUS RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, OUT CORE_MNT_EXCHANGE_RESPONSE * response);
@@ -33,7 +32,7 @@ public:
 
 private:
     PDRIVER_OBJECT m_driver_obj;
-    int m_disk_count;
+    volatile LONG m_disk_count;
 
 	bool DiskId2Ptr(IN UINT32 dev_id, OUT CMountedDisk * &disk);
 

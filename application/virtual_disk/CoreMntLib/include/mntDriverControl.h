@@ -1,12 +1,11 @@
 #pragma once
 
-//#include "../../Comm/virtual_disk.h"
 #include "mntImage.h"
 
 class CDriverControl
 {
 public:
-	CDriverControl(ULONG64 total_sec);		// length in sectors
+	CDriverControl(ULONG64 total_sec, const CJCStringT & symbo_link);		// length in sectors
 	CDriverControl(UINT dev_id, bool dummy);		// length in sectors
 	~CDriverControl(void);
 
@@ -16,14 +15,9 @@ public:
 	void Disconnect(void);
 	void Unmount(void);
 
-
-
 protected:
 	static DWORD WINAPI StaticRun(LPVOID param); 
 	DWORD Run(void);
-	//void RequestExchange(CORE_MNT_EXCHANGE_REQUEST &request, CORE_MNT_EXCHANGE_RESPONSE &response);
-	
-	
 
 protected:
 	UINT	m_dev_id;

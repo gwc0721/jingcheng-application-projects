@@ -117,13 +117,13 @@ NTSTATUS CMountManager::Unmount(IN UINT32 dev_id)
 }
 
 // length in sectors
-NTSTATUS CMountManager::Mount(IN UINT64 totalLength, OUT UINT32 & dev_id)
+NTSTATUS CMountManager::Mount(IN OUT CORE_MNT_MOUNT_REQUEST & request)
 {
 	PAGED_CODE();
-    // generate id
 	LOG_STACK_TRACE("");
 
-    dev_id = -1;
+    UINT32 dev_id = -1;
+	request.dev_id = -1;
 	//<TODO> need mutex
 	// 找到一个空余的map位置
 	if (m_disk_count >= MAX_MOUNTED_DISK)
@@ -135,14 +135,13 @@ NTSTATUS CMountManager::Mount(IN UINT64 totalLength, OUT UINT32 & dev_id)
 	UINT32 ii = 0;
 	for ( ; ii<MAX_MOUNTED_DISK; ii++)
 	{
-		if (m_disk_map[ii] == NULL)
-		{	dev_id = ii;	break;	}
+		if ( InterlockedCompareExchange((LONG*)(m_disk_map + ii), 0xFFFFFFFF, 0) == 0 ) break;
 	}
+	dev_id = ii;
 	ASSERT(ii < MAX_MOUNTED_DISK);
 	KdPrint( ("found disk id:%d\n", dev_id) );
 	// 找到空位置
-	m_disk_count ++;
-	m_disk_map[dev_id] = (PDEVICE_OBJECT)0xFFFFFFFF;
+	InterlockedIncrement(&m_disk_count);
 	// end of mutex
 
 	// 创建设备
@@ -175,20 +174,10 @@ NTSTATUS CMountManager::Mount(IN UINT64 totalLength, OUT UINT32 & dev_id)
 		return status;
 	}
 
-
-    WCHAR symbo_link_buf[MAXIMUM_FILENAME_LENGTH];
-	jj = 0;
-	while ( SYMBO_DIRECT_DISK[jj] !=0 )
-	{
-		symbo_link_buf[jj] = SYMBO_DIRECT_DISK[jj];
-		++jj;
-	}
-	symbo_link_buf[jj++] = dev_id + L'0';
-	symbo_link_buf[jj] = 0;
-	KdPrint( ("symbo link:%S\n", symbo_link_buf) );
-
-	UNICODE_STRING str_symbo_link;
-	RtlInitUnicodeString(&str_symbo_link, symbo_link_buf);
+	// create symbo link
+	UNICODE_STRING	str_symbo_link;
+	RtlInitUnicodeString(&str_symbo_link, request.symbo_link);
+	KdPrint( ("symbo link:%Z\n", str_symbo_link) );
 
 	status = IoCreateSymbolicLink(&str_symbo_link, &str_device_name);
     if (!NT_SUCCESS(status))
@@ -198,7 +187,7 @@ NTSTATUS CMountManager::Mount(IN UINT64 totalLength, OUT UINT32 & dev_id)
 	}
 
 	CMountedDisk * mnt_disk = reinterpret_cast<CMountedDisk*>(fdo->DeviceExtension);
-	mnt_disk->Initialize(m_driver_obj, this, dev_id, totalLength);	// length in sectors
+	mnt_disk->Initialize(m_driver_obj, this, dev_id, request.total_sec);	// length in sectors
 	// set device name
 	mnt_disk->SetDeviceName(&str_device_name, &str_symbo_link); 
 
@@ -206,8 +195,10 @@ NTSTATUS CMountManager::Mount(IN UINT64 totalLength, OUT UINT32 & dev_id)
     fdo->Flags &= ~DO_DEVICE_INITIALIZING;
 
 	//<TODO> need mutex
-	m_disk_map[dev_id] = fdo;
+	InterlockedExchange( (LONG*)(m_disk_map + dev_id), (LONG)fdo);
+	//m_disk_map[dev_id] = fdo;
 	// end of mutex
+	request.dev_id = dev_id;
 
     return STATUS_SUCCESS;
 }
@@ -220,15 +211,7 @@ NTSTATUS CMountManager::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, 
 
 	CMountedDisk *mnt_disk = NULL;
 	if ( !DiskId2Ptr(request->dev_id, mnt_disk) ) return STATUS_UNSUCCESSFUL;
-
-	//KdPrint(("exchange:dev_id=%d, last_type=%d, last_status=%d, last_size=%d\n",
-	//	request->dev_id, request->lastType, request->lastStatus, request->lastSize));
-
 	NTSTATUS status = mnt_disk->RequestExchange(request, response);
-
-	//KdPrint(("exchange:dev_id=%d, next_type=%d, next_size=%d\n",
-	//	request->dev_id, response->type, response->size));
-
 	return status;
 }
 
@@ -261,7 +244,7 @@ NTSTATUS CMountManager::DispatchDeviceControl(IN PIRP irp, IN PIO_STACK_LOCATION
 		KdPrint(("[IRP] mnt <- IRP_MJ_DEVICE_CONTROL::CORE_MNT_MOUNT_IOCTL\n"));
 
 		if(in__buf_len < sizeof(CORE_MNT_MOUNT_REQUEST) || 
-			out_buf_len < sizeof(CORE_MNT_MOUNT_RESPONSE) )
+			out_buf_len < sizeof(CORE_MNT_MOUNT_REQUEST) )
 		{
 			KdPrint( ("input or output buffer size mismatch\n") );
 			status = STATUS_UNSUCCESSFUL;
@@ -271,13 +254,8 @@ NTSTATUS CMountManager::DispatchDeviceControl(IN PIRP irp, IN PIO_STACK_LOCATION
 		CORE_MNT_MOUNT_REQUEST * request = (CORE_MNT_MOUNT_REQUEST *)buffer;
 		UINT64 total_sec = request->total_sec;		// length in sectors
 		KdPrint( ("disk size=%I64d sectors\n", total_sec) );
-
-		UINT32 dev_id = -1;
-		status = Mount(total_sec, dev_id);
+		status = Mount(*request);
 		if ( !NT_SUCCESS(status) )		{	KdPrint( ("disk map is full\n") );		}
-
-		CORE_MNT_MOUNT_RESPONSE * response = (CORE_MNT_MOUNT_RESPONSE *)buffer;
-		response->dev_id = dev_id;
 		break;					}
 
 	case CORE_MNT_EXCHANGE_IOCTL:		{
@@ -292,7 +270,6 @@ NTSTATUS CMountManager::DispatchDeviceControl(IN PIRP irp, IN PIO_STACK_LOCATION
 		CORE_MNT_EXCHANGE_REQUEST * request = (CORE_MNT_EXCHANGE_REQUEST *)buffer;
 		CORE_MNT_EXCHANGE_RESPONSE response = {0};
 		RequestExchange(request, &response);
-		//KdPrint(("response: type=%d, size=%d\n", response.type, response.size));
 		RtlCopyMemory(buffer, &response, sizeof(CORE_MNT_EXCHANGE_RESPONSE) );
 		status = STATUS_SUCCESS;
 		break;								}
