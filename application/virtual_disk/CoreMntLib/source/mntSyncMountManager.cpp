@@ -10,18 +10,16 @@ LOCAL_LOGGER_ENABLE(_T("SyncMntManager"), LOGGER_LEVEL_DEBUGINFO);
 #include "boost\scope_exit.hpp"
 #include <iostream>
 
-//#include <shlobj.h>
 #include "../../Comm/virtual_disk.h"
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- 
 
-UINT CSyncMountManager::CreateDevice(ULONG64 total_sec/*, IImage * image*/)
+UINT CSyncMountManager::CreateDevice(ULONG64 total_sec, const CJCStringT & symbo_link)
 {
-	CDriverControl * drv_ctrl = new CDriverControl(total_sec/*, image*/);	// length in sectors
+	CDriverControl * drv_ctrl = new CDriverControl(total_sec, symbo_link);	// length in sectors
 	UINT dev_id = drv_ctrl->GetDeviceId();
-	//image->SetId(dev_id);
 	m_driver_map.insert(DRIVER_MAP_PAIR(dev_id, drv_ctrl) );
 	return dev_id;
 }

@@ -49,9 +49,10 @@ public:
 
 	CJCStringT	m_driver;
 
-	HMODULE	m_driver_module;
+	CJCStringT	m_device_name;
 
 protected:
+	HMODULE	m_driver_module;
 };
 
 typedef jcapp::CJCApp<CCoreMntTestApp>	CApplication;
@@ -66,6 +67,8 @@ BEGIN_ARGU_DEF_TABLE()
 	ARGU_DEF_ITEM(_T("filename"),	_T('f'), CJCStringT,	m_filename,		_T("image file name.") )
 	ARGU_DEF_ITEM(_T("connect"),	_T('c'), bool,			m_connect,		_T("connect user mode driver to device.") )
 	ARGU_DEF_ITEM(_T("remove"),		_T('r'), UINT,			m_remove,		_T("remove dead device.") )
+	ARGU_DEF_ITEM(_T("dev_name"),	_T('n'), CJCStringT,	m_device_name,	_T("symbo link of device.") )
+
 	//ARGU_DEF_ITEM(_T("open"),	_T('o'), CJCStringT,	m_device, _T("image file size in byte.") )
 
 	//ARGU_DEF_ITEM(_T("length"),		_T('l'), int,		m_length, _T("set length.") )
@@ -152,10 +155,12 @@ int CCoreMntTestApp::Run(void)
 
 #ifndef LOCAL_DEBUG
 	CSyncMountManager mount_manager;
-	m_dev_id = mount_manager.CreateDevice(m_file_size);		// length in sectors;
+	if (m_device_name.empty() ) m_device_name = _T("disk0");
+	CJCStringT symbo_link = CJCStringT(_T("")) + _T("\\DosDevices\\") + m_device_name;
+	m_dev_id = mount_manager.CreateDevice(m_file_size, symbo_link);		// length in sectors;
 
-	_tprintf( _T("device: %s%d was created.\n"), SYMBO_DIRECT_DISK, m_dev_id);
-	//sparse.get()->SetId(m_dev_id);
+	//_tprintf( _T("device: %s%d was created.\n"), SYMBO_DIRECT_DISK, m_dev_id);
+	_tprintf( _T("device: %s was created.\n"), symbo_link.c_str());
 
 	if (m_connect)
 	{

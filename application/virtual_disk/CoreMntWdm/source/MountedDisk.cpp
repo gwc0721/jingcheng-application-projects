@@ -301,7 +301,6 @@ NTSTATUS CMountedDisk::DispatchIrp(IN PIRP irp)
 		AsyncExchange(irp, IRP_MJ_READ, 0, READ, io_stack->Parameters.Read.Length, 
 			io_stack->Parameters.Read.ByteOffset.QuadPart, 
 			(UCHAR*)MmGetSystemAddressForMdlSafe(irp->MdlAddress, NormalPagePriority));
-			//(UCHAR*)GetIrpBuffer(irp));
 		return STATUS_PENDING;
 		break;}
 
@@ -310,24 +309,7 @@ NTSTATUS CMountedDisk::DispatchIrp(IN PIRP irp)
 		AsyncExchange(irp, IRP_MJ_WRITE, 0, WRITE, io_stack->Parameters.Write.Length, 
 			io_stack->Parameters.Write.ByteOffset.QuadPart, 
 			(UCHAR*)MmGetSystemAddressForMdlSafe(irp->MdlAddress, NormalPagePriority));
-			//(UCHAR*)GetIrpBuffer(irp));
 		return STATUS_PENDING;
-
-		//IRP_EXCHANGE_REQUEST ier;
-		//ier.m_irp = irp;
-		//ier.m_major_func = IRP_MJ_WRITE;
-		//ier.m_minor_code = 0;
-		//ier.m_read_write = WRITE;
-		//ier.m_kernel_buf = (UCHAR*)GetIrpBuffer(irp);
-		//ier.m_data_len = io_stack->Parameters.Write.Length;
-		//ier.m_offset = io_stack->Parameters.Write.ByteOffset.QuadPart;
-		//ier.m_complete = false;
-		//KeInitializeEvent(&(ier.m_event), SynchronizationEvent, FALSE);
-		//m_irp_queue.push(&ier);
-		//KeWaitForSingleObject(&(ier.m_event), Executive, KernelMode, FALSE, NULL);
-		////
-		//irp->IoStatus.Status = ier.m_status;
-		//irp->IoStatus.Information = ier.m_data_len;
 		break;
 
 	case IRP_MJ_FLUSH_BUFFERS:
@@ -413,7 +395,6 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 		break;									 }
 
 	case IOCTL_DISK_GET_DRIVE_LAYOUT:		{
-		//complete = true;
 		KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_DISK_GET_DRIVE_LAYOUT\n") );
 		if (io_stack->Parameters.DeviceIoControl.OutputBufferLength <
 			sizeof (DRIVE_LAYOUT_INFORMATION))

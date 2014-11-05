@@ -15,7 +15,7 @@ public:
 	CSyncMountManager(void) {};
 	~CSyncMountManager(void) {};
 	
-	UINT CreateDevice(ULONG64 total_sec);		// length in sectors
+	UINT CreateDevice(ULONG64 total_sec, const CJCStringT & symbo_link);		// length in sectors
 	void Connect(UINT dev_id, IImage * image);
 	void MountDriver(UINT dev_id, TCHAR mount_point);
 	void Disconnect(UINT dev_id);

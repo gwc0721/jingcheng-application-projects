@@ -6,7 +6,6 @@ LOCAL_LOGGER_ENABLE(_T("SyncMntManager"), LOGGER_LEVEL_DEBUGINFO);
 
 #include "../include/mntDriverControl.h"
 #include "../../Comm/virtual_disk.h"
-//#include <ntstatus.h>
 
 #define IRP_MJ_READ                     0x03
 #define IRP_MJ_WRITE                    0x04
@@ -69,36 +68,39 @@ void SearchForDevice(CJCStringT & symbo)
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- 
-CDriverControl::CDriverControl(ULONG64 total_sec)		// length in sectors
+CDriverControl::CDriverControl(ULONG64 total_sec, const CJCStringT & disk_symbo_link)		// length in sectors
 	: m_ctrl(NULL), m_image(NULL), m_dev_id(UINT_MAX)
 	, m_thd(NULL), m_mount_point(0), m_thd_event(NULL)
 {
 	LOG_STACK_TRACE();
 
-	CJCStringT symbo_link;
-	SearchForDevice(symbo_link);
+	CJCStringT mnt_symbo_link;
+	SearchForDevice(mnt_symbo_link);
 
-	m_ctrl = CreateFile(symbo_link.c_str(), GENERIC_READ | GENERIC_WRITE, 
+	m_ctrl = CreateFile(mnt_symbo_link.c_str(), GENERIC_READ | GENERIC_WRITE, 
             FILE_SHARE_READ | FILE_SHARE_WRITE,    NULL, OPEN_EXISTING, 0, NULL);
 
 	LOG_DEBUG(_T("open device: %s, handle: 0x%08X"), COREMNT_USER_NAME, m_ctrl);
 	if (m_ctrl == INVALID_HANDLE_VALUE) THROW_WIN32_ERROR(_T("failure on open device %s"), COREMNT_USER_NAME);
 
 	// create device in driver
-	CORE_MNT_MOUNT_REQUEST request;
-	memset(&request, 0, sizeof(request));
-	request.total_sec = total_sec;				// length in sectors
-	CORE_MNT_COMM response;
-	memset(&response, 0, sizeof(response));
+	JCSIZE size = sizeof(CORE_MNT_MOUNT_REQUEST) + disk_symbo_link.length() * sizeof (TCHAR);
+	LOG_DEBUG(_T("symbolink len = %d, request len = %d, total len = %d"), 
+		sizeof(CORE_MNT_MOUNT_REQUEST), disk_symbo_link.length(), size);
+	stdext::auto_array<UCHAR> _req(size);
+	memset(_req, 0, size);
+	CORE_MNT_MOUNT_REQUEST * request = reinterpret_cast<CORE_MNT_MOUNT_REQUEST *>((void*)(_req));
+	request->total_sec = total_sec;				// length in sectors
+	request->dev_id = -1;
+	_tcscpy_s(request->symbo_link, disk_symbo_link.length() + 1, disk_symbo_link.c_str() );
 	DWORD written = 0;
 
-	BOOL br = DeviceIoControl(m_ctrl, CORE_MNT_MOUNT_IOCTL, &request, sizeof(request),
-		&response, sizeof(response), &written, NULL);
+	BOOL br = DeviceIoControl(m_ctrl, CORE_MNT_MOUNT_IOCTL, request, size,
+		request, sizeof(CORE_MNT_MOUNT_REQUEST), &written, NULL);
 	if (!br) THROW_WIN32_ERROR(_T("failure on create device"));
 
-	m_dev_id = response.dev_id;
+	m_dev_id = request->dev_id;
 	JCASSERT(m_dev_id < MAX_MOUNTED_DISK);
-
 	m_thd_event = CreateEvent(NULL, FALSE, FALSE, NULL);
 }
 
@@ -150,16 +152,6 @@ void CDriverControl::Connect(IImage * image)
 	if (!m_thd) THROW_WIN32_ERROR(_T("failure on creating exchange thread."));
 	DWORD ir = WaitForSingleObject(m_thd_event, 10000);
 	if (ir == WAIT_TIMEOUT)	{ THROW_ERROR(ERR_APP, _T("creating thread time out."));}
-
-	// test
-	//CJCStringT device_name = DIRECT_DISK_PREFIX;
-	//device_name += (_T('0') + m_dev_id);
-	//LOG_DEBUG(_T("device_name = %s"), device_name.c_str() );
-
-	//CJCStringT symbo_link = _T("core_mount_disk_001");
-	//BOOL br = DefineDosDevice(DDD_RAW_TARGET_PATH, symbo_link.c_str(), device_name.c_str() );
-	//if (!br) THROW_WIN32_ERROR(_T(" failure on define dos device, vol:%s, dev:%s "),
-	//	symbo_link, device_name);
 }
 
 void CDriverControl::Mount(TCHAR mnt_point)
@@ -300,7 +292,6 @@ DWORD CDriverControl::Run(void)
 						&written, NULL);
 			if (!br) THROW_WIN32_ERROR(_T("send exchange request failed."));
 
-			//if ((DISK_OPERATION_TYPE)(response.type) == DISK_OP_DISCONNECT) 
 			if ( response.m_major_func == IRP_MJ_DISCONNECT)
 			{
 				LOG_DEBUG(_T("disconnect reflected."));

@@ -116,29 +116,6 @@ extern "C" NTSTATUS DriverEntry(IN PDRIVER_OBJECT driver_obj,
     RtlInitUnicodeString(&gSymbolicLinkName, COREMNT_SYMBOLINK);
 
 #ifndef COREMNT_PNP_SUPPORT
-	//KdPrint(("Create mount device\n"));
-	//// create a device for mount manage
- //   NTSTATUS status;
-	//PDEVICE_OBJECT fdo=NULL;
- //   status = IoCreateDevice(driver_obj,     // pointer on driver_obj
- //                           sizeof(CMountManager),                // additional size of memory, for device extension
- //                           &gDeviceName,     // pointer to UNICODE_STRING
- //                           FILE_DEVICE_NULL, // Device type
- //                           0,                // Device characteristic
- //                           FALSE,            // "Exclusive" device
- //                           &fdo);  // pointer do device object
- //   if (status != STATUS_SUCCESS)	return STATUS_FAILED_DRIVER_ENTRY;
-	//g_mount_device = fdo;
-	//CMountManager * pdx = (CMountManager *)(fdo->DeviceExtension);
-	//pdx->Initialize(driver_obj);
-
-	//pdx->fdo = fdo;
-	//pdx->NextStackDevice = NULL;
-	//pdx->ustrDeviceName = gDeviceName;
-	//pdx->ustrSymLinkName = gSymbolicLinkName;
-
- //   status = IoCreateSymbolicLink(&gSymbolicLinkName, &gDeviceName);
-
 	status = CreateCoreMntDevice(driver_obj, NULL, &gDeviceName, &gSymbolicLinkName);
     if (status != STATUS_SUCCESS)	return STATUS_FAILED_DRIVER_ENTRY;
 #endif
@@ -153,9 +130,6 @@ extern "C" NTSTATUS DriverEntry(IN PDRIVER_OBJECT driver_obj,
 #ifdef COREMNT_PNP_SUPPORT
 	driver_obj->DriverExtension->AddDevice = CoreMntAddDevice;
 	driver_obj->MajorFunction[IRP_MJ_PNP] = CoreMntPnp;
-//#else
-//	driver_obj->DriverExtension->AddDevice = NULL;
-//	driver_obj->MajorFunction[IRP_MJ_PNP] = NULL;
 #endif
 	driver_obj->DriverUnload = CoreMntUnload;
 
@@ -193,48 +167,8 @@ NTSTATUS CoreMntAddDevice(IN PDRIVER_OBJECT driver_obj,
 #ifdef COREMNT_PNP_SUPPORT
 	status = CreateCoreMntDevice(driver_obj, pdo, NULL, NULL);
 #endif
-/*
-	PDEVICE_OBJECT fdo = NULL;
-    status = IoCreateDevice(driver_obj,     // pointer on driver_obj
-				sizeof(CMountManager),                // additional size of memory, for device extension
-                NULL,     // pointer to UNICODE_STRING
-                FILE_DEVICE_NULL, // Device type
-                0,                // Device characteristic
-                FALSE,            // "Exclusive" device
-                &fdo);  // pointer do device object
-
-	if( !NT_SUCCESS(status) )
-	{
-		KdPrint(("failure on createing pnp device"));
-		return status;
-	}
-	g_mount_device = fdo;
-	CMountManager * pdx = (CMountManager *)(fdo->DeviceExtension);
-
-	pdx->Initialize(driver_obj);
-	pdx->fdo = fdo;
-	pdx->NextStackDevice = IoAttachDeviceToDeviceStack(fdo, pdo);
-	pdx->ustrDeviceName = gDeviceName;
-
-	status = IoRegisterDeviceInterface(pdo, &COREMNT_GUID, NULL, &pdx->ustrSymLinkName);
-    if (status != STATUS_SUCCESS)
-	{
-		KdPrint(("failure on registing interface"));
-		return status;
-	}
-	KdPrint(("symbo_link:%wZ", &pdx->ustrSymLinkName));
-
-	status = IoSetDeviceInterfaceState(&pdx->ustrSymLinkName, TRUE);
-	if (status != STATUS_SUCCESS)
-	{
-		KdPrint(("failure on enable interface."));
-		return status;
-	}
-*/
-
 	//fdo->Flags |= DO_BUFFERED_IO | DO_POWER_PAGABLE;
 	//fdo->Flags &= ~DO_DEVICE_INITIALIZING;
-
 	return status;
 }
 
