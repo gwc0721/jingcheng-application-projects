@@ -45,6 +45,8 @@ public:
     CJCLoggerNode(const CJCStringW & name, int level, CJCLogger * logger = NULL);
     virtual ~CJCLoggerNode(void);
 
+	friend class CJCLogger;
+
 public:
     static CJCLoggerNode * CreateLoggerNode(const CJCStringW & name, int level)
     {
@@ -123,6 +125,7 @@ public:
 	void CleanUp(void);
 
     static CJCLogger * Instance(void);
+	void SetInstance(CJCLogger * inst);
 
 	void CreateAppender(LPCTSTR app_type, LPCTSTR file_name, DWORD prop);
 
@@ -170,6 +173,8 @@ protected:
 	void OutputFunctionDuration(void);
 	typedef std::map<CJCStringT, CJCFunctionDuration>	DURATION_MAP;
 	DURATION_MAP	m_duration_map;
+
+	static CJCLogger * m_instance;
 
 };
 
@@ -407,3 +412,7 @@ public:
 #define CLSLOG_DEBUG(classname, ...)    _LOGGER_DEBUG(_m_logger, __VA_ARGS__);
 
 //#define THROW_WIN32_ERROR
+
+
+// for test
+extern int g_test;
