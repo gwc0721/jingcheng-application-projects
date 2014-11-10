@@ -32,7 +32,7 @@ NTSTATUS ControlDeviceIrpHandler( IN CMountManager * mm,  IN PDEVICE_OBJECT fdo,
 
 PDEVICE_OBJECT g_mount_device = NULL;
 
-#define COREMNT_PNP_SUPPORT
+//#define COREMNT_PNP_SUPPORT
 
 // {54659E9C-B407-4269-99F2-9A20D89E3575}
 static const GUID COREMNT_GUID = COREMNT_CLASS_GUID;
@@ -114,6 +114,7 @@ extern "C" NTSTATUS DriverEntry(IN PDRIVER_OBJECT driver_obj,
     /* Start Driver initialization */
     RtlInitUnicodeString(&gDeviceName,       COREMNT_DEV_NAME);
     RtlInitUnicodeString(&gSymbolicLinkName, COREMNT_SYMBOLINK);
+	NTSTATUS status;
 
 #ifndef COREMNT_PNP_SUPPORT
 	status = CreateCoreMntDevice(driver_obj, NULL, &gDeviceName, &gSymbolicLinkName);
@@ -154,7 +155,7 @@ extern "C" NTSTATUS DriverEntry(IN PDRIVER_OBJECT driver_obj,
 
 
 //The object associated with the driver
-PDEVICE_OBJECT gDeviceObject = NULL;
+//PDEVICE_OBJECT gDeviceObject = NULL;
 
 
 NTSTATUS CoreMntAddDevice(IN PDRIVER_OBJECT driver_obj,
@@ -182,12 +183,12 @@ NTSTATUS IrpHandler(IN PDEVICE_OBJECT fdo, IN PIRP pIrp )
 
 	LOG_STACK_TRACE("");
 	NTSTATUS status;
-    if(fdo == gDeviceObject)
-    {
-		KdPrint(("irp handler for gDeviceObject\n"));
-        return CompleteIrp(pIrp, STATUS_SUCCESS,0);
-    }
-	else if (fdo == g_mount_device)
+  //  if(fdo == gDeviceObject)
+  //  {
+		//KdPrint(("irp handler for gDeviceObject\n"));
+  //      return CompleteIrp(pIrp, STATUS_SUCCESS,0);
+  //  }
+	/*else */if (fdo == g_mount_device)
 	{
 		CMountManager * mm = reinterpret_cast<CMountManager *>(fdo->DeviceExtension);		ASSERT(mm);
 		status = ControlDeviceIrpHandler(mm, fdo, pIrp);
@@ -367,24 +368,24 @@ NTSTATUS CoreMntPnp(IN PDEVICE_OBJECT fdo,
 		"IRP_MN_DEVICE_USAGE_NOTIFICATION",
 		"IRP_MN_SURPRISE_REMOVAL",
 	};
-	if (fdo == gDeviceObject)			str_dev = "dev";
-	else if (fdo == g_mount_device)		str_dev = "mount";
+	//if (fdo == gDeviceObject)			str_dev = "dev";
+	/*else*/ if (fdo == g_mount_device)		str_dev = "mount";
 	else								str_dev = "disk";
 	if (fcn < arraysize(fcnname) )		str_func = fcnname[fcn];
 	else								str_func = "UNKNOWN_PNP_REQUEST";
 	KdPrint(("[IRP] %s <- PNP::%s\n", str_dev, str_func));
 #endif
 
-#ifndef COREMNT_PNP_SUPPORT
-	if (fdo != gDeviceObject)
-	{
-		irp->IoStatus.Status = STATUS_SUCCESS;
-		irp->IoStatus.Information = 0;
-		IoCompleteRequest(irp, IO_NO_INCREMENT);
-		return status;
-	}
-	PDEVICE_EXTENSION pdx = (PDEVICE_EXTENSION) fdo->DeviceExtension;
-#else
+//#ifndef COREMNT_PNP_SUPPORT
+//	if (fdo != gDeviceObject)
+//	{
+//		irp->IoStatus.Status = STATUS_SUCCESS;
+//		irp->IoStatus.Information = 0;
+//		IoCompleteRequest(irp, IO_NO_INCREMENT);
+//		return status;
+//	}
+//	PDEVICE_EXTENSION pdx = (PDEVICE_EXTENSION) fdo->DeviceExtension;
+//#else
 	if (fdo != g_mount_device)
 	{
 		CMountedDisk * mnt_disk = reinterpret_cast<CMountedDisk*>(fdo->DeviceExtension);
@@ -399,7 +400,7 @@ NTSTATUS CoreMntPnp(IN PDEVICE_OBJECT fdo,
 		IoCompleteRequest(irp, IO_NO_INCREMENT);
 		return STATUS_NOT_SUPPORTED;
 	}
-#endif
+//#endif
 
 	static NTSTATUS (*fcntab[])(CMountManager *, PIRP) = 
 	{

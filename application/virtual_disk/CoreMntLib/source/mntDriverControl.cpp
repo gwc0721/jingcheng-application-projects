@@ -75,13 +75,17 @@ CDriverControl::CDriverControl(ULONG64 total_sec, const CJCStringT & disk_symbo_
 	LOG_STACK_TRACE();
 
 	CJCStringT mnt_symbo_link;
+#ifdef COREMNT_PNP_SUPPORT
 	SearchForDevice(mnt_symbo_link);
-
+#else
+	mnt_symbo_link = COREMNT_USER_NAME;
+#endif
+	//LOG_DEBUG(_T("core mnt symbol link=%s"), mnt_symbo_link.c_str());
 	m_ctrl = CreateFile(mnt_symbo_link.c_str(), GENERIC_READ | GENERIC_WRITE, 
             FILE_SHARE_READ | FILE_SHARE_WRITE,    NULL, OPEN_EXISTING, 0, NULL);
 
-	LOG_DEBUG(_T("open device: %s, handle: 0x%08X"), COREMNT_USER_NAME, m_ctrl);
-	if (m_ctrl == INVALID_HANDLE_VALUE) THROW_WIN32_ERROR(_T("failure on open device %s"), COREMNT_USER_NAME);
+	LOG_DEBUG(_T("open device: %s, handle: 0x%08X"), mnt_symbo_link.c_str(), m_ctrl);
+	if (m_ctrl == INVALID_HANDLE_VALUE) THROW_WIN32_ERROR(_T("failure on open device %s"), mnt_symbo_link.c_str());
 
 	// create device in driver
 	JCSIZE size = sizeof(CORE_MNT_MOUNT_REQUEST) + disk_symbo_link.length() * sizeof (TCHAR);
@@ -109,12 +113,17 @@ CDriverControl::CDriverControl(UINT dev_id, bool dummy)
 	, m_thd(NULL), m_mount_point(0), m_thd_event(NULL)
 {
 	LOG_STACK_TRACE();
-	CJCStringT symbo_link;
-	SearchForDevice(symbo_link);
-	m_ctrl = CreateFile(symbo_link.c_str(), GENERIC_READ | GENERIC_WRITE, 
+	CJCStringT mnt_symbo_link;
+#ifdef COREMNT_PNP_SUPPORT
+	SearchForDevice(mnt_symbo_link);
+#else
+	mnt_symbo_link = COREMNT_USER_NAME;
+#endif
+	//LOG_DEBUG(_T("core mnt symbol link=%s"), mnt_symbo_link.c_str());
+	m_ctrl = CreateFile(mnt_symbo_link.c_str(), GENERIC_READ | GENERIC_WRITE, 
             FILE_SHARE_READ | FILE_SHARE_WRITE,    NULL, OPEN_EXISTING, 0, NULL);
-	LOG_DEBUG(_T("open device: %s, handle: 0x%08X"), COREMNT_USER_NAME, m_ctrl);
-	if (m_ctrl == INVALID_HANDLE_VALUE) THROW_WIN32_ERROR(_T("failure on open device %s"), COREMNT_USER_NAME);
+	LOG_DEBUG(_T("open device: %s, handle: 0x%08X"), mnt_symbo_link.c_str(), m_ctrl);
+	if (m_ctrl == INVALID_HANDLE_VALUE) THROW_WIN32_ERROR(_T("failure on open device %s"), mnt_symbo_link.c_str());
 }
 
 
@@ -253,13 +262,18 @@ DWORD CDriverControl::Run(void)
 	HANDLE exchange_dev = NULL;
 	try
 	{
-		CJCStringT symbo_link;
-		SearchForDevice(symbo_link);
+		CJCStringT mnt_symbo_link;
+#ifdef COREMNT_PNP_SUPPORT
+		SearchForDevice(mnt_symbo_link);
+#else
+		mnt_symbo_link = COREMNT_USER_NAME;
+#endif
+		LOG_DEBUG(_T("core mnt symbol link=%s"), mnt_symbo_link.c_str());
 
-		exchange_dev = CreateFile(symbo_link.c_str(), GENERIC_READ | GENERIC_WRITE, 
+		exchange_dev = CreateFile(mnt_symbo_link.c_str(), GENERIC_READ | GENERIC_WRITE, 
             FILE_SHARE_READ | FILE_SHARE_WRITE,    NULL, OPEN_EXISTING, 0, NULL);
-		LOG_DEBUG(_T("open core mnt dev: name %s, handle: 0x%08X"), COREMNT_USER_NAME, exchange_dev);
-		if (exchange_dev == INVALID_HANDLE_VALUE) THROW_WIN32_ERROR(_T("failure on opening core mnt (%s)"), COREMNT_USER_NAME);
+		LOG_DEBUG(_T("open core mnt dev: name %s, handle: 0x%08X"), mnt_symbo_link.c_str(), exchange_dev);
+		if (exchange_dev == INVALID_HANDLE_VALUE) THROW_WIN32_ERROR(_T("failure on opening core mnt (%s)"), mnt_symbo_link.c_str());
 		
 		buf = new UCHAR[EXCHANGE_BUFFER_SIZE];
 
