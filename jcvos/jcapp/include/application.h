@@ -109,6 +109,7 @@ namespace jcapp
 	{
 	public:
 		CJCAppBase(DWORD prop = (ARGU_SUPPORT_INFILE | ARGU_SUPPORT_OUTFILE | ARGU_SUPPORT_HELP) ) : ARGU(prop) {};
+		void GetAppPath(CJCStringT & path);
 
 	public:
 		void CleanUp(void)
@@ -140,21 +141,26 @@ namespace jcapp
 		template <class APP_TYPE>
 		static APP_TYPE* GetApp(void)  { return dynamic_cast<APP_TYPE*>(m_app); }
 
+
 	protected:
 		BASE * m_app;
 	};
-
-
-//CJCApp* CJCApp::m_app = NULL;
 
 	template<class BASE>
 	int CJCApp<BASE>::Initialize(void)
 	{
 		BASE::CmdLineParse((BYTE*)(static_cast<BASE*>(this)) );
-		//m_cmd_line_parser.Parse(GetCommandLine(), (BYTE*)(static_cast<BASE*>(this)) );
-		//jcparam::CArguSet	arg_set;
-		//jcparam::CCmdLineParser::ParseCommandLine(m_cmd_line_parser, GetCommandLine(), arg_set);
 		return __super::Initialize();
+	}
+
+	template<class ARGU>
+	void CJCAppBase<ARGU>::GetAppPath(CJCStringT &path)
+	{
+		TCHAR str[FILENAME_MAX];
+		GetModuleFileName(NULL, str, FILENAME_MAX-1);
+		LPTSTR _path = _tcsrchr(str, _T('\\'));
+		if (_path) _path[0] = 0;
+		path = str;
 	}
 
 };
