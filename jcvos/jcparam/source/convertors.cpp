@@ -17,6 +17,7 @@ namespace jcparam
 	template <>	VALUE_TYPE jcparam::type_id<bool>::id(void)		{return VT_BOOL;}
 	template <> VALUE_TYPE jcparam::type_id<char>::id(void)		{return VT_CHAR;}
 	template <>	VALUE_TYPE jcparam::type_id<BYTE>::id(void)		{return VT_UCHAR;}
+	template <>	VALUE_TYPE jcparam::type_id<wchar_t>::id(void)	{return VT_SHORT;}
 	template <>	VALUE_TYPE jcparam::type_id<short>::id(void)	{return VT_SHORT;}
 	template <>	VALUE_TYPE jcparam::type_id<WORD>::id(void)		{return VT_USHORT;}
 	template <>	VALUE_TYPE jcparam::type_id<int>::id(void)		{return VT_INT;}

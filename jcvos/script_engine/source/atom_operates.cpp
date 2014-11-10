@@ -188,7 +188,7 @@ bool CSaveToFileOp::Invoke(void)
 	if (NULL == m_stream)	CreateStream(val, m_stream);
 	JCASSERT(m_stream);
 	vval->ToStream(m_stream, jcparam::VF_DEFAULT, 0);
-	//m_stream->Put(_T('\n'));
+	m_stream->Put(_T('\n'));
 
 	return false;
 }

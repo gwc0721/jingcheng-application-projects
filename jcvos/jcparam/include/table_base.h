@@ -139,7 +139,7 @@ namespace jcparam
 				col_info->ToStream((void*)(row), stream, fmt); 
 				stream->Put(_T(','));
 			}
-			stream->Put(_T('\n'));
+			//stream->Put(_T('\n'));
 		}
 
 		virtual void FromStream(IJCStream * str, jcparam::VAL_FORMAT)
@@ -236,7 +236,7 @@ namespace jcparam
 			ROW_TABLE::const_iterator it = m_table.begin();
 			ROW_TABLE::const_iterator endit = m_table.end();
 			for ( ; it!=endit; ++it)
-			{
+			{	// 写入行
 				for (JCSIZE ii = 0; ii < col_size; ++ii)
 				{
 					CJCStringT str;
