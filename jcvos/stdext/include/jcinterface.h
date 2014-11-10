@@ -19,6 +19,15 @@ protected:
 	virtual ~IJCInterface() {};
 };
 
+#define IMPLEMENT_INTERFACE		\
+	protected:	\
+	mutable __declspec(align(4))	long	m_ref;	\
+	public:	\
+	inline virtual void AddRef()			{	LockedIncrement(m_ref); }		\
+	inline virtual void Release(void)		{	if (LockedDecrement(m_ref) == 0) delete this;	}	\
+	virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr) {return false;}
+
+
 class CJCInterfaceBase : virtual public IJCInterface
 {
 protected:

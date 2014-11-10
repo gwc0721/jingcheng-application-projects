@@ -5,7 +5,14 @@
 
 #include "jclogger_appenders.h"
 
+
+//static jclogger::CDebugAppender		__g_dbg_log;
+
 static CJCLoggerAppender * gptr_log = NULL;
+
+//static CJCLogger __g_logger(gptr_log);
+
+CJCLogger * CJCLogger::m_instance = NULL;
 
 CJCLogger * CJCLogger::Instance(void)
 {
@@ -15,6 +22,19 @@ CJCLogger * CJCLogger::Instance(void)
 #endif
     static CJCLogger __logger_object__(gptr_log);
     return &__logger_object__;
+	//return m_instance;
+}
+
+void CJCLogger::SetInstance(CJCLogger * inst)
+{
+    LoggerCategoryMap::iterator it = m_logger_category.begin();
+    LoggerCategoryMap::iterator endit = m_logger_category.end();
+
+	for (;it != endit; ++it)
+	{
+		CJCLoggerNode * node = it->second;
+		node->m_logger = inst;
+	}
 }
 
 CJCLogger::CJCLogger(CJCLoggerAppender * appender)
@@ -471,3 +491,10 @@ double CJCStackPerformance::GetDeltaTime(void)
 	LONGLONG delta = now.QuadPart - m_start_time;
 	return ( delta / CJCLogger::Instance()->GetTimeStampCycle() );
 }
+
+
+// for test
+#pragma data_seg("Shared")
+int g_test = 10;
+#pragma data_seg()
+#pragma comment(linker, "/SECTION:Shared,RWS")

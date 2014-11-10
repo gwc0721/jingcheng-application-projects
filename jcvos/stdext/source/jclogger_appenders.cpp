@@ -29,11 +29,12 @@ FileAppender::FileAppender(LPCTSTR file_name, DWORD prop)
 		flag |= FILE_FLAG_OVERLAPPED;
 	}
 
+	DWORD disp = (prop & CJCLoggerAppender::PROP_APPEND)? OPEN_ALWAYS: CREATE_ALWAYS;
 	m_file = CreateFile(file_name, 
 				GENERIC_READ|GENERIC_WRITE, 
 				FILE_SHARE_READ | FILE_SHARE_WRITE, 
 				NULL, 
-				OPEN_ALWAYS, 
+				disp, 
 				flag,					//如果使用NO_BUFFERING选项，文件操作必须sector对齐。
 				NULL );
 
