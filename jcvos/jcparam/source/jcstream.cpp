@@ -100,6 +100,7 @@ void CStreamFile::Put(const wchar_t * str, JCSIZE len)
 {
 	JCSIZE u_len = stdext::UnicodeToUtf8(m_f_buf, (JCSIZE)(BUF_SIZE - (m_f_last - m_f_buf)), str, len);
 	fwrite(m_f_buf, 1, sizeof(char) * u_len, m_file);
+	fflush(m_file);
 }
 
 wchar_t CStreamFile::Get(void)

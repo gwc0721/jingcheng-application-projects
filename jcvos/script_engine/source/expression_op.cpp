@@ -164,12 +164,11 @@ bool CAthOpBase<ATH_OP>::Invoke(void)
 		// 类型推导
 		m_res_type = max(tl, tr);
 		// 设置类型转换
-		/*if (tl != m_res_type) */m_conv_l = GetConvFunc(tl, m_res_type);
-		/*if (tl != m_res_type) */m_conv_r = GetConvFunc(tr, m_res_type);
+		m_conv_l = GetConvFunc(tl, m_res_type);
+		m_conv_r = GetConvFunc(tr, m_res_type);
 
 		// 
-		//m_op = ATH_OP::AthOp[m_res_type];
-		m_op = AthOp[m_res_type];
+		m_op = AthOp[m_res_type-1];
 		JCASSERT(m_op);
 
 		LOG_NOTICE(_T("%s init: type_l=%d, type_r=%d, type_res=%d"), ATH_OP::m_name, tl, tr, m_res_type);
@@ -188,8 +187,10 @@ bool CAthOpBase<ATH_OP>::Invoke(void)
 
 template <class ATH_OP>
 const ATHOP_FUN CAthOpBase<ATH_OP>::AthOp[] = {
-	ATH_OP::Op<bool>, ATH_OP::Op<char>, ATH_OP::Op<BYTE>, ATH_OP::Op<short>, ATH_OP::Op<WORD>,
-	ATH_OP::Op<int>, ATH_OP::Op<DWORD>, ATH_OP::Op<INT64>, ATH_OP::Op<UINT64>, ATH_OP::Op<float>, ATH_OP::Op<double>, NULL, 
+//	0					1					2					3					4
+	ATH_OP::Op<bool>,	ATH_OP::Op<char>,	ATH_OP::Op<BYTE>,	ATH_OP::Op<short>,	ATH_OP::Op<WORD>,
+	ATH_OP::Op<int>,	ATH_OP::Op<DWORD>,	ATH_OP::Op<INT64>,	ATH_OP::Op<UINT64>, ATH_OP::Op<float>, 
+	ATH_OP::Op<double>, NULL, 
 };
 
 const TCHAR CAthAdd::m_name[] = _T("+");
@@ -363,11 +364,12 @@ bool CRelOpBase<REL_OP>::Invoke(void)
 		tr = m_src[1]->GetValueType();
 		// 类型推导
 		m_res_type = max(tl, tr);
+		JCASSERT(m_res_type > 0);
 		// 设置类型转换
-		/*if (tl != m_res_type) */m_conv_l = GetConvFunc(tl, m_res_type);
-		/*if (tr != m_res_type) */m_conv_r = GetConvFunc(tr, m_res_type);
+		m_conv_l = GetConvFunc(tl, m_res_type);
+		m_conv_r = GetConvFunc(tr, m_res_type);
 
-		m_op = REL_OP::RelOp[m_res_type];
+		m_op = REL_OP::RelOp[m_res_type-1];
 		JCASSERT(m_op);
 	}
 	m_conv_l(m_src[0]->GetValue(), sl);
@@ -382,8 +384,10 @@ bool CRelOpBase<REL_OP>::Invoke(void)
 //-- relation operator
 
 const RELOP_FUN CRopEQ::RelOp[] = {
-	CmpEQ<bool>, CmpEQ<char>, CmpEQ<BYTE>, CmpEQ<short>, CmpEQ<WORD>,
-	CmpEQ<int>, CmpEQ<DWORD>, CmpEQ<INT64>, CmpEQ<UINT64>, CmpEQ<float>, CmpEQ<double>, NULL, 
+//	0				1				2				3				4
+	CmpEQ<bool>,	CmpEQ<char>,	CmpEQ<BYTE>,	CmpEQ<short>,	CmpEQ<WORD>,
+	CmpEQ<int>,		CmpEQ<DWORD>,	CmpEQ<INT64>,	CmpEQ<UINT64>,	CmpEQ<float>, 
+	CmpEQ<double>,	NULL, 
 };
 const TCHAR CRopEQ::m_name[] = _T("==");
 
@@ -391,8 +395,10 @@ template class CRelOpBase<CRopEQ>;
 
 
 const RELOP_FUN CRopLT::RelOp[] = {
-	CmpLT<bool>, CmpLT<char>, CmpLT<BYTE>, CmpLT<short>, CmpLT<WORD>,
-	CmpLT<int>, CmpLT<DWORD>, CmpLT<INT64>, CmpLT<UINT64>, CmpLT<float>, CmpLT<double>, NULL, 
+//	0				1				2				3				4
+	CmpLT<bool>,	CmpLT<char>,	CmpLT<BYTE>,	CmpLT<short>,	CmpLT<WORD>,
+	CmpLT<int>,		CmpLT<DWORD>,	CmpLT<INT64>,	CmpLT<UINT64>,	CmpLT<float>, 
+	CmpLT<double>,	NULL, 
 };
 const TCHAR CRopLT::m_name[] = _T("<");
 
@@ -400,8 +406,9 @@ template class CRelOpBase<CRopLT>;
 
 
 const RELOP_FUN CRopLE::RelOp[] = {
-	CmpLE<bool>, CmpLE<char>, CmpLE<BYTE>, CmpLE<short>, CmpLE<WORD>,
-	CmpLE<int>, CmpLE<DWORD>, CmpLE<INT64>, CmpLE<UINT64>, CmpLE<float>, CmpLE<double>, NULL, 
+	CmpLE<bool>,	CmpLE<char>,	CmpLE<BYTE>,	CmpLE<short>,	CmpLE<WORD>,
+	CmpLE<int>,		CmpLE<DWORD>,	CmpLE<INT64>,	CmpLE<UINT64>,	CmpLE<float>, 
+	CmpLE<double>,	NULL, 
 };
 const TCHAR CRopLE::m_name[] = _T("<=");
 

@@ -139,7 +139,7 @@ void CGeneralRow::ToStream(IJCStream * stream, VAL_FORMAT, DWORD) const
 {
 	JCASSERT(stream);
 	stream->Put(m_data, m_data_len);
-	stream->Put(_T('\n'));
+	//stream->Put(_T('\n'));
 }
 
 void CGeneralRow::FromStream(jcparam::IJCStream * str, VAL_FORMAT)
@@ -220,10 +220,10 @@ void CGeneralTable::ToStream(IJCStream * stream, VAL_FORMAT fmt, DWORD param) co
 	ROWS::const_iterator endit = m_rows.end();
 
 	for ( ; it != endit; ++it)
-	{
+	{	// 写入行
 		(*it)->ToStream(stream, fmt, param);
+		stream->Put(_T('\n'));
 	}
-	stream->Put(_T('\n'));
 }
 
 void CGeneralTable::FromStream(IJCStream * str, VAL_FORMAT)
