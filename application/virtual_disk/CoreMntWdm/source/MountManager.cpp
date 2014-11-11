@@ -135,7 +135,7 @@ NTSTATUS CMountManager::Mount(IN OUT CORE_MNT_MOUNT_REQUEST & request)
 	UINT32 ii = 0;
 	for ( ; ii<MAX_MOUNTED_DISK; ii++)
 	{
-		if ( InterlockedCompareExchange((LONG*)(m_disk_map + ii), 0xFFFFFFFF, 0) == 0 ) break;
+		if ( InterlockedCompareExchangePointer((PVOID*)(m_disk_map + ii), (PVOID)(-1), 0) == 0 ) break;
 	}
 	dev_id = ii;
 	ASSERT(ii < MAX_MOUNTED_DISK);
@@ -195,8 +195,7 @@ NTSTATUS CMountManager::Mount(IN OUT CORE_MNT_MOUNT_REQUEST & request)
     fdo->Flags &= ~DO_DEVICE_INITIALIZING;
 
 	//<TODO> need mutex
-	InterlockedExchange( (LONG*)(m_disk_map + dev_id), (LONG)fdo);
-	//m_disk_map[dev_id] = fdo;
+	InterlockedExchangePointer( (PVOID*)(m_disk_map + dev_id), fdo);
 	// end of mutex
 	request.dev_id = dev_id;
 
