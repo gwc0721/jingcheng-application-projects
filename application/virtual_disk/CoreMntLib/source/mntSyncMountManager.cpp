@@ -1,13 +1,13 @@
 #include "stdafx.h"
 LOCAL_LOGGER_ENABLE(_T("SyncMntManager"), LOGGER_LEVEL_DEBUGINFO);
 
-#include <stdext.h>
+//#include <stdext.h>
 
 
 #include "../include/mntSyncMountmanager.h"
 #include "process.h"
 #include <sstream>
-#include "boost\scope_exit.hpp"
+//#include "boost\scope_exit.hpp"
 #include <iostream>
 
 #include "../../Comm/virtual_disk.h"

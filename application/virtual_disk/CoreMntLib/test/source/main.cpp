@@ -6,6 +6,7 @@
 #include <conio.h>
 
 #define LOGGER_LEVEL LOGGER_LEVEL_DEBUGINFO
+#define LOG_OUT_CLASS_SIZE
 
 #include <vld.h>
 #include <stdext.h>
@@ -19,6 +20,8 @@ LOCAL_LOGGER_ENABLE(_T("CoreMntTest"), LOGGER_LEVEL_DEBUGINFO);
 
 #define _STATIC_CPPLIB
 #define BLOCK_LENGTH         0x1000
+
+LOG_CLASS_SIZE(CORE_MNT_EXCHANGE_REQUEST)
 
 
 class CCoreMntTestApp : public jcapp::CJCAppBase<jcapp::AppArguSupport>

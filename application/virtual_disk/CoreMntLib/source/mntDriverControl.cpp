@@ -286,7 +286,7 @@ DWORD CDriverControl::Run(void)
 
 		request.lastStatus = 0;
 		request.lastSize = 0;
-		request.data = buf;
+		request.m_buf = (ULONG64)(buf);
 		request.dataSize = EXCHANGE_BUFFER_SIZE;
 
 		SetEvent(m_thd_event);
