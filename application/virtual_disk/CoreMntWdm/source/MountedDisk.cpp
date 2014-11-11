@@ -694,7 +694,8 @@ NTSTATUS CMountedDisk::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, O
         {	// 需要返回 data
 			KdPrint(("return data to irp, len=%d\n", request->lastSize));
 			ASSERT(m_last_irp->m_kernel_buf);
-			if (m_last_irp->m_kernel_buf)		RtlCopyMemory(m_last_irp->m_kernel_buf, request->data, request->lastSize);
+			if (m_last_irp->m_kernel_buf)		RtlCopyMemory(
+				m_last_irp->m_kernel_buf, (PVOID)(request->m_buf), request->lastSize);
         }
 		CompleteLastIrp(m_last_irp);
 		m_last_irp = NULL;
@@ -717,10 +718,8 @@ NTSTATUS CMountedDisk::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, O
 	{
 		KdPrint(("copy data, len=%d\n", response->size));
 		ASSERT(m_last_irp->m_kernel_buf);
-		if (m_last_irp->m_kernel_buf)
-		{
-			RtlCopyMemory(request->data, m_last_irp->m_kernel_buf, response->size);
-		}
+		if (m_last_irp->m_kernel_buf)	RtlCopyMemory(
+			(PVOID)(request->m_buf), m_last_irp->m_kernel_buf, response->size);
 	}
 	return STATUS_SUCCESS;
 }

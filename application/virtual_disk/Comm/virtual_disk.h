@@ -28,7 +28,8 @@ struct CORE_MNT_EXCHANGE_REQUEST
     //ULONG32 lastType; 
     ULONG32 lastStatus; 
     ULONG32 lastSize; 
-    UCHAR *  data;
+	ULONG64	m_buf;
+    //UCHAR *  data;
     ULONG32 dataSize;
 };
 
