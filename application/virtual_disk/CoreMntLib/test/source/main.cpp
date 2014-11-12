@@ -123,10 +123,11 @@ int CCoreMntTestApp::Run(void)
 	if ( m_driver.empty() )		THROW_ERROR(ERR_USER, _T("driver must be set."));
 	// load driver
 	// get app dir
-	CJCStringT drv_path;
-	__super::GetAppPath(drv_path);
+	CJCStringT app_path;
+	__super::GetAppPath(app_path);
 
-	drv_path += (CJCStringT(_T("\\")) + m_driver + _T(".dll") );
+	CJCStringT drv_path;
+	drv_path = app_path + _T("\\") + m_driver + _T(".dll");
 	m_driver_module = LoadLibrary(drv_path.c_str());
 	if (m_driver_module == NULL) THROW_WIN32_ERROR(_T(" failure on loading driver %s "), drv_path.c_str() );
 
@@ -158,6 +159,25 @@ int CCoreMntTestApp::Run(void)
 
 #ifndef LOCAL_DEBUG
 	CSyncMountManager mount_manager;
+	CJCStringT wdm_path;
+	
+	SYSTEM_INFO si; 
+	GetNativeSystemInfo(&si); 
+	if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_IA64)	THROW_ERROR(ERR_APP, _T("do not support ia64"))
+	else if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
+	{    //64 位操作系统 
+		LOG_DEBUG(_T("plarform = x64"));
+		wdm_path = app_path + _T("\\CoreMntWdm64.sys");
+	}
+	else
+	{
+		LOG_DEBUG(_T("plarform = x86"));
+		wdm_path = app_path + _T("\\CoreMntWdm.sys");    // 32 位操作系统 
+	}
+
+	mount_manager.InstallDriver(wdm_path);
+
+
 	if (m_device_name.empty() ) m_device_name = _T("disk0");
 	CJCStringT symbo_link = CJCStringT(_T("")) + _T("\\DosDevices\\") + m_device_name;
 	m_dev_id = mount_manager.CreateDevice(m_file_size, symbo_link);		// length in sectors;

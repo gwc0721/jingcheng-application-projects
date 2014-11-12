@@ -105,8 +105,8 @@ NTSTATUS CMountManager::Unmount(IN UINT32 dev_id)
 		return STATUS_UNSUCCESSFUL;
 	}
 
-	m_disk_map[dev_id] = NULL;
-	m_disk_count --;
+	InterlockedExchangePointer((PVOID*)(m_disk_map + dev_id), NULL);
+	InterlockedDecrement(&m_disk_count);
 	// end mutex
 
 	CMountedDisk * mnt_disk = reinterpret_cast<CMountedDisk*>(fdo->DeviceExtension);
@@ -126,6 +126,8 @@ NTSTATUS CMountManager::Mount(IN OUT CORE_MNT_MOUNT_REQUEST & request)
 	request.dev_id = -1;
 	//<TODO> need mutex
 	// 找到一个空余的map位置
+	// 从性能考虑，不用mutex，只使用Interlocked系函数保持Map的完整性，但是m_disk_count同实际内容可能不一致，
+	// 两者不一致可能导致m_disk_count判断时pass但是此后查找空位时fail的情况，这种情况可以通过app重试解决。
 	if (m_disk_count >= MAX_MOUNTED_DISK)
 	{
 		KdPrint(("no empty disk (m_disk_count=%d)", m_disk_count));
@@ -137,8 +139,14 @@ NTSTATUS CMountManager::Mount(IN OUT CORE_MNT_MOUNT_REQUEST & request)
 	{
 		if ( InterlockedCompareExchangePointer((PVOID*)(m_disk_map + ii), (PVOID)(-1), 0) == 0 ) break;
 	}
+	if (ii >= MAX_MOUNTED_DISK)
+	{	// 由于m_disk_count和实际MAP的不一致导致搜索失败，返回fail，由app重试
+		KdPrint(("no empty disk was found"));
+		return STATUS_UNSUCCESSFUL;
+	}
+
 	dev_id = ii;
-	ASSERT(ii < MAX_MOUNTED_DISK);
+	//ASSERT(ii < MAX_MOUNTED_DISK);
 	KdPrint( ("found disk id:%d\n", dev_id) );
 	// 找到空位置
 	InterlockedIncrement(&m_disk_count);
@@ -146,19 +154,27 @@ NTSTATUS CMountManager::Mount(IN OUT CORE_MNT_MOUNT_REQUEST & request)
 
 	// 创建设备
 	// Make device name
-    WCHAR device_name_buffer[MAXIMUM_FILENAME_LENGTH];
-	int jj=0;
-	while ( DIRECT_DISK_PREFIX[jj] !=0 )
-	{
-		device_name_buffer[jj] = DIRECT_DISK_PREFIX[jj];
-		++jj;
-	}
-	device_name_buffer[jj++] = dev_id + L'0';
-	device_name_buffer[jj] = 0;
-	KdPrint( ("disk name:%S\n", device_name_buffer) );
-
+	WCHAR device_name_buffer[MAXIMUM_FILENAME_LENGTH] = {0};
 	UNICODE_STRING str_device_name;
 	RtlInitUnicodeString(&str_device_name, device_name_buffer);
+	str_device_name.MaximumLength = MAXIMUM_FILENAME_LENGTH-1;
+	//RtlCopyUnicodeString(&str_device_name, str_prefix);
+	RtlAppendUnicodeToString(&str_device_name, DIRECT_DISK_PREFIX);
+	WCHAR str_id[2] = {0};
+	str_id[0] = dev_id + L'0';
+	RtlAppendUnicodeToString(&str_device_name, str_id);
+	KdPrint( ("disk name:%Z\n", str_device_name) );
+
+	//int jj=0;
+	//while ( DIRECT_DISK_PREFIX[jj] !=0 )
+	//{
+	//	device_name_buffer[jj] = DIRECT_DISK_PREFIX[jj];
+	//	++jj;
+	//}
+	//device_name_buffer[jj++] = dev_id + L'0';
+	//device_name_buffer[jj] = 0;
+	//KdPrint( ("disk name:%S\n", device_name_buffer) );
+	//RtlInitUnicodeString(&str_device_name, device_name_buffer);
 
     NTSTATUS status;
 

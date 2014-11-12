@@ -202,7 +202,7 @@
 		<Configuration
 			Name="checked|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
+			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
 			InheritedPropertySheets="..\..\external_libs.local.vsprops"
 			CharacterSet="1"
@@ -291,7 +291,7 @@
 		</Configuration>
 		<Configuration
 			Name="checked|x64"
-			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
 			InheritedPropertySheets="..\..\external_libs.local.vsprops"
@@ -342,12 +342,13 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/SECTION:INIT,D"
 				AdditionalDependencies="wdm.lib ntoskrnl.lib $(NOINHERIT)"
-				OutputFile="$(OutDir)\x64\$(ProjectName).sys"
+				OutputFile="$(OutDir)\$(ProjectName)64.sys"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(WINDDK)\lib\win7\amd64&quot;"
 				GenerateManifest="false"
 				IgnoreAllDefaultLibraries="true"
 				GenerateDebugInformation="true"
+				ProgramDatabaseFile="$(TargetDir)$(TargetName).pdb"
 				SubSystem="3"
 				StackReserveSize="4194304"
 				StackCommitSize="4096"
