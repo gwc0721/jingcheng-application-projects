@@ -21,6 +21,8 @@ public:
 	void Disconnect(UINT dev_id);
 	void UnmountImage(UINT dev_id);
 
+	void InstallDriver(const CJCStringT & driver_fn);
+
 protected:
 	typedef std::map<UINT, CDriverControl*> DRIVER_MAP;
 	typedef DRIVER_MAP::iterator DRIVER_MAP_IT;

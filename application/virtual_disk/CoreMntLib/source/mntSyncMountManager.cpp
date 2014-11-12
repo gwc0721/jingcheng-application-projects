@@ -1,13 +1,9 @@
 #include "stdafx.h"
 LOCAL_LOGGER_ENABLE(_T("SyncMntManager"), LOGGER_LEVEL_DEBUGINFO);
 
-//#include <stdext.h>
-
-
 #include "../include/mntSyncMountmanager.h"
 #include "process.h"
 #include <sstream>
-//#include "boost\scope_exit.hpp"
 #include <iostream>
 
 #include "../../Comm/virtual_disk.h"
@@ -57,4 +53,44 @@ void CSyncMountManager::UnmountImage(UINT dev_id)
 
 	drv_ctrl->Unmount();
 	delete drv_ctrl;
+}
+
+void CSyncMountManager::InstallDriver(const CJCStringT & driver_fn)
+{
+	LOG_STACK_TRACE();
+	LOG_DEBUG(_T("driver = %s"), driver_fn.c_str());
+	SC_HANDLE hdl = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+	if (hdl == NULL) THROW_WIN32_ERROR(_T(" openning scm failed!"));
+
+	SC_HANDLE srv = CreateService(hdl, _T("CoreMnt"), _T("CoreMnt"), SERVICE_ALL_ACCESS, SERVICE_KERNEL_DRIVER,
+		SERVICE_DEMAND_START, SERVICE_ERROR_CRITICAL, driver_fn.c_str(), NULL, NULL, NULL, NULL, NULL);
+	if (srv == NULL)
+	{
+		DWORD ir = GetLastError();
+		LOG_DEBUG(_T("create service failed, code=%d"), ir);
+		if ( (ir == ERROR_IO_PENDING) || (ir == ERROR_SERVICE_EXISTS) )
+		{
+			LOG_DEBUG(_T("service is existing, retry for open"));
+			srv = OpenService(hdl, _T("CoreMnt"), SERVICE_ALL_ACCESS);
+		}
+		if (srv == NULL)	THROW_WIN32_ERROR(_T("creating service failed!"));
+	}
+
+	BOOL br = StartService(srv, NULL, NULL);
+	if (!br)
+	{
+		LOG_DEBUG(_T("start service failed"));
+		DWORD ir = GetLastError();
+		if (ir == ERROR_SERVICE_ALREADY_RUNNING)
+		{
+			LOG_DEBUG(_T("service is running."))
+		}
+		else THROW_WIN32_ERROR(_T("start service failed"))
+	}
+
+	//SC_HANDLE driver = OpenService(hdl, _T("CoreMnt"), 
+	//ControlService(srv, SERVICE_CONTROL_STOP, NULL);
+
+	CloseServiceHandle(srv);
+	CloseServiceHandle(hdl);
 }

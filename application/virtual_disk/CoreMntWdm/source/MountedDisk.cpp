@@ -357,6 +357,7 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 	{
 	case IOCTL_SCSI_PASS_THROUGH_DIRECT: {
 		KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_SCSI_PASS_THROUGH_DIRECT\n") );
+		KdPrint(("sizeof(SCSI_PASS_THROUGH_DIRECT)=%d\n",sizeof(SCSI_PASS_THROUGH_DIRECT)));
 		SCSI_PASS_THROUGH_DIRECT * sptd = reinterpret_cast<SCSI_PASS_THROUGH_DIRECT*>(
 				irp->AssociatedIrp.SystemBuffer);
 
@@ -366,6 +367,7 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 
 		ULONG data_len = sptd->DataTransferLength;
 		PVOID data_buf = sptd->DataBuffer;
+		KdPrint(("data_buf=0x%016I64X\n",data_buf));
 
 		IRP_EXCHANGE_REQUEST ier;
 		SynchExchangeInitBuf(irp, IRP_MJ_DEVICE_CONTROL, IOCTL_SCSI_PASS_THROUGH_DIRECT, READ_AND_WRITE, 
