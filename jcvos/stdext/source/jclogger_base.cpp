@@ -2,27 +2,48 @@
 #include "../include/jclogger_base.h"
 #include "../include/jcexception.h"
 #include <time.h>
-
 #include "jclogger_appenders.h"
-
-
-//static jclogger::CDebugAppender		__g_dbg_log;
+#include "../include/single_tone.h"
 
 static CJCLoggerAppender * gptr_log = NULL;
-
-//static CJCLogger __g_logger(gptr_log);
-
 CJCLogger * CJCLogger::m_instance = NULL;
+
+#define _LOG_(...)	{			\
+	TCHAR str_log[64] = {0};	\
+	_stprintf_s(str_log, __VA_ARGS__);	\
+	OutputDebugString(str_log); }
+
+
+// {6106ECE5-CFB9-4440-A369-5DF85522C070}
+const GUID CJCLogger::m_guid = 
+{ 0x6106ece5, 0xcfb9, 0x4440, { 0xa3, 0x69, 0x5d, 0xf8, 0x55, 0x22, 0xc0, 0x70 } };
 
 CJCLogger * CJCLogger::Instance(void)
 {
 #ifdef WIN32
 	static jclogger::CDebugAppender		__dbg_log__;
 	gptr_log = &__dbg_log__;
+#else
+	static jclogger::CStdErrAppender	__std_log__;
+	gptr_log = &__std_log__;
 #endif
+
+#ifdef LOG_SINGLE_TONE_SUPPORT
+	if (m_instance == NULL)
+	{
+		CSingleToneEntry::GetInstance(m_instance);
+		//CSingleToneEntry * stc = CSingleToneEntry::Instance();
+		//CJCLogger * logger = (CJCLogger*)(stc->GetObjectPtr(1));
+		//if (logger == NULL)	logger = new CJCLogger(gptr_log);
+		//stc->SetObject(1, logger);
+		//m_instance = logger;
+		_LOG_(_T("got instance = 0x%08X\n"), (UINT)m_instance);
+	}
+	return m_instance;
+#else
     static CJCLogger __logger_object__(gptr_log);
     return &__logger_object__;
-	//return m_instance;
+#endif
 }
 
 void CJCLogger::SetInstance(CJCLogger * inst)
@@ -37,7 +58,7 @@ void CJCLogger::SetInstance(CJCLogger * inst)
 	}
 }
 
-CJCLogger::CJCLogger(CJCLoggerAppender * appender)
+CJCLogger::CJCLogger(CJCLoggerAppender * appender = NULL)
     : m_appender(appender)
 	, m_ts_cycle(0)
 	, m_column_select( 0
@@ -51,6 +72,8 @@ CJCLogger::CJCLogger(CJCLoggerAppender * appender)
 	m_ts_cycle = 1000.0 * 1000.0 / (double)(freq.QuadPart);	// unit: us
 	InitializeCriticalSection(&m_critical);
 #endif
+
+	if (m_appender == NULL)	m_appender = gptr_log;
 	JCASSERT(m_appender);
 }
 
@@ -82,7 +105,6 @@ void CJCLogger::CleanUp(void)
 	}
 }
 
-
 CJCLoggerNode * CJCLogger::EnableCategory(const CJCStringW & name, int level)
 {
     LoggerCategoryMap::iterator it = m_logger_category.find(name);
@@ -90,6 +112,7 @@ CJCLoggerNode * CJCLogger::EnableCategory(const CJCStringW & name, int level)
     {
         // Create new logger
         CJCLoggerNode * logger = CJCLoggerNode::CreateLoggerNode(name, level);
+		_LOG_(_T("logger node: 0x%08X, %s\n"), (UINT32)(logger), name.c_str() )
         std::pair<LoggerCategoryMap::iterator, bool> rc;
         rc = m_logger_category.insert(LoggerCategoryMap::value_type(name, logger) );
         it = rc.first;
