@@ -1,8 +1,12 @@
 ﻿#pragma once
 
+#define LOG_SINGLE_TONE_SUPPORT
+
 #include "comm_define.h"
 
 #include <map>
+
+#include "single_tone.h"
 
 #define LOGGER_MSG_BUF_SIZE     1024
 
@@ -99,7 +103,7 @@ struct CJCFunctionDuration
 
 ///////////////////////////////////////////////////////////////////////////////
 //--
-class CJCLogger
+class CJCLogger : public CSingleToneBase
 {
 public:
 	enum COLUMN_SELECT
@@ -123,6 +127,8 @@ public:
     CJCLogger(CJCLoggerAppender * appender);
     ~CJCLogger(void);
 	void CleanUp(void);
+
+	virtual void Release(void) {delete this;};
 
     static CJCLogger * Instance(void);
 	void SetInstance(CJCLogger * inst);
@@ -148,8 +154,13 @@ public:
 	bool Configurate(FILE * config);
 	bool Configurate(LPCTSTR file_name = NULL);
 
-    CJCLoggerNode * EnableCategory(const CJCStringT & name, int level);
+	// 由于std::map对方法敏感，这里设置virtual，静态模块的所有实例都通过CJCLogger
+	//  Single Tone对象指针的虚表调用，确保调用的是同一个函数实例。
+    virtual CJCLoggerNode * EnableCategory(const CJCStringT & name, int level);
     CJCLoggerNode * GetLogger(const CJCStringT & name);
+
+	static const GUID & Guid(void) {return m_guid;};
+	virtual const GUID & GetGuid(void) const {return m_guid;};
 
 protected:
 	void ParseAppender(LPTSTR line);
@@ -175,8 +186,11 @@ protected:
 	DURATION_MAP	m_duration_map;
 
 	static CJCLogger * m_instance;
-
+	static const GUID m_guid;
 };
+
+typedef CSingleToneTyped<CJCLogger>		CJCLoggerS;
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- StackTrace
