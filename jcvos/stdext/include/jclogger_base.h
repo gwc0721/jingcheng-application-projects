@@ -25,7 +25,7 @@
 #define LOGGER_LEVEL_DEBUGINFO      80
 #define LOGGER_LEVEL_ALL            90
 
-class CJCLogger;
+//class CJCLogger;
 
 class CJCLoggerAppender
 {
@@ -42,6 +42,112 @@ public:
     virtual void Flush() = 0;
 };
 
+class CJCLoggerNode;
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// -- 统计函数的被叫次数和总时间
+struct CJCFunctionDuration
+{
+	CJCFunctionDuration(const CJCStringT & func) : m_func_name(func), m_duration(0), m_calls(0) {}
+	CJCStringT m_func_name;
+	LONGLONG m_duration;	// 总的累积执行时间
+	UINT m_calls;			// 被叫次数
+};
+
+///////////////////////////////////////////////////////////////////////////////
+//-- CJCLogger
+class CJCLoggerLocal
+{
+public:
+	enum COLUMN_SELECT
+	{
+		COL_THREAD_ID =		0x80000000,
+		COL_TIME_STAMP =	0x40000000,
+		COL_COMPNENT_NAME =	0x20000000,
+		COL_FUNCTION_NAME = 0x10000000,
+		COL_REAL_TIME =		0x08000000,
+		COL_REAL_DATE =		0x04000000,		
+		COL_SIGNATURE =		0x02000000,		// <JC>
+	};
+
+	enum PROPERTY
+	{
+		PROP_APPEND = 0x00000001,
+	};
+
+public:
+    typedef std::map<CJCStringW, CJCLoggerNode*> LoggerCategoryMap;
+    CJCLoggerLocal(CJCLoggerAppender * appender = NULL);
+    virtual ~CJCLoggerLocal(void);
+
+	//void CleanUp(void);
+	//virtual void Release(void) {delete this;};
+
+	void CreateAppender(LPCTSTR app_type, LPCTSTR file_name, DWORD prop);
+
+    bool RegisterLoggerNode(CJCLoggerNode * node);
+    bool UnregisterLoggerNode(CJCLoggerNode * node);
+    void WriteString(LPCTSTR str, JCSIZE len);
+
+	DWORD GetColumnSelect(void) const	{return m_column_select;}
+	void SetColumnSelect(DWORD sel)		{ m_column_select = sel; }
+	void SetProperty(DWORD prop)		{ m_prop = prop; }
+
+	inline double GetTimeStampCycle()			{return m_ts_cycle;}
+
+	// Read config from text file
+	//  format:
+	//		set appender:	><target>,<prop hex>,<filename>...		/exp:	>FILE,2,
+	//		set column:		+<column name>|-<column name>...	/exp:	+THREAD_ID
+	//		set node:		<Node Name>,<Level>					/exp:	CParameter,DEBUGINFO
+	bool Configurate(FILE * config);
+	bool Configurate(LPCTSTR file_name = NULL);
+
+	// 由于std::map对方法敏感，这里设置virtual，静态模块的所有实例都通过CJCLogger
+	//  Single Tone对象指针的虚表调用，确保调用的是同一个函数实例。
+    virtual CJCLoggerNode * EnableCategory(const CJCStringT & name, int level);
+    CJCLoggerNode * GetLogger(const CJCStringT & name);
+
+	static const GUID & Guid(void) {return m_guid;};
+	//virtual const GUID & GetGuid(void) const {return m_guid;};
+
+protected:
+	void ParseAppender(LPTSTR line);
+	void ParseNode(LPTSTR line);
+	void ParseColumn(LPTSTR line);
+
+protected:
+    LoggerCategoryMap m_logger_category;
+    CJCLoggerAppender * m_appender;
+	DWORD m_column_select;
+	DWORD m_prop;
+	double m_ts_cycle;
+#ifdef WIN32
+	CRITICAL_SECTION	m_critical;
+#endif
+
+	// 用于统计函数的执行次数和总时间。
+public:
+	void RegistFunction(const CJCStringT & func_name, LONGLONG duration);
+protected:
+	void OutputFunctionDuration(void);
+	typedef std::map<CJCStringT, CJCFunctionDuration>	DURATION_MAP;
+	DURATION_MAP	m_duration_map;
+
+	static const GUID m_guid;
+};
+
+#ifdef LOG_SINGLE_TONE_SUPPORT
+typedef CGlobalSingleTone<CJCLoggerLocal>		CJCLogger;
+#else
+typedef CLocalSingleTone<CJCLoggerLocal>		CJCLogger;
+#endif
+
+
+///////////////////////////////////////////////////////////////////////////////
+//-- Log node
 
 class CJCLoggerNode
 {
@@ -49,7 +155,7 @@ public:
     CJCLoggerNode(const CJCStringW & name, int level, CJCLogger * logger = NULL);
     virtual ~CJCLoggerNode(void);
 
-	friend class CJCLogger;
+	//friend class CJCLogger;
 
 public:
     static CJCLoggerNode * CreateLoggerNode(const CJCStringW & name, int level)
@@ -90,106 +196,12 @@ private:
     void operator delete (void *) {}
 };
 
-///////////////////////////////////////////////////////////////////////////////
-// -- 统计函数的被叫次数和总时间
-struct CJCFunctionDuration
-{
-	CJCFunctionDuration(const CJCStringT & func) : m_func_name(func), m_duration(0), m_calls(0) {}
-	CJCStringT m_func_name;
-	LONGLONG m_duration;	// 总的累积执行时间
-	UINT m_calls;			// 被叫次数
-};
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
 //--
-class CJCLogger : public CSingleToneBase
-{
-public:
-	enum COLUMN_SELECT
-	{
-		COL_THREAD_ID =		0x80000000,
-		COL_TIME_STAMP =	0x40000000,
-		COL_COMPNENT_NAME =	0x20000000,
-		COL_FUNCTION_NAME = 0x10000000,
-		COL_REAL_TIME =		0x08000000,
-		COL_REAL_DATE =		0x04000000,		
-		COL_SIGNATURE =		0x02000000,		// <JC>
-	};
 
-	enum PROPERTY
-	{
-		PROP_APPEND = 0x00000001,
-	};
-
-public:
-    typedef std::map<CJCStringW, CJCLoggerNode*> LoggerCategoryMap;
-    CJCLogger(CJCLoggerAppender * appender);
-    ~CJCLogger(void);
-	void CleanUp(void);
-
-	virtual void Release(void) {delete this;};
-
-    static CJCLogger * Instance(void);
-	void SetInstance(CJCLogger * inst);
-
-	void CreateAppender(LPCTSTR app_type, LPCTSTR file_name, DWORD prop);
-
-    bool RegisterLoggerNode(CJCLoggerNode * node);
-    bool UnregisterLoggerNode(CJCLoggerNode * node);
-    void WriteString(LPCTSTR str, JCSIZE len);
-
-	DWORD GetColumnSelect(void) const	{return m_column_select;}
-	void SetColumnSelect(DWORD sel)		{ m_column_select = sel; }
-	void SetProperty(DWORD prop)		{ m_prop = prop; }
-
-	inline double GetTimeStampCycle()			{return m_ts_cycle;}
-	static inline double GetTimeStampCycleS()	{return Instance()->m_ts_cycle;}
-
-	// Read config from text file
-	//  format:
-	//		set appender:	><target>,<prop hex>,<filename>...		/exp:	>FILE,2,
-	//		set column:		+<column name>|-<column name>...	/exp:	+THREAD_ID
-	//		set node:		<Node Name>,<Level>					/exp:	CParameter,DEBUGINFO
-	bool Configurate(FILE * config);
-	bool Configurate(LPCTSTR file_name = NULL);
-
-	// 由于std::map对方法敏感，这里设置virtual，静态模块的所有实例都通过CJCLogger
-	//  Single Tone对象指针的虚表调用，确保调用的是同一个函数实例。
-    virtual CJCLoggerNode * EnableCategory(const CJCStringT & name, int level);
-    CJCLoggerNode * GetLogger(const CJCStringT & name);
-
-	static const GUID & Guid(void) {return m_guid;};
-	virtual const GUID & GetGuid(void) const {return m_guid;};
-
-protected:
-	void ParseAppender(LPTSTR line);
-	void ParseNode(LPTSTR line);
-	void ParseColumn(LPTSTR line);
-
-protected:
-    LoggerCategoryMap m_logger_category;
-    CJCLoggerAppender * m_appender;
-	DWORD m_column_select;
-	DWORD m_prop;
-	double m_ts_cycle;
-#ifdef WIN32
-	CRITICAL_SECTION	m_critical;
-#endif
-
-	// 用于统计函数的执行次数和总时间。
-public:
-	void RegistFunction(const CJCStringT & func_name, LONGLONG duration);
-protected:
-	void OutputFunctionDuration(void);
-	typedef std::map<CJCStringT, CJCFunctionDuration>	DURATION_MAP;
-	DURATION_MAP	m_duration_map;
-
-	static CJCLogger * m_instance;
-	static const GUID m_guid;
-};
-
-typedef CSingleToneTyped<CJCLogger>		CJCLoggerS;
 
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -5,9 +5,6 @@
 #include "jclogger_appenders.h"
 #include "../include/single_tone.h"
 
-static CJCLoggerAppender * gptr_log = NULL;
-CJCLogger * CJCLogger::m_instance = NULL;
-
 #define _LOG_(...)	{			\
 	TCHAR str_log[64] = {0};	\
 	_stprintf_s(str_log, __VA_ARGS__);	\
@@ -15,50 +12,10 @@ CJCLogger * CJCLogger::m_instance = NULL;
 
 
 // {6106ECE5-CFB9-4440-A369-5DF85522C070}
-const GUID CJCLogger::m_guid = 
+const GUID CJCLoggerLocal::m_guid = 
 { 0x6106ece5, 0xcfb9, 0x4440, { 0xa3, 0x69, 0x5d, 0xf8, 0x55, 0x22, 0xc0, 0x70 } };
 
-CJCLogger * CJCLogger::Instance(void)
-{
-#ifdef WIN32
-	static jclogger::CDebugAppender		__dbg_log__;
-	gptr_log = &__dbg_log__;
-#else
-	static jclogger::CStdErrAppender	__std_log__;
-	gptr_log = &__std_log__;
-#endif
-
-#ifdef LOG_SINGLE_TONE_SUPPORT
-	if (m_instance == NULL)
-	{
-		CSingleToneEntry::GetInstance(m_instance);
-		//CSingleToneEntry * stc = CSingleToneEntry::Instance();
-		//CJCLogger * logger = (CJCLogger*)(stc->GetObjectPtr(1));
-		//if (logger == NULL)	logger = new CJCLogger(gptr_log);
-		//stc->SetObject(1, logger);
-		//m_instance = logger;
-		_LOG_(_T("got instance = 0x%08X\n"), (UINT)m_instance);
-	}
-	return m_instance;
-#else
-    static CJCLogger __logger_object__(gptr_log);
-    return &__logger_object__;
-#endif
-}
-
-void CJCLogger::SetInstance(CJCLogger * inst)
-{
-    LoggerCategoryMap::iterator it = m_logger_category.begin();
-    LoggerCategoryMap::iterator endit = m_logger_category.end();
-
-	for (;it != endit; ++it)
-	{
-		CJCLoggerNode * node = it->second;
-		node->m_logger = inst;
-	}
-}
-
-CJCLogger::CJCLogger(CJCLoggerAppender * appender = NULL)
+CJCLoggerLocal::CJCLoggerLocal(CJCLoggerAppender * appender)
     : m_appender(appender)
 	, m_ts_cycle(0)
 	, m_column_select( 0
@@ -73,11 +30,11 @@ CJCLogger::CJCLogger(CJCLoggerAppender * appender = NULL)
 	InitializeCriticalSection(&m_critical);
 #endif
 
-	if (m_appender == NULL)	m_appender = gptr_log;
+	if (m_appender == NULL)	m_appender = static_cast<CJCLoggerAppender*>(new jclogger::CDebugAppender(0) );
 	JCASSERT(m_appender);
 }
 
-CJCLogger::~CJCLogger(void)
+CJCLoggerLocal::~CJCLoggerLocal(void)
 {
 	OutputFunctionDuration();
 
@@ -89,30 +46,21 @@ CJCLogger::~CJCLogger(void)
         node->Delete();
     }
     m_logger_category.clear();	
-	CleanUp();
+	//CleanUp();
+	delete m_appender;
 #ifdef WIN32
 	DeleteCriticalSection(&m_critical);
 #endif
 }
 
-void CJCLogger::CleanUp(void)
-{
-	JCASSERT(m_appender);
-	if ( (m_appender != gptr_log) )
-	{
-		delete m_appender;
-		m_appender = gptr_log;
-	}
-}
-
-CJCLoggerNode * CJCLogger::EnableCategory(const CJCStringW & name, int level)
+CJCLoggerNode * CJCLoggerLocal::EnableCategory(const CJCStringW & name, int level)
 {
     LoggerCategoryMap::iterator it = m_logger_category.find(name);
     if (it == m_logger_category.end() )
     {
         // Create new logger
         CJCLoggerNode * logger = CJCLoggerNode::CreateLoggerNode(name, level);
-		_LOG_(_T("logger node: 0x%08X, %s\n"), (UINT32)(logger), name.c_str() )
+		_LOG_(_T("logger node: 0x%08X, %s, this=0x%08X\n"), (UINT32)(logger), name.c_str(), (UINT32)this )
         std::pair<LoggerCategoryMap::iterator, bool> rc;
         rc = m_logger_category.insert(LoggerCategoryMap::value_type(name, logger) );
         it = rc.first;
@@ -120,7 +68,7 @@ CJCLoggerNode * CJCLogger::EnableCategory(const CJCStringW & name, int level)
     return it->second;
 }
 
-CJCLoggerNode * CJCLogger::GetLogger(const CJCStringW & name/*, int level*/)
+CJCLoggerNode * CJCLoggerLocal::GetLogger(const CJCStringW & name/*, int level*/)
 {
     CJCLoggerNode * logger = NULL;
     LoggerCategoryMap::iterator it = m_logger_category.find(name);
@@ -131,7 +79,7 @@ CJCLoggerNode * CJCLogger::GetLogger(const CJCStringW & name/*, int level*/)
     return logger;
 }
 
-bool CJCLogger::Configurate(LPCTSTR file_name)
+bool CJCLoggerLocal::Configurate(LPCTSTR file_name)
 {
 	bool br = false;
 	if (NULL == file_name)	file_name = _T("jclog.cfg");
@@ -145,7 +93,7 @@ bool CJCLogger::Configurate(LPCTSTR file_name)
 	return br;
 }
 
-void CJCLogger::ParseColumn(LPTSTR line_buf)
+void CJCLoggerLocal::ParseColumn(LPTSTR line_buf)
 {
 	DWORD col = 0;
 	if		( 0 == _tcscmp(line_buf + 1, _T("THREAD_ID")) )		col = COL_THREAD_ID;
@@ -158,11 +106,9 @@ void CJCLogger::ParseColumn(LPTSTR line_buf)
 
 	if (_T('+') == line_buf[0])		m_column_select |= col;
 	else if (_T('-') == line_buf[0] ) m_column_select &= (~col);
-	//else if ( 0 == _tcscmp(line_buf + 1, _T("")) )	col = 
-	//else if ( 0 == _tcscmp(line_buf + 1, _T("")) )	col = 
 }
 
-void CJCLogger::ParseAppender(LPTSTR line_buf)
+void CJCLoggerLocal::ParseAppender(LPTSTR line_buf)
 {
 	wchar_t * sep = NULL;
 	wchar_t * app_type = line_buf + 1;
@@ -185,7 +131,7 @@ void CJCLogger::ParseAppender(LPTSTR line_buf)
 	CreateAppender(app_type, str_fn, prop);
 }
 
-void CJCLogger::ParseNode(LPTSTR line_buf)
+void CJCLoggerLocal::ParseNode(LPTSTR line_buf)
 {
 	wchar_t * sep = _tcschr(line_buf, _T(','));
 	if (NULL == sep) return;
@@ -218,7 +164,7 @@ void CJCLogger::ParseNode(LPTSTR line_buf)
 	it->second->SetLevel(level);
 }
 
-bool CJCLogger::Configurate(FILE * config)
+bool CJCLoggerLocal::Configurate(FILE * config)
 {
 	JCASSERT(config);
 	static const JCSIZE MAX_LINE_BUF=128;
@@ -241,7 +187,7 @@ bool CJCLogger::Configurate(FILE * config)
 	return true;
 }
 
-bool CJCLogger::RegisterLoggerNode(CJCLoggerNode * node)
+bool CJCLoggerLocal::RegisterLoggerNode(CJCLoggerNode * node)
 {
     const CJCStringW &node_name = node->GetNodeName();
     bool rc = true;
@@ -258,12 +204,12 @@ bool CJCLogger::RegisterLoggerNode(CJCLoggerNode * node)
     return rc;
 }
 
-bool CJCLogger::UnregisterLoggerNode(CJCLoggerNode * node)
+bool CJCLoggerLocal::UnregisterLoggerNode(CJCLoggerNode * node)
 {
     return m_logger_category.erase(node->GetNodeName()) > 0;
 }
 
-void CJCLogger::WriteString(LPCTSTR str, JCSIZE len)
+void CJCLoggerLocal::WriteString(LPCTSTR str, JCSIZE len)
 {
 	EnterCriticalSection(&m_critical);
 	JCASSERT(m_appender);
@@ -271,29 +217,35 @@ void CJCLogger::WriteString(LPCTSTR str, JCSIZE len)
 	LeaveCriticalSection(&m_critical);
 }
 
-void CJCLogger::CreateAppender(LPCTSTR app_type, LPCTSTR file_name, DWORD prop)
+void CJCLoggerLocal::CreateAppender(LPCTSTR app_type, LPCTSTR file_name, DWORD prop)
 {
 	// create appender
-	CleanUp();
+	//CleanUp();
+	CJCLoggerAppender * temp = NULL;
 	if (_tcscmp(_T("FILE"), app_type) == 0 )
 	{
-		m_appender = static_cast<CJCLoggerAppender*>(new jclogger::FileAppender(file_name, prop) );
+		temp = static_cast<CJCLoggerAppender*>(new jclogger::FileAppender(file_name, prop) );
 	}
 	else if (_tcscmp(_T("DEBUG"), app_type) == 0 )
 	{
-		m_appender = static_cast<CJCLoggerAppender*>(new jclogger::CDebugAppender(prop) );
+		temp = static_cast<CJCLoggerAppender*>(new jclogger::CDebugAppender(prop) );
 	}
 	else if (_tcscmp(_T("STDERR"), app_type) == 0)
 	{
-		m_appender = static_cast<CJCLoggerAppender*>(new jclogger::CStdErrApd );
+		temp = static_cast<CJCLoggerAppender*>(new jclogger::CStdErrApd );
 	}
 	else if (_tcscmp(_T("NONE"), app_type) == 0)
 	{
-		m_appender = static_cast<CJCLoggerAppender*>(new jclogger::CNoneApd );
-	}	JCASSERT(m_appender)
+		temp = static_cast<CJCLoggerAppender*>(new jclogger::CNoneApd );
+	}
+	if (temp)
+	{
+		delete m_appender;
+		m_appender = temp;
+	}
 }
 
-void CJCLogger::RegistFunction(const CJCStringT & func, LONGLONG duration)
+void CJCLoggerLocal::RegistFunction(const CJCStringT & func, LONGLONG duration)
 {
 	typedef std::pair<CJCStringT, CJCFunctionDuration>	PAIR;
 	DURATION_MAP::iterator it = m_duration_map.find(func);
@@ -309,7 +261,7 @@ void CJCLogger::RegistFunction(const CJCStringT & func, LONGLONG duration)
 	dur.m_calls ++;
 }
 
-void CJCLogger::OutputFunctionDuration(void)
+void CJCLoggerLocal::OutputFunctionDuration(void)
 {
 	TCHAR str[LOGGER_MSG_BUF_SIZE];
 
@@ -359,21 +311,21 @@ void CJCLoggerNode::LogMessageFuncV(LPCSTR function, LPCTSTR format, va_list arg
 	LPTSTR str = str_msg;
 	int ir = 0, remain = LOGGER_MSG_BUF_SIZE;
 
-	if (col_sel & CJCLogger::COL_SIGNATURE)
+	if (col_sel & CJCLoggerLocal::COL_SIGNATURE)
 	{
 		ir = stdext::jc_sprintf(str, remain, _T("<JC>"));
 		if (ir >=0 )  str+=ir, remain-=ir;
 	}
 
 #if defined(WIN32)
-	if (col_sel & CJCLogger::COL_THREAD_ID)
+	if (col_sel & CJCLoggerLocal::COL_THREAD_ID)
 	{
 		DWORD tid = GetCurrentThreadId();
 		ir = stdext::jc_sprintf(str, remain, _T("<TID=%04d> "), tid);
 		if (ir >=0 )  str+=ir, remain-=ir;
 	}
 
-	if (col_sel & CJCLogger::COL_TIME_STAMP)
+	if (col_sel & CJCLoggerLocal::COL_TIME_STAMP)
 	{	// 单位: us
 		LARGE_INTEGER now;
 		QueryPerformanceCounter(&now);
@@ -383,14 +335,14 @@ void CJCLoggerNode::LogMessageFuncV(LPCSTR function, LPCTSTR format, va_list arg
 		if (ir >=0 )  str+=ir, remain-=ir;
 	}
 #endif
-	if ( (col_sel & CJCLogger::COL_REAL_TIME) || (col_sel & CJCLogger::COL_REAL_DATE) )
+	if ( (col_sel & CJCLoggerLocal::COL_REAL_TIME) || (col_sel & CJCLoggerLocal::COL_REAL_DATE) )
 	{
 		TCHAR strtime[32];
 		time_t now = time(NULL);
 		struct tm now_t;
 		localtime_s(&now_t, &now);
 
-		if (col_sel & CJCLogger::COL_REAL_DATE)
+		if (col_sel & CJCLoggerLocal::COL_REAL_DATE)
 		{
 			JCSIZE ll = stdext::jc_strftime(strtime, 32, _T("%Y.%m.%d"), &now_t);
 			strtime[ll] = 0;
@@ -398,7 +350,7 @@ void CJCLoggerNode::LogMessageFuncV(LPCSTR function, LPCTSTR format, va_list arg
 			if (ir >=0 )  str+=ir, remain-=ir;
 		}
 
-		if (col_sel & CJCLogger::COL_REAL_TIME)
+		if (col_sel & CJCLoggerLocal::COL_REAL_TIME)
 		{
 			JCSIZE ll = stdext::jc_strftime(strtime, 32, _T("%H:%M:%S"), &now_t);
 			strtime[ll] = 0;
@@ -409,13 +361,13 @@ void CJCLoggerNode::LogMessageFuncV(LPCSTR function, LPCTSTR format, va_list arg
 	}
 
 
-	if (col_sel & CJCLogger::COL_COMPNENT_NAME)
+	if (col_sel & CJCLoggerLocal::COL_COMPNENT_NAME)
 	{
 		ir = stdext::jc_sprintf(str, remain, _T("<COM=%ls> "), m_category.c_str());
 		if (ir >=0 )  str+=ir, remain-=ir;
 	}
 
-	if (col_sel & CJCLogger::COL_FUNCTION_NAME)
+	if (col_sel & CJCLoggerLocal::COL_FUNCTION_NAME)
 	{
 #if defined(WIN32)
 		ir = stdext::jc_sprintf(str, remain, _T("<FUN=%S> "), function);
@@ -426,7 +378,6 @@ void CJCLoggerNode::LogMessageFuncV(LPCSTR function, LPCTSTR format, va_list arg
 	}
     ir = stdext::jc_vsprintf(str, remain, format, arg);
 	if (ir >= 0 )  str+=ir, remain-=ir;
-	//stdext::jc_strcat(str, remain, _T("\n"));
 	str[0] = _T('\n'), str[1] = 0;
 	str++, remain--;
 	JCSIZE len = str - str_msg;
@@ -517,7 +468,7 @@ double CJCStackPerformance::GetDeltaTime(void)
 
 
 // for test
-#pragma data_seg("Shared")
-int g_test = 10;
-#pragma data_seg()
-#pragma comment(linker, "/SECTION:Shared,RWS")
+//#pragma data_seg("Shared")
+//int g_test = 10;
+//#pragma data_seg()
+//#pragma comment(linker, "/SECTION:Shared,RWS")
