@@ -467,6 +467,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source\plugin_test.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\source\plugin_trace.cpp"
 				>
 			</File>

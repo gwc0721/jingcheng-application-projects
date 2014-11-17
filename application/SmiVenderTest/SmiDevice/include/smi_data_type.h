@@ -193,7 +193,7 @@ extern const JCSIZE ASCII_OFFSET;
 //		- length	(read only)
 
 class CBinaryBuffer
-	: /*virtual public jcparam::IValueFormat,*/ virtual public jcparam::IVisibleValue
+	: virtual public jcparam::IVisibleValue
 	, public CJCInterfaceBase
 	, public Factory1<JCSIZE, CBinaryBuffer>
 {
@@ -205,10 +205,6 @@ protected:
 public:
 	virtual void GetValueText(CJCStringT & str) const {};
 	virtual void SetValueText(LPCTSTR str)  {};
-
-	//virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr);
-	//virtual void Format(FILE * file, LPCTSTR format);
-	//virtual void WriteHeader(FILE * file) {}
 
 	virtual void GetSubValue(LPCTSTR name, jcparam::IValue * & val);
 	virtual void SetSubValue(LPCTSTR name, jcparam::IValue * val);
@@ -286,8 +282,6 @@ public:
 	BYTE* Lock(void)	{ return m_array; }
 	const BYTE* Lock(void) const {return m_array;}
 	void Unlock(void) const {};
-
-	//JCSIZE GetSize(void) const { return m_size; }
 
 protected:
 	BYTE 		m_array[SECTOR_SIZE];
@@ -416,7 +410,6 @@ public:
 class CBlockEraseCount
 {
 public:
-	//CBlockEraseCount(UINT fblock, int pe) : m_id(fblock), m_erase_count(pe) {};
 	UINT m_id;		// block id
 	int m_erase_count;
 };
@@ -425,6 +418,20 @@ typedef jcparam::CTableRowBase<CBlockEraseCount> CBlockEraseCountRow;
 
 ///////////////////////////////////////////////////////////////////////////////
 //----  CBadBlockInfo  --------------------------------------------------------
+
+
+class CNewBadBlock
+{
+public:
+	CNewBadBlock(WORD block, WORD page, BYTE code) : m_id(block), m_page(page), m_code(code)
+		{}
+public:
+	WORD	m_id;		// F Block ID
+	WORD	m_page;		// ECC failed page
+	BYTE	m_code;		// Error Code
+};
+
+typedef jcparam::CTableRowBase<CNewBadBlock>		CNewBadBlockRow;
 
 class CBadBlockInfo
 {

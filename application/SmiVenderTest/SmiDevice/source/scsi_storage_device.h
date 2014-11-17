@@ -19,9 +19,6 @@ public:
 
 	FILESIZE ReadCapacity(void);
 
-	//virtual bool ReadSmartData(BYTE * buf, JCSIZE len);
-	//virtual bool IdentifyDevice(BYTE * buf, JCSIZE len);
-
 protected:
 	static CStorageDeviceInfo	m_register;
 };
@@ -46,7 +43,6 @@ public:
 	static void Create(HANDLE dev, IStorageDevice * &);
 
 protected:
-	//bool TesterVendorCmdRead(BYTE * cmd, BYTE * buf, JCSIZE len);
 	TEST_TYPE	m_test_type;
 	UINT	m_port;
 	bool	m_connected;

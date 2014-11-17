@@ -39,25 +39,17 @@ public:
 	virtual void ReadISP(IIspBuf * & isp) {}
 	virtual void ReadCID(ICidTab * & cid);
 	virtual const CCidMap * GetCidDefination(void) const {return &m_cid_map;}
-	//virtual JCSIZE GetProperty(const CJCStringT & prop_name);
 	virtual bool GetProperty(LPCTSTR prop_name, UINT & val);
-
-	virtual JCSIZE GetNewBadBlocks(BAD_BLOCK_LIST & bad_list);
-
 
 protected:
 	virtual bool CheckVenderCommand(BYTE * data)	{return LocalRecognize(data); }
-
 	virtual bool Initialize(void);
 	virtual void FlashAddToPhysicalAdd(const CFlashAddress & add, CSmiCommand & cmd, UINT option);
 	virtual void GetSpare(CSpareData & spare, BYTE* spare_buf);
 
 public:
-	//virtual void GetSpareData(const CFlashAddress & add, CSpareData & spare);
 	virtual void ReadSmartFromWpro(BYTE * data);
-
 	virtual JCSIZE GetSystemBlockId(JCSIZE id);
-
 	virtual const CSmartAttrDefTab * GetSmartAttrDefTab(LPCTSTR rev) const {return &m_smart_def_2242;}
 
 // Implement CSmiDeviceComm Interface
@@ -65,11 +57,6 @@ protected:
 	virtual LPCTSTR Name(void) const {return _T("SM2242");}
 
 protected:
-	// Read one sector in SRAM.
-	//   ram_add must align 512B
-	//   return size always = 512B
-	//JCSIZE ReadSRAM(WORD ram_add, BYTE * buf, JCSIZE buf_len);
-	//JCSIZE LoadISP(BYTE * buf);
 	void DownloadISP(const C2242IspBuf *);
 	void GetIspVersion(void);
 

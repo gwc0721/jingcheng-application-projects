@@ -55,3 +55,11 @@ protected:
 	static CSmiDeviceCreator	m_smi_dummy_creator;
 };
 
+///////////////////////////////////////////////////////////////////////////////
+//-- class factories
+extern "C"
+{
+	void CreateStorageDevice(const CJCStringT & dev_name, HANDLE dev, IStorageDevice * & i_dev);
+	void CreateSmiDevice(const CJCStringT & ctrl_name, IStorageDevice * storage, ISmiDevice * & i_dev);
+};
+

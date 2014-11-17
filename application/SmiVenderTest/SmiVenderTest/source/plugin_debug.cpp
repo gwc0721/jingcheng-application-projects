@@ -5,7 +5,7 @@
 #include "application.h"
 #include "feature_2246_readcount.h"
 
-LOCAL_LOGGER_ENABLE(_T("debug_pi"), LOGGER_LEVEL_DEBUGINFO);
+LOCAL_LOGGER_ENABLE(_T("debug_pi"), LOGGER_LEVEL_NOTICE);
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- cache mode simulator
@@ -35,6 +35,7 @@ bool RegisterPluginDebug(jcscript::IPluginContainer * plugin_cont)
 	cat->RegisterFeatureT<CFeature2246ReadCount>();
 	cat->RegisterFeatureT<CDebugRepeat>();
 	cat->RegisterFeatureT<CDebugInject>();
+	cat->RegisterFeatureT<CDebugPowerCycleTest>();
 
 	plugin_cont->RegistPlugin(cat);
 	return true;
@@ -337,6 +338,8 @@ bool CDebugRepeat::InternalInvoke(jcparam::IValue *, jcscript::IOutPort * outpor
 	stdext::auto_interface<BLOCK_ROW> block_row(new BLOCK_ROW);
 	outport->PushResult(block_row);
 
+	LOG_DEBUG(_T("repeat %d"), m_repeat_count);
+
 	if (m_repeat < 0) return true;
 	m_repeat_count --;
 	if (m_repeat_count <= 0)	return false;
@@ -362,6 +365,7 @@ CDebugInject::CDebugInject()
 	, m_data_buf(NULL)
 	, m_max_secs(0)
 	, m_lba(0),	m_sectors(1), m_command(0)
+	, m_time_out(UINT_MAX)
 {
 }
 
@@ -385,22 +389,6 @@ bool CDebugInject::Init(void)
 
 bool CDebugInject::InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * outport)
 {
-	// Initialize
-	//if (!m_smi_dev)
-	//{
-	//	CSvtApplication::GetApp()->GetDevice(m_smi_dev);
-	//	stdext::auto_cif<IStorageDevice>	storage;
-	//	m_smi_dev->QueryInterface(IF_NAME_STORAGE_DEVICE, storage);
-	//	storage.detach(m_storage);
-	//}
-
-	//if (m_trace)	m_trace->Release(), m_trace = NULL;
-
-	//if (!m_src_op) return false;
-	//stdext::auto_interface<jcparam::IValue> val;
-	//m_src_op->GetResult(val);
-	//if ( !val ) return false;
-
 	BYTE cmd = m_command;
 	JCSIZE lba = m_lba;
 	JCSIZE secs = m_sectors;
@@ -426,7 +414,7 @@ bool CDebugInject::InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * ou
 	trace_out->m_lba = lba;
 	trace_out->m_sectors = secs;
 	// us -> s
-	trace_out->m_start_time = (stdext::GetTimeStamp() / CJCLogger::GetTimeStampCycleS() )	/ (1000.0 * 1000.0);
+	trace_out->m_start_time = (stdext::GetTimeStamp() / CJCLogger::Instance()->GetTimeStampCycle() )	/ (1000.0 * 1000.0);
 	
 	switch (cmd)
 	{
@@ -438,6 +426,8 @@ bool CDebugInject::InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * ou
 	case 0x25:
 		m_storage->SectorRead(m_data_buf, lba, secs);
 		break;
+	default :
+		return false;
 	}
 	UINT invoke_time = m_storage->GetLastInvokeTime();
 	if (invoke_time >= m_time_out)
@@ -447,5 +437,146 @@ bool CDebugInject::InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * ou
 	trace_out->m_busy_time = invoke_time / 1000.0;	// us -> ms
 
 	outport->PushResult(trace_out);
+	return false;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// -- debug power cycle test
+
+LPCTSTR CDebugPowerCycleTest::_BASE_TYPE::m_feature_name = _T("powercycle");
+CParamDefTab CDebugPowerCycleTest::_BASE_TYPE::m_param_def_tab(	CParamDefTab::RULE()
+	(new CTypedParamDef<UINT>(_T("reset"),	'r', offsetof(CDebugPowerCycleTest, m_reset_count), _T("one log per reset count") ) )
+	(new CTypedParamDef<UINT>(_T("delay"),	'd', offsetof(CDebugPowerCycleTest, m_delay), _T("delay between power off/on") ) )
+	(new CTypedParamDef<bool>(_T("power"),	'p', offsetof(CDebugPowerCycleTest, m_power), _T("using power instead of reset") ) )
+	//(new CTypedParamDef<UINT>(_T("page"),	'p', offsetof(CDebugPowerCycleTest, m_page), _T("page id for dump, default dump all pages in block") ) )
+	);
+const TCHAR CDebugPowerCycleTest::m_desc[] = _T("make an address list for dump");
+
+CDebugPowerCycleTest::CDebugPowerCycleTest(void)
+	: m_smi_dev(NULL), m_pe(NULL)
+	, m_col_list(NULL)
+	, m_reset_count(30)
+	, m_delay(100)
+	, m_power(false)
+{
+}
+
+CDebugPowerCycleTest::~CDebugPowerCycleTest(void)
+{
+	if (m_smi_dev) m_smi_dev->Release();
+	if (m_col_list)	m_col_list->Release();
+	delete [] m_pe;
+}
+
+bool CDebugPowerCycleTest::Init(void)
+{
+	LOG_STACK_TRACE();
+	if ( !m_smi_dev )
+	{
+		CSvtApplication::GetApp()->GetDevice(m_smi_dev);
+		CCardInfo card_info;
+		m_smi_dev->GetCardInfo(card_info);
+		m_chunk_size = card_info.m_f_spck + 1;
+
+		m_block_num = card_info.m_f_block_num;
+		m_pe = new int[m_block_num];
+		m_smi_dev->GetBlockEraseCount(m_pe, m_block_num, m_base_pe);
+
+		// 
+		m_col_list = new jcparam::CColInfoList;		JCASSERT(m_col_list);
+		m_col_list->AddInfo( new jcparam::COLUMN_INFO_BASE(0, jcparam::VT_UINT, 0, _T("cycle")));
+		m_col_list->AddInfo( new jcparam::COLUMN_INFO_BASE(1, jcparam::VT_UINT, 0, _T("total_pe")));
+		m_col_list->AddInfo( new jcparam::COLUMN_INFO_BASE(2, jcparam::VT_STRING, 0, _T("diff")));
+
+		m_total_rst = 0;
+	}
+	return true;
+}
+
+#define CMD_BLOCK_SIZE	16
+
+bool CDebugPowerCycleTest::InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * outport)
+{
+	LOG_STACK_TRACE();
+	JCASSERT(m_smi_dev);
+
+	// reset	~ 30 times
+	for (int ii = 0; ii < m_reset_count; ++ii)
+	{
+		if (m_power)
+		{
+			// power on off instead reset
+			stdext::auto_array<BYTE>	_buf(SECTOR_SIZE);
+			stdext::auto_interface<IStorageDevice> storage;
+			m_smi_dev->GetStorageDevice(storage);	JCASSERT(storage.valid());
+			BYTE cmd_block[CMD_BLOCK_SIZE];
+
+			// power off
+			LOG_DEBUG(_T("power off: %d"), (m_total_rst+ii));
+			memset(cmd_block, 0, sizeof(BYTE) * CMD_BLOCK_SIZE);
+			cmd_block[0] = 0x1B, cmd_block[1] = 0, cmd_block[4] = 0x02;
+			storage->ScsiCommand(read, _buf, 0, cmd_block, CMD_BLOCK_SIZE, 60);
+
+			Sleep(m_delay);
+
+			// power on
+			LOG_DEBUG(_T("power on: %d"), (m_total_rst+ii));
+			memset(cmd_block, 0, sizeof(BYTE) * CMD_BLOCK_SIZE);
+			cmd_block[0] = 0x1B, cmd_block[1] = 0, cmd_block[4] = 0;
+			storage->ScsiCommand(read, _buf, 0, cmd_block, CMD_BLOCK_SIZE, 60);
+
+			memset(cmd_block, 0, sizeof(BYTE) * CMD_BLOCK_SIZE);
+			cmd_block[0] = 0x0, cmd_block[1] = 0, cmd_block[4] = 0;
+			storage->ScsiCommand(read, _buf, 0, cmd_block, CMD_BLOCK_SIZE, 60);
+		}
+		else
+		{
+			m_smi_dev->ResetCpu();
+		}
+		Sleep(m_delay);
+	}
+	m_total_rst += m_reset_count;
+	Sleep(m_delay);
+
+	LOG_DEBUG(_T("get erase count"));
+
+	// get w/l
+	//stdext::auto_array<int> temp_pe(m_block_num);
+	int * temp_pe = new int[m_block_num];
+	m_smi_dev->GetBlockEraseCount(temp_pe, m_block_num, m_base_pe);
+
+	stdext::auto_array<BYTE> buf(m_chunk_size * SECTOR_SIZE);
+	// cal total erase count
+	CJCStringT	pe_diff;
+	TCHAR	str[32];
+	JCSIZE total_pe = 0;
+	for (JCSIZE bb=0; bb < m_block_num; ++bb)
+	{
+		if (temp_pe[bb] >=0) total_pe += temp_pe[bb];
+		// cal erase count difference 
+		if (temp_pe[bb] != m_pe[bb])
+		{	// get block info of difference
+			CFlashAddress add(bb, 0, 0);
+			CSpareData spare;
+			m_smi_dev->ReadFlashChunk(add, spare, buf, m_chunk_size);
+			stdext::jc_sprintf(str, _T("%04X:%02X:%d;"), bb, spare.m_id, (temp_pe[bb] - m_pe[bb]));
+			pe_diff += str;
+		}
+	}
+
+	stdext::jc_sprintf(str, _T("%d,%d,"), m_total_rst, total_pe);
+	CJCStringT	row(str);
+	row += pe_diff;
+	
+
+	stdext::auto_interface<jcparam::CGeneralRow>	pe_row;
+	jcparam::CGeneralRow::CreateGeneralRow(m_col_list, pe_row);		JCASSERT(pe_row);
+	pe_row->SetValueText(row.c_str());
+	outport->PushResult(pe_row);
+
+	delete m_pe;
+	m_pe = temp_pe;
 	return false;
 }

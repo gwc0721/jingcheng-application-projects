@@ -279,7 +279,6 @@ bool CSvtApplication::SmartShowVar(jcparam::IValue * var)
 		vec->GetRow(m_sshw_offset, row);
 		m_sshw_offset ++;
 
-
 		if (show_header)
 		{
 			if (row.d_cast<CSectorBuf*>() )	m_sshw_increase = 1;
@@ -287,7 +286,7 @@ bool CSvtApplication::SmartShowVar(jcparam::IValue * var)
 			{
 				m_sshw_increase = 32;
 				jcparam::ITableRow * tab_row = row.d_cast<jcparam::ITableRow*>();
-				if (row)
+				if (tab_row)
 				{
 					stdext::auto_interface<jcparam::ITable> tab;
 					tab_row->CreateTable(tab);
@@ -297,8 +296,11 @@ bool CSvtApplication::SmartShowVar(jcparam::IValue * var)
 			show_header = false;
 		}
 
+		// 结果输出方针：IValue对象不负责内容输出后的换行。换行有上层函数负责。
 		jcparam::IVisibleValue * vv = row.d_cast<jcparam::IVisibleValue *>();
 		if (vv)	vv->ToStream(stream, jcparam::VAL_FORMAT(jcparam::VF_PARTIAL | jcparam::VF_TEXT), 0);
+		//if ( row.d_cast<jcparam::ITableRow*>() == NULL) stream->Put(_T('\n'));
+		stream->Put(_T('\n'));
 		show_rows ++;
 		if (show_rows >= m_sshw_increase) break;
 	}
@@ -375,6 +377,17 @@ int CSvtApplication::Run(void)
 
 	try
 	{
+		// process "invoke" option
+		CJCStringT	invoke_cmd;
+		m_arg_set.GetValT(_T("invoke"), invoke_cmd);
+		if ( !invoke_cmd.empty() )
+		{
+			LOG_DEBUG(_T("Processing in line command %s"), invoke_cmd.c_str());
+			LPCTSTR first = invoke_cmd.c_str(), last = first + _tcslen(first);
+			ParseCommand(first, last);
+			return 0;
+		}
+
 		// processing script in command line
 		stdext::auto_array<TCHAR> line_buf(MAX_LINE_BUF);
 		CJCStringT script_file_name = DEFAULT_SCRIPT;

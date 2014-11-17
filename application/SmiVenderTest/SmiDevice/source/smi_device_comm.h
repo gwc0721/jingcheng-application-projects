@@ -8,6 +8,8 @@ class CCmdReadRam : public CSmiCommand
 public:
 	CCmdReadRam() : CSmiCommand() { id(0xF02A); };
 	inline BYTE & add() { return m_cmd.b[7]; }
+	inline void bank(BYTE b)	{ m_cmd.b[6] = b; m_cmd.b[8]=0x40; }
+	inline BYTE bank(void)	{ return m_cmd.b[8]; }
 };
 
 class CSmiDeviceComm 
@@ -18,6 +20,9 @@ class CSmiDeviceComm
 protected:
 	CSmiDeviceComm(IStorageDevice * dev);
 	~CSmiDeviceComm(void);
+public:
+	static void Create(IStorageDevice * dev, ISmiDevice * & i_dev)
+	{	i_dev = static_cast<ISmiDevice*>(new CSmiDeviceComm(dev));	}
 
 public:
 	virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr);
@@ -26,7 +31,7 @@ public:
 	virtual bool GetCardInfo(CCardInfo &);
 	virtual void SetCardInfo(const CCardInfo &, UINT mask);
 
-	virtual bool VendorCommand(CSmiCommand & cmd, READWRITE rd_wr, BYTE* data_buf, JCSIZE secs);
+	virtual bool VendorCommand(CSmiCommand & cmd, READWRITE rd_wr, BYTE* data_buf, JCSIZE secs, UINT timeout = 60);
 	// Read one flash sector from NAND flash
 	virtual void ReadFlashChunk(const CFlashAddress & add, CSpareData & spare, BYTE * buf, JCSIZE secs, UINT option =0);
 	virtual JCSIZE WriteFlash(const CFlashAddress & add, BYTE * buf, JCSIZE secs);
@@ -36,8 +41,10 @@ public:
 	virtual void ReadFlashID(BYTE * buf, JCSIZE secs);		// buffer size >= 1 sector
 	// Read SFR
 	virtual void ReadSFR(BYTE * buf, JCSIZE secs);
+	virtual void ReadPAR(BYTE * buf, JCSIZE secs);
+
 	// For ISmiDevice, read data in SRAM from ram_add with len (in byte)
-	virtual void ReadSRAM(WORD ram_add, JCSIZE len, BYTE * buf);
+	virtual void ReadSRAM(WORD ram_add, WORD bank, JCSIZE len, BYTE * buf);
 
 // Others
 	virtual bool VendorReadSmart(BYTE * data);
@@ -45,21 +52,24 @@ public:
 		
 	virtual bool GetProperty(LPCTSTR prop_name, UINT & val);
 	virtual bool VendorIdentifyDevice(BYTE * data);
+	virtual void ResetCpu(void);
+	// return block count
+	virtual JCSIZE GetBlockEraseCount(int * pe, JCSIZE buf_size, int & base);
 
 	// virtual functions 
 protected:
 	// 检查VenderCommand Read 0x55AA的结果是否正确，正确返回true，否则返回false中止Vender Command
-	virtual bool CheckVenderCommand(BYTE * data) = 0;
-	virtual void FlashAddToPhysicalAdd(const CFlashAddress & add, CSmiCommand & cmd, UINT option) = 0;
+	virtual bool CheckVenderCommand(BYTE * data) {return true;};
+	virtual void FlashAddToPhysicalAdd(const CFlashAddress & add, CSmiCommand & cmd, UINT option) {};
 	virtual void GetSpare(CSpareData & spare, BYTE* spare_buf);
 	virtual JCSIZE GetSystemBlockId(JCSIZE id);
 	// Read SRAM in 512 bytes;
-	virtual void ReadSRAM(WORD ram_add, BYTE * buf);
+	virtual void ReadSRAM(WORD ram_add, WORD bank, BYTE * buf);
 
-	virtual void GetStorageDevice(IStorageDevice * & storage) {JCASSERT(NULL == storage); storage = m_dev;}
+	virtual void GetStorageDevice(IStorageDevice * & storage);
 
 // CSmiDeviceComm interface
-	virtual LPCTSTR Name(void) const = 0;
+	virtual LPCTSTR Name(void) const {return _T("COMM");};
 
 protected:
 	IStorageDevice * m_dev;

@@ -223,7 +223,7 @@ void CSM2242::ReadSmartFromWpro(BYTE * data)
 	//stdext::auto_array<BYTE> sram_buf(SECTOR_SIZE);
 	BYTE wpro_add[2];
 
-	ReadSRAM(0xEE38, 2, wpro_add);
+	ReadSRAM(0xEE38, 0, 2, wpro_add);
 	//WORD wpro = MAKEWORD(sram_buf[0x39], sram_buf[0x38]);
 	WORD wpro = MAKEWORD(wpro_add[1], wpro_add[0]);
 
@@ -262,7 +262,7 @@ JCSIZE CSM2242::GetSystemBlockId(JCSIZE id)
 	{
 	case BID_WPRO:		{
 		BYTE wpro_add[2];
-		ReadSRAM(0xEE38, 2, wpro_add);
+		ReadSRAM(0xEE38, 0, 2, wpro_add);
 		return MAKEWORD(wpro_add[1], wpro_add[0]);
 		}
 		
@@ -277,13 +277,14 @@ bool CSM2242::GetProperty(LPCTSTR prop_name, UINT & val)
 	if ( FastCmpT(CSmiDeviceBase::PROP_WPRO, prop_name) )
 	{
 		stdext::auto_array<BYTE> buf(SECTOR_SIZE);
-		ReadSRAM(0xEE00, buf);
+		ReadSRAM(0xEE00, 0, buf);
 		val = MAKEWORD(buf[0x39], buf[0x38]);
 		return true;
 	}
 	else	return __super::GetProperty(prop_name, val);
 }
 
+/*
 JCSIZE CSM2242::GetNewBadBlocks(BAD_BLOCK_LIST & bad_list)
 {
 	// find start page
@@ -328,6 +329,7 @@ JCSIZE CSM2242::GetNewBadBlocks(BAD_BLOCK_LIST & bad_list)
 	}
 	return new_bad_num;
 }
+*/
 
 void CSM2242::GetSpare(CSpareData & spare, BYTE * spare_buf)
 {

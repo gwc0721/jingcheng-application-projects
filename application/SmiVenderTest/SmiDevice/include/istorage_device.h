@@ -57,6 +57,7 @@ public:
 	virtual void SetDeviceName(LPCTSTR name) = 0;
 
 	virtual void UnmountAllLogical(void) = 0;
+	// time out in second
 	virtual bool ScsiCommand(READWRITE rd_wr, BYTE *buf, JCSIZE length, BYTE *cb, JCSIZE cb_length, UINT timeout) = 0;
 	//virtual void FlushCache() = 0;
 	//virtual UINT GetTimeOut(void) = 0; 

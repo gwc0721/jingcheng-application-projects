@@ -67,10 +67,11 @@ void CSectorBuf::OutputText(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE o
 
 	// output head line
 	wmemset(str_buf, _T(' '), STR_BUF_LEN - 3);
+	// sector address
 	_local_itohex(str_buf, ADD_DIGS, (UINT)m_sec_add);
 	for (ii=0; ii < 16; ++ii)
 	{
-		LPTSTR _str = str_buf + (ii * 3) + HEX_OFFSET;
+		LPTSTR _str = str_buf + (ii * 3) + HEX_OFFSET-1;
 		_str[0] = _T('-');
 		_str[1] = _T('-');
 		_str[2] = stdext::hex2char(ii);

@@ -97,40 +97,6 @@ void CFBlockInfo::PushData(CSectorBuf * data)
 	m_data->PushData(data);
 }
 
-/*
-void CFBlockInfo::CBitErrColInfo::GetText(void * row, CJCStringT & str) const
-{
-	CFBlockInfo * block = reinterpret_cast<CFBlockInfo*>(row);
-	CErrorBit * err = block->m_error_bit;
-	if ( !err ) return;
-
-	TCHAR _str[MAX_CHANNEL * MAX_CHUNK * 3];
-	wmemset(_str, 0, MAX_CHANNEL * MAX_CHUNK * 3);
-	_str[MAX_CHANNEL * MAX_CHUNK * 3-1] = 0;
-
-	LPTSTR __str = _str;
-	JCSIZE remain = MAX_CHANNEL * MAX_CHUNK * 3-1;
-
-	for (int ii = 0; ii < err->m_channel_num; ++ii)
-	{
-		JCSIZE offset = ii * err->m_chunk_num;
-		for (int jj = 0; jj < err->m_chunk_num; ++jj)
-		{
-			BYTE errd = err->m_error_bit[offset + jj];
-			__str[0] = stdext::hex2char(errd >> 4);
-			__str[1] = stdext::hex2char(errd & 0x0F);
-			__str += 2;
-			remain -= 2;
-		}
-		*__str = _T(' ');
-		__str ++;	// one space
-		remain --;
-	}
-	*__str = 0;
-	str = _str;
-}
-*/
-
 void CFBlockInfo::CBitErrColInfo::ToStream(void * row, jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt) const
 {
 	JCASSERT(stream);
@@ -214,7 +180,7 @@ void CDataVector::CDataVectorInfo::ToStream(void * row, jcparam::IJCStream * str
 		bin_stream->Release();
 	}
 
-	if (data)	stream->Format(_T("<#%d,%d>"), data->GetOffset(), data->GetSectors());
+	if (data)	stream->Format(_T("<#%X,%X>"), data->GetOffset(), data->GetSectors());
 	else		stream->Format(_T("no data"));
 }
 
@@ -225,6 +191,18 @@ void CDataVector::CDataVectorInfo::CreateValue(BYTE * src, jcparam::IValue * & v
 
 ///////////////////////////////////////////////////////////////////////////////
 //----  CBadBlockInfo  --------------------------------------------------------
+LOG_CLASS_SIZE(CNewBadBlock)
+LOG_CLASS_SIZE(CNewBadBlockRow)
+
+#define __COL_CLASS_NAME	CNewBadBlock
+BEGIN_COLUMN_TABLE()
+	COLINFO_HEXL(WORD, 4, 	0, m_id,	_T("FBlock") )
+	COLINFO_HEXL(WORD, 4,	1, m_page,	_T("FPage") )
+	COLINFO_HEXL(BYTE, 2,	2, m_code,	_T("ErrorCode") )
+END_COLUMN_TABLE()	
+#undef __COL_CLASS_NAME
+
+
 #define __COL_CLASS_NAME	CBadBlockInfo
 BEGIN_COLUMN_TABLE()
 	COLINFO_HEXL(WORD, 4, 	0, m_id,	_T("FBlock") )

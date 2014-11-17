@@ -93,7 +93,7 @@ public:
 
 	// Invoke a vendor command.
 	//		buf_len in lba
-	virtual bool VendorCommand(CSmiCommand &, READWRITE rd_wr, BYTE* data_buf, JCSIZE secs) = 0;
+	virtual bool VendorCommand(CSmiCommand &, READWRITE rd_wr, BYTE* data_buf, JCSIZE secs, UINT timeout = 60) = 0;
 
 	// Read data from flash :
 	//	secs [IN]: sectors (in 512 byte) to read.
@@ -106,11 +106,16 @@ public:
 
 	// Read SFR
 	virtual void ReadSFR(BYTE * buf, JCSIZE secs) = 0;
+	virtual void ReadPAR(BYTE * buf, JCSIZE secs) = 0;
 
 	// Read data from SRAM from ram_add with length (len) in byte
-	virtual void ReadSRAM(WORD ram_add, JCSIZE len, BYTE * buf) = 0;
+	virtual void ReadSRAM(WORD ram_add, WORD bank, JCSIZE len, BYTE * buf) = 0;
 
-	virtual JCSIZE GetNewBadBlocks(BAD_BLOCK_LIST & bad_list) = 0;
+	//virtual JCSIZE GetNewBadBlocks(BAD_BLOCK_LIST & bad_list) = 0;
+
+	virtual void ResetCpu(void) = 0;
+	// return block count
+	virtual JCSIZE GetBlockEraseCount(int * pe, JCSIZE buf_size, int & base) = 0;
 
 // Expand features
 	virtual bool GetProperty(LPCTSTR prop_name, UINT & val) = 0;
