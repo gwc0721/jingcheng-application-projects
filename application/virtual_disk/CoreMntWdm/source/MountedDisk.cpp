@@ -3,6 +3,10 @@
 #define LOGGER_LEVEL	LOGGER_LEVEL_DEBUGINFO
 #include "jclogk.h"
 
+//#ifdef _AMD64_
+//#define _WIN64
+//#endif
+
 extern "C"
 {
 #include "ntdddisk.h"
@@ -10,6 +14,12 @@ extern "C"
 #include "mountmgr.h"
 #include "mountdev.h"
 }
+
+#ifdef _AMD64_
+#define SCSI_PASS_THROUGH_DIRECT_T SCSI_PASS_THROUGH_DIRECT32
+#else
+#define SCSI_PASS_THROUGH_DIRECT_T SCSI_PASS_THROUGH_DIRECT
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- CIrpQueue
@@ -357,11 +367,11 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 	{
 	case IOCTL_SCSI_PASS_THROUGH_DIRECT: {
 		KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_SCSI_PASS_THROUGH_DIRECT\n") );
-		KdPrint(("sizeof(SCSI_PASS_THROUGH_DIRECT)=%d\n",sizeof(SCSI_PASS_THROUGH_DIRECT)));
-		SCSI_PASS_THROUGH_DIRECT * sptd = reinterpret_cast<SCSI_PASS_THROUGH_DIRECT*>(
+		KdPrint(("sizeof(SCSI_PASS_THROUGH_DIRECT)=%d\n",sizeof(SCSI_PASS_THROUGH_DIRECT_T)));
+		SCSI_PASS_THROUGH_DIRECT_T * sptd = reinterpret_cast<SCSI_PASS_THROUGH_DIRECT_T*>(
 				irp->AssociatedIrp.SystemBuffer);
 
-		ULONG32 spt_len = sizeof(SCSI_PASS_THROUGH_DIRECT);
+		ULONG32 spt_len = sizeof(SCSI_PASS_THROUGH_DIRECT_T);
 		UCHAR sense_len = sptd->SenseInfoLength;
 		ULONG sense_offset = sptd->SenseInfoOffset;
 
