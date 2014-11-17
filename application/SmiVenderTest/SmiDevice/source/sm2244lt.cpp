@@ -11,7 +11,7 @@ const CSmartAttrDefTab CLT2244::m_smart_def_2244lt(CSmartAttrDefTab::RULE()
 	( new CSmartAttributeDefine(0x05, _T("New bads")) )
 	( new CSmartAttributeDefine(0x06, STR_RESERVED, false) )
 	( new CSmartAttributeDefine(0x07, STR_RESERVED, false) )
-	( new CSmartAttributeDefine(0x09, STR_RESERVED, false) )
+	( new CSmartAttributeDefine(0x09, _T("Power on hours")) )
 	( new CSmartAttributeDefine(0x0C, _T("Power cycle")) )
 	( new CSmartAttributeDefine(0xA0, _T("Online UNC")) )
 	( new CSmartAttributeDefine(0xA1, _T("Valid spare")) )
@@ -41,6 +41,7 @@ const CSmartAttrDefTab CLT2244::m_smart_neci(CSmartAttrDefTab::RULE()
 	( new CSmartAttributeDefine(0x05, _T("New bads")) )
 	( new CSmartAttributeDefine(0x06, STR_RESERVED, false) )
 	( new CSmartAttributeDefine(0x07, STR_RESERVED, false) )
+	( new CSmartAttributeDefine(0x09, _T("Power on hours")) )
 	( new CSmartAttributeDefine(0x0C, _T("Power cycle")) )
 	( new CSmartAttributeDefine(0xA0, _T("Online UNC")) )
 	( new CSmartAttributeDefine(0xC0, _T("Sudden down")) )
@@ -237,42 +238,6 @@ bool CLT2244::Initialize(void)
 
 void CLT2244::ReadSmartFromWpro(BYTE * data)
 {
-	// TODO :
-	// Search for WPRO block
-
-	// read WPRO id
-	//stdext::auto_array<BYTE> sram_buf(SECTOR_SIZE);
-	//ReadSRAM(0xB000, sram_buf, SECTOR_SIZE);
-	//WORD wpro = MAKEWORD(sram_buf[0xBD], sram_buf[0xBC]);
-	//
-	//CPhysicalAddress add(wpro, 0, 0, 0, 0);
-	////add.m_ph_block = wpro;
-	//JCSIZE secs = (m_channel + 1);
-	//JCSIZE sec_len = secs * SECTOR_SIZE;
-	//stdext::auto_array<BYTE> buf(sec_len * 2);
-
-	//BYTE * buf_ptr[2];
-	//buf_ptr[0] = buf, buf_ptr[1] = buf + sec_len;
-	//int pre_ptr = 1, cur_ptr = 0;
-
-	////JCSIZE page_per_block = m_max_page * ((m_card_mode & 0x20) ? 2 : 1);
-	//JCSIZE page_id_offset = m_channel * SECTOR_SIZE  + 4;
-	//for (JCSIZE pp = 0; pp < m_f_page_per_block; ++pp)
-	//{
-	//	add.m_ph_page = pp;
-	//	BYTE * cur_buf = buf_ptr[cur_ptr];
-	//	ReadFlashData(add, cur_buf, secs);
-	//	// if this page is smart, save
-	//	BYTE page_id = cur_buf[page_id_offset];
-	//	if (0x01 == page_id)
-	//	{
-	//		pre_ptr = cur_ptr;
-	//		cur_ptr = 1 - pre_ptr;
-	//	}
-	//	else if (0xFF == page_id) 
-	//		break;
-	//}
-	//memcpy_s(data, SECTOR_SIZE, buf_ptr[pre_ptr], SECTOR_SIZE);
 }
 
 void CLT2244::FlashAddToPhysicalAdd(const CFlashAddress & add, CSmiCommand & cmd, UINT option)
@@ -313,15 +278,17 @@ bool CLT2244::GetProperty(LPCTSTR prop_name, UINT & val)
 	if ( FastCmpT(prop_name, CSmiDeviceBase::PROP_CACHE_NUM ) )
 	{
 		stdext::auto_array<BYTE> buf(SECTOR_SIZE);
-		ReadSRAM(0xDE00, buf);
+		ReadSRAM(0xDE00, 0, buf);
 		val = MAKEWORD(buf[0x10D], buf[0x10C]);
 		return true;
 	}
 	else if ( FastCmpT(prop_name, CSmiDeviceBase::PROP_WPRO) )
 	{
 		stdext::auto_array<BYTE> buf(SECTOR_SIZE);
-		ReadSRAM(0xB000, buf);
-		val = MAKEWORD(buf[0xBD], buf[0xBC]);
+		ReadSRAM(0xB000, 0, buf);
+		WORD wpro1 = MAKEWORD(buf[0xC0], buf[0xBF]);
+		WORD wpro2 = MAKEWORD(buf[0xC2], buf[0xC1]);
+		val = MAKELONG(wpro1, wpro2);
 		return true;
 	}
 	else if (  FastCmpT(prop_name, CSmiDeviceBase::PROP_INFO_PAGE) )
@@ -347,19 +314,14 @@ void CLT2244::GetSpare(CSpareData & spare, BYTE * spare_buf)
 	
 	BYTE * ecc_ch = spare_buf;
 	for (BYTE cc = 0; cc < m_channel_num; ++cc, ecc_ch += 16)
-	{
+	{	// 读取每个channel的error bit数
 		if (ecc_ch[0xC] & 1)	spare.m_error_bit[cc] = 0xFF;
 		else					spare.m_error_bit[cc] = ecc_ch[0x0A];
 	}
 	spare.m_ecc_code = spare_buf[0x40];
 
 	// serial number
-	if ( 0x40 == (spare_buf[0] & 0xF0) )
-	{
-		spare.m_serial_no = spare_buf[8];
-	}
-
-
+	if ( 0x40 == (spare_buf[0] & 0xF0) )	spare.m_serial_no = spare_buf[8];
 }
 
 JCSIZE CLT2244::GetSystemBlockId(JCSIZE id)
@@ -368,11 +330,24 @@ JCSIZE CLT2244::GetSystemBlockId(JCSIZE id)
 	{
 	case BID_WPRO:		{
 		BYTE wpro_add[2];
-		ReadSRAM(0xB0BC, 2, wpro_add);
+		CSmiDeviceComm::ReadSRAM(0xB0BC, 0, 2, wpro_add);
 		return MAKEWORD(wpro_add[1], wpro_add[0]);
 		}
 		
 	default:
 		return __super::GetSystemBlockId(id);
 	}
+}
+
+void CLT2244::ReadSRAM(WORD ram_add, WORD bank, BYTE * buf)
+{
+	JCASSERT( 0 == (ram_add & 0x001EE) );
+	CCmdReadRam cmd;
+	cmd.add() = ram_add >> 8;
+	if ( (ram_add >= 0xC000) && (ram_add < 0xE000) && (bank != 0) )
+	{
+		cmd.bank(bank);
+	}
+	JCSIZE sec = 1;
+	VendorCommand(cmd, read, buf, sec);
 }

@@ -23,16 +23,6 @@ void CScsiStorageDevice::Create(HANDLE dev, IStorageDevice * & i_dev)
 	i_dev = static_cast<IStorageDevice*>(new CScsiStorageDevice(dev));
 }
 
-//void CScsiStorageDevice::ReadSmartData(BYTE * buf, JCSIZE len)
-//{
-//	NOT_SUPPORT1(bool, _T("scsi device do not support SMART feature"));
-//}
-//
-//void CScsiStorageDevice::IdentifyDevice(BYTE * buf, JCSIZE len)
-//{
-//	NOT_SUPPORT1(bool, _T("scsi device do not support IDENTIFY DEVICE feature"));
-//}
-
 ///////////////////////////////////////////////////////////////////////////////
 // -- device SOLO TESTER
 
@@ -62,7 +52,6 @@ bool CSoloTester::Recognize(void)
 
 	bool check1, check2;
 	char vendor[16];
-	//memset(vendor, 0, 16);
 	memcpy_s(vendor, 16, buf + 8, 16);	vendor[15] = 0;
 	LOG_DEBUG(_T("check1 = %S"), vendor);
 	check1 = ( strstr(vendor, "SM333") != NULL );
@@ -106,8 +95,3 @@ bool CSoloTester::Recognize(void)
 	return true;
 }
 
-//bool CSoloTester::TesterVendorCmdRead(BYTE * cmd, BYTE * buf, JCSIZE len)
-//{
-//	ScsiCommand(read, buf, len, cmd, 16, 600);
-//
-//}

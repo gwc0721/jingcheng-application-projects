@@ -54,6 +54,9 @@ protected:
 
 	virtual bool GetProperty(LPCTSTR prop_name, UINT & val);
 
+	// Read SRAM in 512 bytes;
+	virtual void ReadSRAM(WORD ram_add, WORD bank, BYTE * buf);
+
 // Implement CSmiDeviceComm Interface
 protected:
 	virtual LPCTSTR Name(void) const {return _T("LT2244");}

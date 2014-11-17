@@ -73,7 +73,7 @@ bool CStorageDeviceComm::ScsiCommand(READWRITE rd_wr, BYTE *buf, JCSIZE buf_len,
     sptdwb.sptd.SenseInfoLength = 0x00;
 	sptdwb.sptd.DataIn = (rd_wr == read)?SCSI_IOCTL_DATA_IN:SCSI_IOCTL_DATA_OUT;
     sptdwb.sptd.DataTransferLength = buf_len;
-    sptdwb.sptd.TimeOutValue = 600;
+    sptdwb.sptd.TimeOutValue = timeout;
     sptdwb.sptd.DataBuffer = buf;
 	// get offset
 	sptdwb.sptd.SenseInfoOffset = (ULONG)offsetof(SCSI_PASS_THROUGH_DIRECT_WITH_BUFFER, ucSenseBuf);
@@ -95,7 +95,7 @@ bool CStorageDeviceComm::ScsiCommand(READWRITE rd_wr, BYTE *buf, JCSIZE buf_len,
 				   &returned,
 				   FALSE );
 	QueryPerformanceCounter(&t1);		// 性能计算
-	if (t0.QuadPart <= t1.QuadPart)		m_last_invoke_time = t1.QuadPart - t1.QuadPart;
+	if (t0.QuadPart <= t1.QuadPart)		m_last_invoke_time = t1.QuadPart - t0.QuadPart;
 	else								m_last_invoke_time = 0;
 
 	if (!success) THROW_WIN32_ERROR( _T("send scsi command failed: ") );
@@ -175,7 +175,7 @@ bool CStorageDeviceComm::SectorRead(BYTE * buf, FILESIZE lba, JCSIZE sectors)
 	QueryPerformanceCounter(&t0);
 	BOOL br = ReadFile(m_dev, buf, data_size, &read_size, NULL);
 	QueryPerformanceCounter(&t1);		// 性能计算
-	if (t0.QuadPart <= t1.QuadPart)		m_last_invoke_time = t1.QuadPart - t1.QuadPart;
+	if (t0.QuadPart <= t1.QuadPart)		m_last_invoke_time = t1.QuadPart - t0.QuadPart;
 	else								m_last_invoke_time = 0;
 
 	if (!br) THROW_WIN32_ERROR(_T("Reading LBA failed! LBA = %u, size = %d"), (UINT)lba, sectors);
@@ -211,7 +211,7 @@ bool CStorageDeviceComm::SectorWrite(const BYTE * buf, FILESIZE lba, JCSIZE sect
 	QueryPerformanceCounter(&t0);
 	BOOL br = WriteFile(m_dev, buf, data_size, &written_size, NULL);
 	QueryPerformanceCounter(&t1);		// 性能计算
-	if (t0.QuadPart <= t1.QuadPart)		m_last_invoke_time = t1.QuadPart - t1.QuadPart;
+	if (t0.QuadPart <= t1.QuadPart)		m_last_invoke_time = t1.QuadPart - t0.QuadPart;
 	else								m_last_invoke_time = 0;
 	if (!br)		THROW_WIN32_ERROR(_T("Writing LBA failed! LBA = %u, size = %d"), (UINT)lba, sectors);
 	return true;
@@ -246,7 +246,7 @@ void CStorageDeviceComm::UnmountAllLogical(void)
 	LPCTSTR str_drv_no = _tcsstr(m_device_name.c_str(), PHYSICAL_DRIVE);
 	if (NULL == str_drv_no)
 	{	// If it is a logical drive, just dismount it.
-		LOG_DEBUG(_T("Current drive is logical"))
+		LOG_ERROR(_T("Current drive is logical: %s"), m_device_name.c_str())
 		Dismount();
 		return;
 	}
@@ -359,7 +359,7 @@ FILESIZE CStorageDeviceComm::GetCapacity(void)
 
 UINT CStorageDeviceComm::GetLastInvokeTime(void)
 {
-	return ( (UINT)(m_last_invoke_time / CJCLogger::GetTimeStampCycleS()) ); 
+	return ( (UINT)(m_last_invoke_time / CJCLogger::Instance()->GetTimeStampCycle()) ); 
 }
 
 

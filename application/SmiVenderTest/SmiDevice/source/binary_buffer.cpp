@@ -22,21 +22,6 @@ CBinaryBuffer::~CBinaryBuffer(void)
 	if (m_address)	m_address->Release();
 }
 
-
-//bool CBinaryBuffer::QueryInterface(const char * if_name, IJCInterface * &if_ptr)
-//{
-//	JCASSERT(NULL == if_ptr);
-//	bool br = false;
-//	if ( FastCmpA(jcparam::IF_NAME_VALUE_FORMAT, if_name) )
-//	{
-//		if_ptr = static_cast<IJCInterface*>(this);
-//		if_ptr->AddRef();
-//		br = true;
-//	}
-//	else br = __super::QueryInterface(if_name, if_ptr);
-//	return br;
-//}
-
 void _local_itohex(LPTSTR str, JCSIZE dig, UINT d)
 {
 	JCSIZE ii = dig;
@@ -56,9 +41,7 @@ const TCHAR __SPACE[128] = {
 };
 
 const TCHAR * SPACE = __SPACE + 127;
-//static const JCSIZE STR_BUF_LEN = 80;
-//static const JCSIZE ASCII_OFFSET = 57;
-//static const JCSIZE HEX_OFFSET = 8;
+
 
 //void CBinaryBuffer::Format(FILE * file, LPCTSTR format)
 //{

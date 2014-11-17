@@ -246,4 +246,18 @@ SMI_DEVICE_TYPE CSmiRecognizer::AchieveDeviceType(IStorageDevice * dev)
 	return dev_type;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+//-- class factories
 
+void CreateStorageDevice(const CJCStringT & dev_name, HANDLE dev, IStorageDevice * & i_dev)
+{
+	JCASSERT(i_dev == NULL);
+	if (dev_name == _T("SCSI_DEVICE") )		CScsiStorageDevice::Create(dev, i_dev);
+}
+
+void CreateSmiDevice(const CJCStringT & ctrl_name, IStorageDevice * storage, ISmiDevice * & i_dev)
+{
+	JCASSERT(i_dev == NULL);
+	if (ctrl_name == _T("SMI_COMM"))			CSmiDeviceComm::Create(storage, i_dev);
+	else if (ctrl_name == _T("SM2232"))			CSM2232::CreateDevice(storage, i_dev);
+}

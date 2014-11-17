@@ -179,8 +179,6 @@ public:
 
 public:
 	static LPCTSTR	desc(void) {return m_desc;}
-	//virtual bool GetResult(jcparam::IValue * & val);
-	//virtual bool Invoke(void);
 	virtual bool InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * outport);
 	virtual bool Init(void);
 
@@ -198,4 +196,50 @@ protected:
 	JCSIZE m_max_secs;
 
 	CAtaTraceRow * m_trace;
+};
+
+
+///////////////////////////////////////////////////////////////////////////////
+// -- debug power cycle test
+class CDebugPowerCycleTest
+	: virtual public jcscript::IFeature
+	, public CFeatureBase<CDebugPowerCycleTest, CCategoryComm>
+	, public CJCInterfaceBase
+{
+public:
+public:
+	CDebugPowerCycleTest(void);
+	~CDebugPowerCycleTest(void);
+
+public:
+	static LPCTSTR	desc(void) {return m_desc;}
+
+public:
+	virtual bool InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * outport);
+	virtual bool Init(void);
+
+protected:
+	ISmiDevice * m_smi_dev;
+	//CCardInfo	m_card_info;
+	//UINT	m_cur_page, m_end_page;
+	JCSIZE	m_chunk_size;
+	JCSIZE	m_block_num;
+
+
+	int		* m_pe;
+	int		m_base_pe;
+	UINT	m_total_rst;
+
+	// column def
+	jcparam::CColInfoList * m_col_list;
+	
+// parameters
+public:
+	UINT m_dummy;
+	UINT m_reset_count;
+	UINT m_delay;
+	bool	m_power;
+
+public:
+	static const TCHAR m_desc[];
 };

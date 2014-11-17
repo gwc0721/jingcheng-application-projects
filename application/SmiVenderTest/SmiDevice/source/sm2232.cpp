@@ -158,6 +158,32 @@ void CSM2232::FlashAddToPhysicalAdd(const CFlashAddress & add, CSmiCommand & cmd
 	block_cmd.mode() = mode;
 }
 
+void CSM2232::GetSpare(CSpareData & spare, BYTE * spare_buf)
+{
+	spare.m_id = spare_buf[0];
+	spare.m_hblock = MAKEWORD(spare_buf[2], spare_buf[1]);
+	spare.m_hpage = spare_buf[3];
+	spare.m_erase_count = spare_buf[5];
+	
+	BYTE * ecc_ch = spare_buf + 16;
+	spare.m_ecc_code = ecc_ch[0];
+
+	// channel A: spare[16 + 3] = 0x1F, UNC
+	spare.m_error_bit[0] = (ecc_ch[3] >= 0x1F)?(0xFF):(ecc_ch[3]);
+	// channel B:
+	spare.m_error_bit[1] = (ecc_ch[4] >= 0x1F)?(0xFF):(ecc_ch[4]);
+	//for (BYTE cc = 0; cc < m_channel_num; ++cc, ecc_ch += 16)
+	//{
+	//	if (ecc_ch[0xC] & 1)	spare.m_error_bit[cc] = 0xFF;
+	//	else					spare.m_error_bit[cc] = ecc_ch[0x0A];
+	//}
+
+	// serial number
+	//if ( 0x40 == (spare_buf[0] & 0xF0) )	spare.m_serial_no = spare_buf[8];
+}
+
+
+/*
 JCSIZE CSM2232::GetNewBadBlocks(BAD_BLOCK_LIST & bad_list)
 {
 	// find start page
@@ -202,3 +228,5 @@ JCSIZE CSM2232::GetNewBadBlocks(BAD_BLOCK_LIST & bad_list)
 	}
 	return new_bad_num;
 }
+*/
+

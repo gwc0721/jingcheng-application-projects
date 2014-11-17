@@ -60,7 +60,7 @@ public:
 
 	// Invoke a vendor command.
 	//		buf_len in lba
-	virtual bool VendorCommand(CSmiCommand &, READWRITE rd_wr, BYTE* data_buf, JCSIZE secs) {return error();}
+	virtual bool VendorCommand(CSmiCommand &, READWRITE rd_wr, BYTE* data_buf, JCSIZE secs, UINT timeout = 60) {return error();}
 
 	virtual void ReadFlashChunk(const CFlashAddress & add, CSpareData & spare, BYTE * buf, JCSIZE secs, UINT option = 0) {error();}
 	virtual JCSIZE WriteFlash(const CFlashAddress & add, BYTE * buf, JCSIZE secs) {error(); return 0;}
@@ -71,10 +71,11 @@ public:
 
 	// Read SFR
 	virtual void ReadSFR(BYTE * buf, JCSIZE secs) {error();};
+	virtual void ReadPAR(BYTE * buf, JCSIZE secs) {error();};
 	
 	// Read data from SRAM. Buffer size must large than 512 byte
-	virtual void ReadSRAM(WORD ram_add, JCSIZE len, BYTE * buf)  {error();}
-	virtual JCSIZE GetNewBadBlocks(BAD_BLOCK_LIST & bad_list) {return error();}
+	virtual void ReadSRAM(WORD ram_add, WORD bank, JCSIZE len, BYTE * buf)  {error();}
+	//virtual JCSIZE GetNewBadBlocks(BAD_BLOCK_LIST & bad_list) {return error();}
 
 	virtual bool GetProperty(LPCTSTR prop_name, UINT & val) {return false;}
 	virtual bool SetProperty(LPCTSTR prop_name, UINT val)	 {return false;}
@@ -82,6 +83,10 @@ public:
 	virtual void ReadISP(IIspBuf * &) {error();}
 	virtual void ReadCID(ICidTab * &) {error();}
 	virtual const CCidMap * GetCidDefination(void) const {error(); return NULL;}
+
+	virtual void ResetCpu(void) { NOT_SUPPORT0; }
+	// return block count
+	virtual JCSIZE GetBlockEraseCount(int * pe, JCSIZE buf_size, int & base) { NOT_SUPPORT(JCSIZE); }
 
 
 	// Get SMART data from device,

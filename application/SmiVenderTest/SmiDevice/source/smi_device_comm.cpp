@@ -66,18 +66,23 @@ bool CSmiDeviceComm::QueryInterface(const char * if_name, IJCInterface * &if_ptr
 //-- Implemnt for ISmiDevice
 void CSmiDeviceComm::ReadSFR(BYTE * buf, JCSIZE secs)
 {
-	JCASSERT(m_dev);
-	JCASSERT(secs >= 1);
+	JCASSERT(m_dev);		JCASSERT(secs >= 1);
 
 	CSmiCommand cmd_srf;
 	cmd_srf.id(0xF026);
 	cmd_srf.size() = 1;
-
 	JCSIZE len = 1;
-
 	VendorCommand(cmd_srf, read, buf, len);
 }
 
+void CSmiDeviceComm::ReadPAR(BYTE * buf, JCSIZE secs)
+{
+	JCASSERT(m_dev);		JCASSERT(secs >= 1);
+	CSmiCommand cmd;
+	cmd.id(0xF004);
+	cmd.size() = 1;
+	VendorCommand(cmd, read, buf, 1);
+}
 
 bool CSmiDeviceComm::VendorReadSmart(BYTE * data)
 {
@@ -108,13 +113,13 @@ bool CSmiDeviceComm::VendorIdentifyDevice(BYTE * data)
 	else return true;
 }
 
-void CSmiDeviceComm::ReadSRAM(WORD ram_add, JCSIZE len, BYTE * buf)
+void CSmiDeviceComm::ReadSRAM(WORD ram_add, WORD bank, JCSIZE len, BYTE * buf)
 {
 	stdext::auto_array<BYTE> _buf(SECTOR_SIZE);
 	WORD start_add = ram_add & 0xFE00;
 	JCSIZE offset = ram_add - start_add;
 
-	ReadSRAM(start_add, _buf);
+	ReadSRAM(start_add, bank, _buf);
 
 	JCSIZE copy_len = min(SECTOR_SIZE - offset, len);
 	stdext::jc_memcpy(buf, len, _buf + offset, copy_len);
@@ -126,13 +131,13 @@ void CSmiDeviceComm::ReadSRAM(WORD ram_add, JCSIZE len, BYTE * buf)
 		start_add += SECTOR_SIZE;
 		buf += copy_len;
 
-		ReadSRAM(start_add, _buf);
+		ReadSRAM(start_add, bank, _buf);
 		copy_len = min(SECTOR_SIZE, len);
 		stdext::jc_memcpy(buf, len, _buf, copy_len);
 	}
 }
 
-void CSmiDeviceComm::ReadSRAM(WORD ram_add, BYTE * buf)
+void CSmiDeviceComm::ReadSRAM(WORD ram_add, WORD bank, BYTE * buf)
 {
 	JCASSERT( 0 == (ram_add & 0x001EE) );
 	CCmdReadRam cmd;
@@ -145,7 +150,7 @@ void CSmiDeviceComm::ReadSRAM(WORD ram_add, BYTE * buf)
 #define VENDER_RETRY 3
 #endif
 
-bool CSmiDeviceComm::VendorCommand(CSmiCommand & cmd, READWRITE rd_wr, BYTE* data_buf, JCSIZE secs)
+bool CSmiDeviceComm::VendorCommand(CSmiCommand & cmd, READWRITE rd_wr, BYTE* data_buf, JCSIZE secs, UINT timeout)
 {
 	LOG_STACK_TRACE();
 	LOG_TRACE(_T("Vendor Cmd 0x%04X, 0x%04X, 0x%04X, 0x%04X, secs=%d"), 
@@ -179,10 +184,10 @@ bool CSmiDeviceComm::VendorCommand(CSmiCommand & cmd, READWRITE rd_wr, BYTE* dat
 
 	memset(buf, 0, SECTOR_SIZE);
 	memcpy_s(buf, SECTOR_SIZE, cmd.data(), cmd.length() );
-	m_dev->ScsiWrite(buf, 0x55AA, 1, 600);
+	m_dev->ScsiWrite(buf, 0x55AA, 1, timeout);
 
-	if (rd_wr == read)	m_dev->ScsiRead(data_buf, 0x55AA, secs, 600);
-	else				m_dev->ScsiWrite(data_buf, 0x55AA, secs, 600);
+	if (rd_wr == read)	m_dev->ScsiRead(data_buf, 0x55AA, secs, timeout);
+	else				m_dev->ScsiWrite(data_buf, 0x55AA, secs, timeout);
 
 	return true;
 }
@@ -340,4 +345,53 @@ bool CSmiDeviceComm::GetProperty(LPCTSTR prop_name, UINT & val)
 	}
 	
 	return br;
+}
+
+void CSmiDeviceComm::GetStorageDevice(IStorageDevice * & storage) 
+{
+	JCASSERT(NULL == storage); 
+	storage = m_dev;
+	if (m_dev) m_dev->AddRef();
+}
+
+
+void CSmiDeviceComm::ResetCpu(void)
+{
+	LOG_STACK_TRACE();
+	CSmiBlockCmd cmd;
+	cmd.id(0xF02C);
+	stdext::auto_array<BYTE> buf(SECTOR_SIZE);
+	LOG_DEBUG(_T("CPU reseting..."));
+	VendorCommand(cmd, read, buf, 1);
+	LOG_DEBUG(_T("CPU reset done."));
+}
+
+#define ERASE_COUNT_SIZE	(0x21)
+
+JCSIZE CSmiDeviceComm::GetBlockEraseCount(int * pe, JCSIZE buf_size, int & base)
+{
+	LOG_STACK_TRACE();
+	
+	stdext::auto_array<BYTE> pe_buf(SECTOR_SIZE * ERASE_COUNT_SIZE);
+	memset(pe_buf, 0, SECTOR_SIZE * ERASE_COUNT_SIZE);
+
+	CSmiCommand cmd;
+	cmd.id(0xF042);
+	cmd.size() = ERASE_COUNT_SIZE;
+	bool br = VendorCommand(cmd, read, pe_buf, ERASE_COUNT_SIZE);
+	if (!br) THROW_ERROR(ERR_USER, _T("failure on vendor cmd."));
+
+	// analysis data
+	JCSIZE mu = MAKEWORD(pe_buf[0x4000], pe_buf[0x4001]);
+	JCSIZE block_num = MAKEWORD(pe_buf[0x4007], pe_buf[0x4006]);
+	if (0 == mu || 0 == block_num)	THROW_ERROR(ERR_USER, _T("wear-leveling data wrong") );
+	JCSIZE base_pe = MAKELONG( MAKEWORD(pe_buf[0x4005], pe_buf[0x4004]), MAKEWORD(pe_buf[0x4003], pe_buf[0x4002]) );
+
+	for (JCSIZE bb = 0; (bb < block_num) && (bb < buf_size); ++ bb)
+	{
+		if (pe_buf[bb] == 0)	pe[bb] = -1;
+		else					pe[bb] = base_pe + pe_buf[bb] -1;
+	}
+	base = base_pe;
+	return block_num;
 }
