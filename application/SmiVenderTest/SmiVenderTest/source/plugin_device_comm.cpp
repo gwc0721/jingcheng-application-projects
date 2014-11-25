@@ -440,7 +440,7 @@ bool CDevicePhOriginalBad::InternalInvoke(jcparam::IValue * row, jcscript::IOutP
 					for (JCSIZE ch = 0; ch < 4; ++ ch)
 					{
 						if (d & mask)		ir = _stprintf_s(str, remain, _T("CE%d PL%d CH%c,"), ce, plane, _T('A')+ch);
-						else				ir = _stprintf_s(str, remain, _T("*** *** ***,");
+						else				ir = _stprintf_s(str, remain, _T("*** *** ***,"));
 						str += ir;
 						remain -= ir;
 						mask <<= 1;
