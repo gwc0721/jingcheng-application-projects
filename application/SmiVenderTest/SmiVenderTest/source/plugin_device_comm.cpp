@@ -7,6 +7,13 @@
 
 LOCAL_LOGGER_ENABLE(_T("plugin_device"), LOGGER_LEVEL_WARNING);
 
+void OutPutStringRow(jcscript::IOutPort * outport, const CJCStringT & str)
+{
+	jcparam::IValue * val = jcparam::CTypedValue<CJCStringT>::Create(str);
+	outport->PushResult(val);
+	val->Release();
+}
+
 bool RegisterPlugin(jcscript::IPluginContainer * plugin_cont)
 {
 	JCASSERT(plugin_cont);
@@ -114,6 +121,7 @@ CParamDefTab CDeviceReadSpare::_BASE_TYPE::m_param_def_tab(	CParamDefTab::RULE()
 	(new CTypedParamDef<UINT>(_T("page"),	'p', offsetof(CDeviceReadSpare, m_page) ) )
 	(new CTypedParamDef<bool>(_T("all"),	'h', offsetof(CDeviceReadSpare, m_read_all) ) )
 	(new CTypedParamDef<bool>(_T("ecc"),	'e', offsetof(CDeviceReadSpare, m_read_ecc) ) )
+	//(new CTypedParamDef<BYTE>(_T("option"),	'o', offsetof(CDeviceReadSpare, m_option) ) )
 	);
 
 const TCHAR CDeviceReadSpare::m_desc[] = _T("Read meta data");
@@ -124,6 +132,7 @@ CDeviceReadSpare::CDeviceReadSpare(void)
 	, m_read_all(false)
 	, m_read_ecc(false)
 	, m_cur_page(0)
+	, m_option(0)
 {
 }
 
@@ -370,12 +379,14 @@ LPCTSTR CDevicePhOriginalBad::_BASE_TYPE::m_feature_name = _T("phorgbad");
 CParamDefTab CDevicePhOriginalBad::_BASE_TYPE::m_param_def_tab(	CParamDefTab::RULE()
 	(new CTypedParamDef<UINT>(_T("block"),	'b', offsetof(CDevicePhOriginalBad, m_block), _T("specify original block info id") ) )
 	(new CTypedParamDef<UINT>(_T("page"),	'p', offsetof(CDevicePhOriginalBad, m_page), _T("starte page of original info") ) )
+	(new CTypedParamDef<bool>(_T("order"),	'o', offsetof(CDevicePhOriginalBad, m_order_phy), _T("starte page of original info") ) )
 	);
 const TCHAR CDevicePhOriginalBad::m_desc[] = _T("read physical original bad block bit map LT2244 only");
 
 CDevicePhOriginalBad::CDevicePhOriginalBad(void)
 	: m_block(0xFFFFFFFF), m_page(0)
 	, m_smi_dev(NULL)
+	, m_order_phy(false)
 {
 }
 
@@ -408,9 +419,19 @@ bool CDevicePhOriginalBad::InternalInvoke(jcparam::IValue * row, jcscript::IOutP
 	stdext::auto_array<BYTE> buf(buf_size + SECTOR_SIZE);
 	CSpareData spare;
 
-	//m_page = 0;
+	typedef std::vector<WORD>	BLOCK_LIST;
+	typedef BLOCK_LIST::iterator	BLOCK_IT;
+	BLOCK_LIST	phy_org_blocks[32];		// 4 channel, 4 ce, two plane
+
+	// 计算page size
+	JCSIZE page_size = m_card_info.m_f_spck * m_card_info.m_f_ckpp;
+	// 计算64KB需要多少page
+	JCSIZE start_page = 128 / page_size;
+	m_page = start_page * m_card_info.m_interleave;
+
 	UINT m_chunk = 0;
 	JCSIZE block_id = 0;
+	LOG_DEBUG(_T("blocks per die =%d"), m_card_info.m_p_bpd);
 	while (1)
 	{
 		LOG_DEBUG(_T("read flash block = %d, page = %d, chunk = %d"), m_org_info, m_page, m_chunk);
@@ -425,7 +446,8 @@ bool CDevicePhOriginalBad::InternalInvoke(jcparam::IValue * row, jcscript::IOutP
 			DWORD d = *_buf;
 			if ( 0 == d ) continue;
 
-			DWORD mask = 1;
+			DWORD die_mask = 1;
+			//WORD die_id = 0;
 			TCHAR _str[512];
 			LPTSTR str = _str;
 			JCSIZE remain = 512;
@@ -437,24 +459,66 @@ bool CDevicePhOriginalBad::InternalInvoke(jcparam::IValue * row, jcscript::IOutP
 			{
 				for (JCSIZE plane = 0; plane < 2; ++plane)
 				{
-					for (JCSIZE ch = 0; ch < 4; ++ ch)
+					for (JCSIZE ch = 0; ch < 4; ++ ch, die_mask <<= 1/*, die_id++*/)
 					{
-						if (d & mask)		ir = _stprintf_s(str, remain, _T("CE%d PL%d CH%c,"), ce, plane, _T('A')+ch);
-						else				ir = _stprintf_s(str, remain, _T("*** *** ***,"));
+						if ( (ch >= m_card_info.m_channel_num) ) continue;
+						if (d & die_mask)	
+						{
+							ir = _stprintf_s(str, remain, _T("CE%d PL%d CH%c,"), ce, plane, _T('A')+ch);
+							
+							JCSIZE ce_x = ce;
+							JCSIZE block_id_x = block_id;
+							if (block_id >= m_card_info.m_p_bpd)
+							{
+								ce_x = ce + block_id / m_card_info.m_p_bpd * m_card_info.m_interleave;
+								block_id_x = block_id % m_card_info.m_p_bpd;
+							}
+							
+							JCSIZE die_id = (ce_x * 2 + plane) * 4 + ch;
+							JCASSERT(die_id < 32);
+							phy_org_blocks[die_id].push_back((WORD)block_id_x);
+						}
+						else				ir = _stprintf_s(str, remain, _T("*** *** ***,") );
 						str += ir;
 						remain -= ir;
-						mask <<= 1;
 					}
 				}
 			}
-			jcparam::IValue * val = jcparam::CTypedValue<CJCStringT>::Create(_str);
-			outport->PushResult(val);
-			val->Release();
+			// 按f-block排序
+			if (!m_order_phy)		OutPutStringRow(outport, _str);
 		}
 
-		if (block_id >= 16*1024) break;
+		//if (block_id >= m_card_info.m_p_bpd) break;
+		if (block_id >= m_card_info.m_f_block_num) break;
 		m_chunk ++;
-		if (m_chunk >= m_card_info.m_f_ckpp)	m_page += 2, m_chunk=0;
+		if (m_chunk >= m_card_info.m_f_ckpp )	m_page += m_card_info.m_interleave, m_chunk=0;
+		//m_page +=2;
+	}
+
+	if (m_order_phy)
+	{
+		int dies = m_card_info.m_p_die / m_card_info.m_channel_num;
+		for (int ce = 0; ce < dies; ++ce)
+		{
+			for (JCSIZE plane = 0; plane < 2; ++plane)
+			{
+				for (JCSIZE ch = 0; ch < m_card_info.m_channel_num; ++ ch)
+				{
+					TCHAR _str[32];
+					_stprintf_s(_str, _T("#CE%d PL%d CH%c,"), ce, plane, _T('A')+ch);
+					OutPutStringRow(outport, _str);
+
+					JCSIZE die_id = (ce * 2 + plane) * 4 + ch;
+					BLOCK_IT it = phy_org_blocks[die_id].begin();
+					BLOCK_IT endit = phy_org_blocks[die_id].end();
+					for ( ; it != endit; ++it)
+					{
+						_stprintf_s(_str, _T("%04X"), *it);
+						OutPutStringRow(outport, _str);
+					}
+				}
+			}
+		}
 	}
 	return false;
 }
@@ -604,9 +668,11 @@ bool CDeviceDiffAdd::InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * 
 
 	// output header
 	stdext::jc_sprintf(_str, _T("FBlock,type,CE0/PL0/CHA,CE0/PL0/CHB,CE0/PL1/CHA,CE0/PL1/CHB,CE1/PL0/CHA,CE1/PL0/CHB,CE1/PL1/CHA,CE1/PL1/CHB,"));
-	jcparam::IValue * val = jcparam::CTypedValue<CJCStringT>::Create(_str);
-	outport->PushResult(val);
-	val->Release();
+	OutPutStringRow(outport, _str);
+
+	//jcparam::IValue * val = jcparam::CTypedValue<CJCStringT>::Create(_str);
+	//outport->PushResult(val);
+	//val->Release();
 
 	while (block_id < m_card_info.m_f_block_num)
 	{
@@ -641,10 +707,11 @@ bool CDeviceDiffAdd::InternalInvoke(jcparam::IValue * row, jcscript::IOutPort * 
 			ir = stdext::jc_sprintf(str, remain, _T("%04X(%d),%04X(%d),"),
 				ph_add[6] >> 1, ph_add[6] & 1, ph_add[7]>>1, ph_add[7] & 1);
 			str += ir, remain -=ir;
+			OutPutStringRow(outport, _str);
 
-			jcparam::IValue * val = jcparam::CTypedValue<CJCStringT>::Create(_str);
-			outport->PushResult(val);
-			val->Release();
+			//jcparam::IValue * val = jcparam::CTypedValue<CJCStringT>::Create(_str);
+			//outport->PushResult(val);
+			//val->Release();
 		}
 
 		chunk ++;
