@@ -43,7 +43,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="$(VLD_INC_DIR);$(BOOST_INC_DIR);..\..\..\jcvos\stdext;..\..\..\jcvos\script_engine;..\..\..\jcvos\jcparam;..\SmiDevice;..\FerriSimulator;..\feature_encode"
+				AdditionalIncludeDirectories="$(VLDDIR);$(BOOST_DIR);..\..\..\jcvos\stdext;..\..\..\jcvos\script_engine;..\..\..\jcvos\jcparam;..\SmiDevice;..\FerriSimulator;..\feature_encode"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
@@ -201,7 +201,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="$(VLD_INC_DIR);$(BOOST_INC_DIR);..\..\..\jcvos\stdext;..\..\..\jcvos\script_engine;..\..\..\jcvos\jcparam;..\SmiDevice;..\FerriSimulator"
+				AdditionalIncludeDirectories="$(VLDDIR);$(BOOST_DIR);..\..\..\jcvos\stdext;..\..\..\jcvos\script_engine;..\..\..\jcvos\jcparam;..\SmiDevice;..\FerriSimulator"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -279,7 +279,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="$(VLD_INC_DIR);$(BOOST_INC_DIR);..\..\..\jcvos\stdext;..\..\..\jcvos\script_engine;..\..\..\jcvos\jcparam;..\SmiDevice;..\FerriSimulator"
+				AdditionalIncludeDirectories="$(VLDDIR);$(BOOST_DIR);..\..\..\jcvos\stdext;..\..\..\jcvos\script_engine;..\..\..\jcvos\jcparam;..\SmiDevice;..\FerriSimulator"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -357,7 +357,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="$(VLD_INC_DIR);$(BOOST_INC_DIR);..\..\..\jcvos\stdext;..\..\..\jcvos\script_engine;..\..\..\jcvos\jcparam;..\SmiDevice;..\FerriSimulator"
+				AdditionalIncludeDirectories="$(VLDDIR);$(BOOST_DIR);..\..\..\jcvos\stdext;..\..\..\jcvos\script_engine;..\..\..\jcvos\jcparam;..\SmiDevice;..\FerriSimulator"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"

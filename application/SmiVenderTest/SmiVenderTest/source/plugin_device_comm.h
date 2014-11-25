@@ -71,6 +71,7 @@ public:
 	// parameters
 	UINT	m_block, m_page;			// start page in multi page mode
 	bool	m_read_all, m_read_ecc;
+	BYTE	m_option;
 
 	CJCStringT	m_mode;
 	JCSIZE		m_address;
@@ -172,6 +173,8 @@ public:
 	// parameters
 	UINT	m_block, m_page;
 	UINT	m_org_info;
+	// 输出排序：false(default)按f-block排序，true，按physical block排序
+	bool	m_order_phy;
 
 	static const TCHAR m_desc[];
 };
