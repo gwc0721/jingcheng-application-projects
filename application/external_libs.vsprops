@@ -5,19 +5,7 @@
 	Name="external_libs"
 	>
 	<UserMacro
-		Name="BOOST_INC_DIR"
-		Value=""
-	/>
-	<UserMacro
-		Name="VLD_INC_DIR"
-		Value=""
-	/>
-	<UserMacro
-		Name="BOOST_LIB_DIR"
-		Value=""
-	/>
-	<UserMacro
-		Name="VLD_LIB_DIR"
+		Name="BOOST_DIR"
 		Value=""
 	/>
 	<UserMacro
@@ -27,5 +15,9 @@
 	<UserMacro
 		Name="CRYPTOPP_INC_DIR"
 		Value=""
-	/>	
+	/>
+	<UserMacro
+		Name="VLDDIR"
+		Value=""
+	/>
 </VisualStudioPropertySheet>
