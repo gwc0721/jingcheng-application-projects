@@ -1,11 +1,13 @@
 ﻿#pragma once
 
+//#define WIN32
+
 #ifdef __linux__
 #include "comm_linux.h"
-#endif
-
-#ifdef WIN32
+#elif defined WIN32
 #include "comm_windows.h"
+#else
+#error no platform defined
 #endif
 
 #include <stdlib.h>
