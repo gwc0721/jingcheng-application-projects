@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#define LOG_SINGLE_TONE_SUPPORT
+#define LOG_SINGLE_TONE_SUPPORT 1
 
 #include "comm_define.h"
 
@@ -139,7 +139,7 @@ protected:
 	static const GUID m_guid;
 };
 
-#ifdef LOG_SINGLE_TONE_SUPPORT
+#if LOG_SINGLE_TONE_SUPPORT > 0
 typedef CGlobalSingleTone<CJCLoggerLocal>		CJCLogger;
 #else
 typedef CLocalSingleTone<CJCLoggerLocal>		CJCLogger;
