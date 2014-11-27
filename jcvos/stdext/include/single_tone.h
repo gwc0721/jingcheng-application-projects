@@ -89,6 +89,20 @@ public:
 		obj = dynamic_cast<T*>(ptr);
 	}
 
+	//static void GetInstance(const GUID & guid, CSingleToneBase * & ptr)
+	//{
+	//	CSingleToneEntry * entry = Instance();
+	//	JCASSERT(obj == NULL);
+
+	//	entry->QueryStInstance(guid, ptr);
+	//	if (ptr == NULL)
+	//	{
+	//		ptr = static_cast<CSingleToneBase *>(new T);
+	//		entry->RegisterStInstance(T::Guid(), ptr);
+	//	}
+	//	obj = dynamic_cast<T*>(ptr);
+	//}
+
 protected:
 	CSingleToneManager *	m_base;
 	UINT m_entry_id;
