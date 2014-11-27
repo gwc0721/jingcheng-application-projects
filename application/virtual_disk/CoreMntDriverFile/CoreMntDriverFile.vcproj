@@ -21,6 +21,7 @@
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
+			InheritedPropertySheets="..\..\global_config.vsprops"
 			CharacterSet="1"
 			>
 			<Tool
@@ -41,7 +42,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;$(BOOST);"
+				AdditionalIncludeDirectories="..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\..\..\jcvos\jcapp;&quot;$(BOOST)&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;COREMNTDRIVERFILE_EXPORTS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -94,6 +95,7 @@
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
+			InheritedPropertySheets="..\..\global_config.vsprops"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>

@@ -22,9 +22,10 @@ LOCAL_LOGGER_ENABLE(_T("CoreMntTest"), LOGGER_LEVEL_DEBUGINFO);
 #define BLOCK_LENGTH         0x1000
 
 LOG_CLASS_SIZE(CORE_MNT_EXCHANGE_REQUEST)
+LOG_CLASS_SIZE(CJCLoggerNode)
 
 
-class CCoreMntTestApp : public jcapp::CJCAppBase<jcapp::AppArguSupport>
+class CCoreMntTestApp : public jcapp::CJCAppSupport<jcapp::AppArguSupport>
 {
 public:
 	CCoreMntTestApp(void);
@@ -49,17 +50,16 @@ public:
 	CJCStringT	m_filename;
 	bool	m_connect;
 	HANDLE	m_exit_event;
-
 	CJCStringT	m_driver;
-
 	CJCStringT	m_device_name;
+	CJCStringT	m_config;		// file name of configuration.
 
 protected:
 	HMODULE	m_driver_module;
 };
 
 typedef jcapp::CJCApp<CCoreMntTestApp>	CApplication;
-static CApplication the_app;
+//static CApplication the_app;
 #define _class_name_	CApplication
 
 BEGIN_ARGU_DEF_TABLE()
@@ -71,6 +71,7 @@ BEGIN_ARGU_DEF_TABLE()
 	ARGU_DEF_ITEM(_T("connect"),	_T('c'), bool,			m_connect,		_T("connect user mode driver to device.") )
 	ARGU_DEF_ITEM(_T("remove"),		_T('r'), UINT,			m_remove,		_T("remove dead device.") )
 	ARGU_DEF_ITEM(_T("dev_name"),	_T('n'), CJCStringT,	m_device_name,	_T("symbo link of device.") )
+	ARGU_DEF_ITEM(_T("config"),		_T('g'), CJCStringT,	m_config,		_T("configuration file name for driver.") )
 
 	//ARGU_DEF_ITEM(_T("open"),	_T('o'), CJCStringT,	m_device, _T("image file size in byte.") )
 
@@ -87,7 +88,7 @@ BOOL WINAPI HandlerRoutine(DWORD dwCtrlType)
 	case CTRL_LOGOFF_EVENT:
 	case CTRL_SHUTDOWN_EVENT:
 		LOG_DEBUG(_T("Ctrl + C has been pressed."));
-		SetEvent(the_app.m_exit_event);
+		SetEvent(CApplication::Instance()->m_exit_event);
 		break;
 	default:
 		LOG_DEBUG(_T("console event 0x%X"), dwCtrlType);
@@ -98,7 +99,7 @@ BOOL WINAPI HandlerRoutine(DWORD dwCtrlType)
 //#define LOCAL_DEBUG
 
 CCoreMntTestApp::CCoreMntTestApp(void) 
-	: jcapp::CJCAppBase<jcapp::AppArguSupport>(ARGU_SUPPORT_HELP | ARGU_SUPPORT_OUTFILE)
+	: jcapp::CJCAppSupport<jcapp::AppArguSupport>(ARGU_SUPPORT_HELP | ARGU_SUPPORT_OUTFILE)
 	, m_dev_id(UINT_MAX), m_file_size(0x100000LL), m_mnt_point(0)
 	, m_exit_event(NULL), m_connect(false), m_remove(UINT_MAX)
 	, m_driver_module(NULL) 
@@ -136,7 +137,7 @@ int CCoreMntTestApp::Run(void)
 	if (proc == NULL)	THROW_WIN32_ERROR(_T("file %s is not a virtual disk driver."), drv_path.c_str() );
 
 	stdext::auto_interface<IDriverFactory> factory;
-	BOOL br = (proc)(CJCLogger::Instance(), factory);
+	BOOL br = (proc)(/*CJCLogger::Instance(),*/ factory);
 	if (!br) THROW_ERROR(ERR_APP, _T("failure on getting factory."));
 	JCASSERT( factory.valid() );
 
@@ -220,14 +221,16 @@ void CCoreMntTestApp::CreateParameter(jcparam::CParamSet * &param)
 
 	jcparam::IValue * val = NULL;
 
-	//m_cmd_parser.m_remain.GetSubValue(_T("filename"), val);
 	val = jcparam::CTypedValue<CJCStringT>::Create(m_filename);
 	param->SetSubValue(_T("FILENAME"), val);
 	val->Release(); val = NULL;
 
 	val = jcparam::CTypedValue<ULONG64>::Create(m_file_size);
-	//m_cmd_parser.m_remain.GetSubValue(_T("filesize"), val);
 	param->SetSubValue(_T("FILESIZE"), val);
+	val->Release(); val = NULL;
+
+	val = jcparam::CTypedValue<CJCStringT>::Create(m_config);
+	param->SetSubValue(_T("CONFIG"), val);
 	val->Release(); val = NULL;
 }
 
@@ -249,10 +252,12 @@ void CCoreMntTestApp::CleanUp(void)
 int _tmain(int argc, _TCHAR* argv[])
 {
 	int ret_code = 0;
+	CApplication * app = CApplication::Instance();
+	JCASSERT(app);
 	try
 	{
-		the_app.Initialize();
-		ret_code = the_app.Run();
+		app->Initialize();
+		ret_code = app->Run();
 	}
 	catch (stdext::CJCException & err)
 	{
@@ -263,7 +268,7 @@ int _tmain(int argc, _TCHAR* argv[])
     {
         std::cout << ex.what();
     }
-	the_app.CleanUp();
+	app->CleanUp();
 
 	stdext::jc_printf(_T("Press any key to continue..."));
 	getc(stdin);

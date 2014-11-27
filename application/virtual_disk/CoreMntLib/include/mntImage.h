@@ -22,7 +22,7 @@ public:
 	virtual UINT	GetRevision(void) const = 0;
 };
 
-typedef BOOL (*GET_DRV_FACT_PROC) (CJCLogger * log, IDriverFactory * & factory);
+typedef BOOL (*GET_DRV_FACT_PROC) (/*CJCLogger * log,*/ IDriverFactory * & factory);
 
 
 

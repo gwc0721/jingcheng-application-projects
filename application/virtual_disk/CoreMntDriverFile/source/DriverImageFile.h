@@ -18,12 +18,48 @@ public:
 	virtual UINT	GetRevision(void) const;
 };
 
+class CDeviceConfig
+{
+public:
 
+	void LoadFromFile(const CJCStringT & fn);
+
+// storage
+	CJCStringT	m_storage_file;
+	ULONG64		m_total_sec;
+
+// system_info
+	CJCStringT	m_data_folder;
+	JCSIZE		m_max_isp_len;
+	//CJCStringT	
+
+protected:
+	//template<typename T>
+	//bool LoadConfig(LPCTSTR sec, LPCTSTR key, T & val, bool mandatory = false);
+	//{
+	//	val = GetPrivateProfileInt(sec, key, 0, m_config_file);
+	//	if ( (-1 == val) && (mandatory)) THROW_ERROR(ERR_PARAMETER, _T("failure on loading local config %s/%s"), sec, key);
+	//	LOG_DEBUG(_T("local config %s/%s=%d"), sec, key, val);
+	//	return true;
+	//}
+
+	//bool LoadConfigU64(LPCTSTR sec, LPCTSTR key, ULONG64 & val, const ULONG64 def_val);
+	//bool LoadConfig(LPCTSTR sec, LPCTSTR key, int & val, bool mandatory = false);
+	bool LoadConfig(LPCTSTR sec, LPCTSTR key, ULONG64 & val, bool mandatory = false);
+
+	bool LoadConfig(LPCTSTR sec, LPCTSTR key, CJCStringT & val, bool mandatory = false);
+	bool LoadConfig(LPCTSTR sec, LPCTSTR key, LPTSTR str, JCSIZE len, bool mandatory = false);
+
+protected:
+	CJCStringT	m_config_path;
+};
 
 class CDriverImageFile : public IImage
 {
 public:
-	CDriverImageFile(const CJCStringT file_name, ULONG64 secs);
+	// create from configuration file
+	CDriverImageFile(const CJCStringT & config);
+	CDriverImageFile(const CJCStringT & file_name, ULONG64 secs);
 	~CDriverImageFile(void);
 
 	IMPLEMENT_INTERFACE;
@@ -40,6 +76,7 @@ public:
 	bool Initialize(void);
 
 protected:
+	HANDLE OpenStorageFile(const CJCStringT fn, ULONG64 total_sec);
 	JCSIZE LoadBinFile(const CJCStringT & fn, UCHAR * buf, JCSIZE buf_len);
 	void SaveBinFile(const CJCStringT & fn, UCHAR * buf, JCSIZE buf_len);
 
@@ -74,16 +111,19 @@ protected:
 	UCHAR m_buf_par[SECTOR_SIZE];
 	UCHAR m_buf_idtable[SECTOR_SIZE];
 	UCHAR m_buf_device_info[SECTOR_SIZE];
+
 	UCHAR m_buf_isp[MAX_ISP_SEC * SECTOR_SIZE];
 	UCHAR m_buf_info[MAX_ISP_SEC * SECTOR_SIZE];
+	UCHAR m_buf_orgbad[MAX_ISP_SEC * SECTOR_SIZE];
 
 	UCHAR m_buf_bootisp[BOOTISP_SIZE * SECTOR_SIZE];
 
-	UCHAR m_buf_orgbad[MAX_ISP_SEC * SECTOR_SIZE];
 
 	JCSIZE m_isp_len;
 	JCSIZE m_info_len;
 	JCSIZE m_orgbad_len;
+
+	CDeviceConfig	m_config;
 
 	enum RUN_TYPE
 	{

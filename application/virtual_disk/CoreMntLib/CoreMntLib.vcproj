@@ -20,10 +20,68 @@
 	</ToolFiles>
 	<Configurations>
 		<Configuration
+			Name="Debug|Win32"
+			ConfigurationType="1"
+			InheritedPropertySheets="..\..\global_config.vsprops"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
 			Name="Debug|x64"
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="4"
+			InheritedPropertySheets="..\..\global_config.vsprops"
 			UseOfMFC="1"
 			CharacterSet="1"
 			>
@@ -88,6 +146,7 @@
 			OutputDirectory="..\..\lib\$(ConfigurationName)"
 			IntermediateDirectory="..\..\obj\$(ConfigurationName)"
 			ConfigurationType="4"
+			InheritedPropertySheets="..\..\global_config.vsprops"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
@@ -151,6 +210,7 @@
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="4"
+			InheritedPropertySheets="..\..\global_config.vsprops"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
@@ -215,6 +275,7 @@
 			OutputDirectory="$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
+			InheritedPropertySheets="..\..\global_config.vsprops"
 			UseOfMFC="0"
 			CharacterSet="1"
 			>
@@ -278,6 +339,7 @@
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="4"
+			InheritedPropertySheets="..\..\global_config.vsprops"
 			UseOfMFC="0"
 			CharacterSet="1"
 			>
