@@ -493,6 +493,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source\sm2236.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\source\sm2242.cpp"
 				>
 			</File>
@@ -560,6 +564,10 @@
 			</File>
 			<File
 				RelativePath=".\source\sm2232.h"
+				>
+			</File>
+			<File
+				RelativePath=".\source\sm2236.h"
 				>
 			</File>
 			<File

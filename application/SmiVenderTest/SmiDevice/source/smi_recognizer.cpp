@@ -17,6 +17,7 @@ LOCAL_LOGGER_ENABLE(_T("SmiRecognizer"), LOGGER_LEVEL_ERROR);
 #include "sm2232.h"
 #include "dummy_smi_device.h"
 #include "sm2246.h"
+#include "sm2236.h"
 
 
 CSmiRecognizer::STORAGE_MAP CSmiRecognizer::m_storage_map;
@@ -53,6 +54,7 @@ void CSmiRecognizer::Register(void)
 	RegisterStorageDevice( CStorageDeviceInfo(_T("SCSI_DEVICE"), &CScsiStorageDevice::Create) );
 	//RegisterStorageDevice( CStorageDeviceInfo(_T("DUMMY"), &CDummyStorageDevice::Recognize, &CDummyStorageDevice::Recognize) );
 
+	RegisterSmiDevice( CSmiDeviceCreator(_T("SM2236"), &CSM2236::Recognize, &CSM2236::CreateDevice) );
 	RegisterSmiDevice( CSmiDeviceCreator(_T("LT2244"), &CLT2244::Recognize, &CLT2244::CreateDevice) );
 	RegisterSmiDevice( CSmiDeviceCreator(_T("SM2246"), &CSM2246::Recognize, &CSM2246::CreateDevice) );
 	RegisterSmiDevice( CSmiDeviceCreator(_T("SM2242"), &CSM2242::Recognize, &CSM2242::CreateDevice) );

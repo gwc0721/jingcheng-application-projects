@@ -1,11 +1,11 @@
 ﻿#include "stdafx.h"
-#include "SM2244LT.h"
+#include "SM2236.h"
 
-LOCAL_LOGGER_ENABLE(_T("device_lt2244"), LOGGER_LEVEL_ERROR);
+LOCAL_LOGGER_ENABLE(_T("device_sm2236"), LOGGER_LEVEL_ERROR);
 
 static LPCTSTR STR_RESERVED = _T("Reserved");
 
-const CSmartAttrDefTab CLT2244::m_smart_def_2244lt(CSmartAttrDefTab::RULE()
+const CSmartAttrDefTab CSM2236::m_smart_def_2236(CSmartAttrDefTab::RULE()
 	( new CSmartAttributeDefine(0x01, STR_RESERVED, false) )
 	( new CSmartAttributeDefine(0x02, STR_RESERVED, false) )
 	( new CSmartAttributeDefine(0x05, _T("New bads")) )
@@ -35,7 +35,8 @@ const CSmartAttrDefTab CLT2244::m_smart_def_2244lt(CSmartAttrDefTab::RULE()
 	( new CSmartAttributeDefine(0xF2, _T("Total read sectors")) )
 );
 
-const CSmartAttrDefTab CLT2244::m_smart_neci(CSmartAttrDefTab::RULE()
+/*
+const CSmartAttrDefTab CSM2236::m_smart_neci(CSmartAttrDefTab::RULE()
 	( new CSmartAttributeDefine(0x01, STR_RESERVED, false) )
 	( new CSmartAttributeDefine(0x02, STR_RESERVED, false) )
 	( new CSmartAttributeDefine(0x05, _T("New bads")) )
@@ -57,24 +58,25 @@ const CSmartAttrDefTab CLT2244::m_smart_neci(CSmartAttrDefTab::RULE()
 	( new CSmartAttributeDefine(0xFC, _T("Min pe")) )
 	( new CSmartAttributeDefine(0xFD, _T("Avg pe")) )
 );
+*/
 
 
-CLT2244::CLT2244(IStorageDevice * dev)
-	: CSM2242(dev)
+CSM2236::CSM2236(IStorageDevice * dev)
+	: CLT2244(dev)
 	, m_info_page(0xFF), m_bitmap_page(0xFF)
 	, m_orphan_page(0xFF), m_blockindex_page(0xFF)
 {
 }
 
-bool CLT2244::CreateDevice(IStorageDevice * storage, ISmiDevice *& smi_device)
+bool CSM2236::CreateDevice(IStorageDevice * storage, ISmiDevice *& smi_device)
 {
 	LOG_STACK_TRACE();
 	JCASSERT(storage);
-	smi_device =  static_cast<ISmiDevice*>(new CLT2244(storage));
+	smi_device =  static_cast<ISmiDevice*>(new CSM2236(storage));
 	return true;
 }
 
-bool CLT2244::Recognize(IStorageDevice * storage, BYTE * inquery)
+bool CSM2236::Recognize(IStorageDevice * storage, BYTE * inquery)
 {
     LOG_STACK_TRACE();
 	char vendor[16];
@@ -95,7 +97,7 @@ bool CLT2244::Recognize(IStorageDevice * storage, BYTE * inquery)
 		storage->ScsiRead(buf0, 0x5500, 1, 60);
 		storage->ScsiRead(buf0, 0x55AA, 1, 60);
 
-		br = CLT2244::LocalRecognize(buf0);
+		br = CSM2236::LocalRecognize(buf0);
 		// Stop vender command
 		storage->ScsiRead(buf0, 0x55AA, 1, 60);
 	}
@@ -106,7 +108,7 @@ bool CLT2244::Recognize(IStorageDevice * storage, BYTE * inquery)
 	return br;
 }
 
-bool CLT2244::Initialize(void)
+bool CSM2236::Initialize(void)
 {
 	LOG_STACK_TRACE();
 	BYTE bb = 0;
@@ -223,7 +225,7 @@ bool CLT2244::Initialize(void)
 		{
 			cmd.page(pp);
 			VendorCommand(cmd, read, buf, 1);
-			if (strcmp((char*)(buf + 0xA0), ("SM2244LTAB")) == 0)
+			if (strcmp((char*)(buf + 0xA0), ("SM2236AC")) == 0)
 			{
 				m_f_block_num = MAKEWORD(buf[0xB7], buf[0xB6]);
 				break;
@@ -235,11 +237,11 @@ bool CLT2244::Initialize(void)
 	return true;
 }
 
-void CLT2244::ReadSmartFromWpro(BYTE * data)
+void CSM2236::ReadSmartFromWpro(BYTE * data)
 {
 }
 
-void CLT2244::FlashAddToPhysicalAdd(const CFlashAddress & add, CSmiCommand & cmd, UINT option)
+void CSM2236::FlashAddToPhysicalAdd(const CFlashAddress & add, CSmiCommand & cmd, UINT option)
 {
 	CCmdBaseLT2244 & block_cmd = reinterpret_cast<CCmdBaseLT2244 &>(cmd);
 	BYTE mode = 0;
@@ -272,7 +274,7 @@ void CLT2244::FlashAddToPhysicalAdd(const CFlashAddress & add, CSmiCommand & cmd
 	block_cmd.mode() = mode;
 }
 
-bool CLT2244::GetProperty(LPCTSTR prop_name, UINT & val)
+bool CSM2236::GetProperty(LPCTSTR prop_name, UINT & val)
 {
 	if ( FastCmpT(prop_name, CSmiDeviceBase::PROP_CACHE_NUM ) )
 	{
@@ -304,7 +306,7 @@ bool CLT2244::GetProperty(LPCTSTR prop_name, UINT & val)
 	else	return __super::GetProperty(prop_name, val);
 }
 
-void CLT2244::GetSpare(CSpareData & spare, BYTE * spare_buf)
+void CSM2236::GetSpare(CSpareData & spare, BYTE * spare_buf)
 {
 	spare.m_id = spare_buf[0];
 	spare.m_hblock = MAKEWORD(spare_buf[2], spare_buf[1]);
@@ -323,7 +325,7 @@ void CLT2244::GetSpare(CSpareData & spare, BYTE * spare_buf)
 	if ( 0x40 == (spare_buf[0] & 0xF0) )	spare.m_serial_no = spare_buf[8];
 }
 
-JCSIZE CLT2244::GetSystemBlockId(JCSIZE id)
+JCSIZE CSM2236::GetSystemBlockId(JCSIZE id)
 {
 	switch (id & BID_SYSTEM_MASK)
 	{
@@ -338,7 +340,7 @@ JCSIZE CLT2244::GetSystemBlockId(JCSIZE id)
 	}
 }
 
-void CLT2244::ReadSRAM(WORD ram_add, WORD bank, BYTE * buf)
+void CSM2236::ReadSRAM(WORD ram_add, WORD bank, BYTE * buf)
 {
 	JCASSERT( 0 == (ram_add & 0x001EE) );
 	CCmdReadRam cmd;
