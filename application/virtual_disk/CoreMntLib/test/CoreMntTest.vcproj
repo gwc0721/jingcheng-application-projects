@@ -335,7 +335,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\..\..\jcvos\jcapp;..\..\..\..\jcvos\jcparam;..\..\..\..\jcvos\stdext;$(VLDDIR);$(BOOST)"
+				AdditionalIncludeDirectories="..\..\..\..\jcvos\jcapp;..\..\..\..\jcvos\jcparam;..\..\..\..\jcvos\stdext;$(VLDDIR);$(BOOST_DIR)"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				ExceptionHandling="1"

@@ -77,7 +77,7 @@ public:
 
 protected:
 	HANDLE OpenStorageFile(const CJCStringT fn, ULONG64 total_sec);
-	JCSIZE LoadBinFile(const CJCStringT & fn, UCHAR * buf, JCSIZE buf_len);
+	JCSIZE LoadBinFile(const CJCStringT & fn, UCHAR * buf, JCSIZE buf_len, bool mandatory = false);
 	void SaveBinFile(const CJCStringT & fn, UCHAR * buf, JCSIZE buf_len);
 
 	ULONG32 ScsiCommand(READ_WRITE rd_wr, UCHAR *buf, JCSIZE buf_len, UCHAR *cb, JCSIZE cb_length, UINT timeout);
