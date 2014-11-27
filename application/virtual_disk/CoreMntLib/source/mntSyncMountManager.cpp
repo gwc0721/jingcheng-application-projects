@@ -55,14 +55,32 @@ void CSyncMountManager::UnmountImage(UINT dev_id)
 	delete drv_ctrl;
 }
 
+template <> void stdext::CCloseHandle<SC_HANDLE>::DoCloseHandle(SC_HANDLE hdl)
+{
+	if (hdl) CloseServiceHandle(hdl);
+}
+
 void CSyncMountManager::InstallDriver(const CJCStringT & driver_fn)
 {
 	LOG_STACK_TRACE();
 	LOG_DEBUG(_T("driver = %s"), driver_fn.c_str());
-	SC_HANDLE hdl = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-	if (hdl == NULL) THROW_WIN32_ERROR(_T(" openning scm failed!"));
 
-	SC_HANDLE srv = CreateService(hdl, _T("CoreMnt"), _T("CoreMnt"), SERVICE_ALL_ACCESS, SERVICE_KERNEL_DRIVER,
+	stdext::auto_handle<SC_HANDLE> scmng(OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS));
+	if ((SC_HANDLE)scmng == NULL) THROW_WIN32_ERROR(_T(" openning scm failed!"));
+
+	// try to open service
+	SC_HANDLE _srv = NULL;
+	_srv = OpenService(scmng, _T("CoreMnt"), SERVICE_ALL_ACCESS);
+	if ( (_srv == NULL) && (GetLastError() == ERROR_SERVICE_DOES_NOT_EXIST) )
+	{	// try to create service
+		_srv = CreateService(scmng, _T("CoreMnt"), _T("CoreMnt"), SERVICE_ALL_ACCESS, SERVICE_KERNEL_DRIVER,
+				SERVICE_DEMAND_START, SERVICE_ERROR_CRITICAL, driver_fn.c_str(), NULL, NULL, NULL, NULL, NULL);
+	}
+	if (_srv == NULL) THROW_WIN32_ERROR(_T("creating service failed!"));
+	stdext::auto_handle<SC_HANDLE> srv(_srv);
+
+/*
+	SC_HANDLE srv = CreateService(scmng, _T("CoreMnt"), _T("CoreMnt"), SERVICE_ALL_ACCESS, SERVICE_KERNEL_DRIVER,
 		SERVICE_DEMAND_START, SERVICE_ERROR_CRITICAL, driver_fn.c_str(), NULL, NULL, NULL, NULL, NULL);
 	if (srv == NULL)
 	{
@@ -71,11 +89,11 @@ void CSyncMountManager::InstallDriver(const CJCStringT & driver_fn)
 		if ( (ir == ERROR_IO_PENDING) || (ir == ERROR_SERVICE_EXISTS) )
 		{
 			LOG_DEBUG(_T("service is existing, retry for open"));
-			srv = OpenService(hdl, _T("CoreMnt"), SERVICE_ALL_ACCESS);
+			srv = OpenService(scmng, _T("CoreMnt"), SERVICE_ALL_ACCESS);
 		}
 		if (srv == NULL)	THROW_WIN32_ERROR(_T("creating service failed!"));
 	}
-
+*/
 	BOOL br = StartService(srv, NULL, NULL);
 	if (!br)
 	{
@@ -88,9 +106,31 @@ void CSyncMountManager::InstallDriver(const CJCStringT & driver_fn)
 		else THROW_WIN32_ERROR(_T("start service failed"))
 	}
 
-	//SC_HANDLE driver = OpenService(hdl, _T("CoreMnt"), 
+	//SC_HANDLE driver = OpenService(scmng, _T("CoreMnt"), 
 	//ControlService(srv, SERVICE_CONTROL_STOP, NULL);
 
-	CloseServiceHandle(srv);
-	CloseServiceHandle(hdl);
+	//CloseServiceHandle(srv);
+	//CloseServiceHandle(scmng);
+}
+
+void CSyncMountManager::UninstallDriver(void)
+{
+	LOG_STACK_TRACE();
+
+	stdext::auto_handle<SC_HANDLE> scmng(OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS));
+	if ((SC_HANDLE)scmng == NULL) THROW_WIN32_ERROR(_T(" openning scm failed!"));
+	
+	// open service
+	stdext::auto_handle<SC_HANDLE> srv(OpenService(scmng, _T("CoreMnt"), SERVICE_ALL_ACCESS));
+	if ( (SC_HANDLE)srv == NULL) THROW_WIN32_ERROR(_T("open service failed!"));
+
+	// stop service
+	SERVICE_STATUS status;
+	BOOL br = ControlService(srv, SERVICE_CONTROL_STOP, &status);
+	if (!br) LOG_DEBUG(_T("stop service failed, code=%d"), GetLastError() );
+	LOG_DEBUG(_T("stop service, current status=%d"), status.dwCurrentState );
+	
+	// delete service
+	br = DeleteService(srv);
+	if (!br) LOG_DEBUG(_T("delete service failed, code=%d"), GetLastError() );
 }

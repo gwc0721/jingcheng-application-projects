@@ -429,7 +429,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\resource.h"
+				RelativePath=".\resource\resource.h"
 				>
 			</File>
 			<File
@@ -443,7 +443,7 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
-				RelativePath=".\CoreMntWdm.rc"
+				RelativePath=".\resource\CoreMntWdm.rc"
 				>
 			</File>
 		</Filter>

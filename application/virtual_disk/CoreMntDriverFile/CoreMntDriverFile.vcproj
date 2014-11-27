@@ -42,7 +42,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\..\..\jcvos\jcapp;&quot;$(BOOST)&quot;"
+				AdditionalIncludeDirectories="..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\..\..\jcvos\jcapp;$(BOOST_DIR)"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;COREMNTDRIVERFILE_EXPORTS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"

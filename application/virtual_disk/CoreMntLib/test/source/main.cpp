@@ -37,6 +37,8 @@ public:
 
 protected:
 	void CreateParameter(jcparam::CParamSet * &param);
+	void InstallDriver(CSyncMountManager & mntmng,const CJCStringT & driver);
+	void LoadUserModeDriver(const CJCStringT & driver, IImage * & img);
 
 public:
 	// 挂载点，如果没有指定，则不挂载
@@ -53,13 +55,14 @@ public:
 	CJCStringT	m_driver;
 	CJCStringT	m_device_name;
 	CJCStringT	m_config;		// file name of configuration.
+	bool	m_install_driver, m_uninstall_driver;
 
 protected:
 	HMODULE	m_driver_module;
+	CJCStringT	m_app_path;
 };
 
 typedef jcapp::CJCApp<CCoreMntTestApp>	CApplication;
-//static CApplication the_app;
 #define _class_name_	CApplication
 
 BEGIN_ARGU_DEF_TABLE()
@@ -72,10 +75,8 @@ BEGIN_ARGU_DEF_TABLE()
 	ARGU_DEF_ITEM(_T("remove"),		_T('r'), UINT,			m_remove,		_T("remove dead device.") )
 	ARGU_DEF_ITEM(_T("dev_name"),	_T('n'), CJCStringT,	m_device_name,	_T("symbo link of device.") )
 	ARGU_DEF_ITEM(_T("config"),		_T('g'), CJCStringT,	m_config,		_T("configuration file name for driver.") )
-
-	//ARGU_DEF_ITEM(_T("open"),	_T('o'), CJCStringT,	m_device, _T("image file size in byte.") )
-
-	//ARGU_DEF_ITEM(_T("length"),		_T('l'), int,		m_length, _T("set length.") )
+	ARGU_DEF_ITEM(_T("install"),	_T('i'), bool,			m_install_driver,		_T("install driver") )
+	ARGU_DEF_ITEM(_T("uninstall"),	_T('u'), bool,			m_uninstall_driver,		_T("uninstall driver") )
 END_ARGU_DEF_TABLE()
 
 BOOL WINAPI HandlerRoutine(DWORD dwCtrlType)
@@ -103,13 +104,71 @@ CCoreMntTestApp::CCoreMntTestApp(void)
 	, m_dev_id(UINT_MAX), m_file_size(0x100000LL), m_mnt_point(0)
 	, m_exit_event(NULL), m_connect(false), m_remove(UINT_MAX)
 	, m_driver_module(NULL) 
+	, m_install_driver(false), m_uninstall_driver(false)
 {
 }
+
+void CCoreMntTestApp::InstallDriver(CSyncMountManager & mntmng,const CJCStringT & driver)
+{
+	CJCStringT	wdm_path;
+	SYSTEM_INFO si; 
+	GetNativeSystemInfo(&si); 
+	if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_IA64)	THROW_ERROR(ERR_APP, _T("do not support ia64"))
+	else if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
+	{    //64 位操作系统 
+		LOG_DEBUG(_T("plarform = x64"));
+		wdm_path = m_app_path + _T("\\") WDM_FN _T("64.sys");
+	}
+	else
+	{
+		LOG_DEBUG(_T("plarform = x86"));
+		wdm_path = m_app_path + _T("\\") WDM_FN _T(".sys");    // 32 位操作系统 
+	}
+	mntmng.InstallDriver(wdm_path);
+}
+
+void CCoreMntTestApp::LoadUserModeDriver(const CJCStringT & driver, IImage * & img)
+{
+	JCASSERT(NULL == img);
+
+	CJCStringT drv_path;
+	drv_path = m_app_path + _T("\\") + driver + _T(".dll");
+	m_driver_module = LoadLibrary(drv_path.c_str());
+	if (m_driver_module == NULL) THROW_WIN32_ERROR(_T(" failure on loading driver %s "), drv_path.c_str() );
+
+	// load entry
+	GET_DRV_FACT_PROC proc = (GET_DRV_FACT_PROC) (GetProcAddress(m_driver_module, "GetDriverFactory") );
+	if (proc == NULL)	THROW_WIN32_ERROR(_T("file %s is not a virtual disk driver."), drv_path.c_str() );
+
+	stdext::auto_interface<IDriverFactory> factory;
+	BOOL br = (proc)(factory);
+	if (!br) THROW_ERROR(ERR_APP, _T("failure on getting factory."));
+	JCASSERT( factory.valid() );
+
+	// create parameters
+	if (m_filename.empty() )	m_filename = L"tst_img01";
+	stdext::auto_interface<jcparam::CParamSet> param;
+	CreateParameter(param);
+
+	factory->CreateDriver(_T(""), static_cast<jcparam::IValue*>(param), img);
+	JCASSERT(img);
+}
+
 
 int CCoreMntTestApp::Run(void)
 {
 	LOG_STACK_TRACE();
 	SetConsoleCtrlHandler(HandlerRoutine, TRUE);
+
+	// get app dir
+	//CJCStringT app_path;
+	__super::GetAppPath(m_app_path);
+
+	CSyncMountManager mount_manager;
+
+	// install / uninstall driver	
+	if (m_install_driver)			InstallDriver(mount_manager, _T(""));
+	else if (m_uninstall_driver)	mount_manager.UninstallDriver();
 
 	if (m_remove < UINT_MAX)
 	{
@@ -121,34 +180,11 @@ int CCoreMntTestApp::Run(void)
 
 	stdext::auto_interface<IImage>	img;
 
-	if ( m_driver.empty() )		THROW_ERROR(ERR_USER, _T("driver must be set."));
 	// load driver
-	// get app dir
-	CJCStringT app_path;
-	__super::GetAppPath(app_path);
-
-	CJCStringT drv_path;
-	drv_path = app_path + _T("\\") + m_driver + _T(".dll");
-	m_driver_module = LoadLibrary(drv_path.c_str());
-	if (m_driver_module == NULL) THROW_WIN32_ERROR(_T(" failure on loading driver %s "), drv_path.c_str() );
-
-	// load entry
-	GET_DRV_FACT_PROC proc = (GET_DRV_FACT_PROC) (GetProcAddress(m_driver_module, "GetDriverFactory") );
-	if (proc == NULL)	THROW_WIN32_ERROR(_T("file %s is not a virtual disk driver."), drv_path.c_str() );
-
-	stdext::auto_interface<IDriverFactory> factory;
-	BOOL br = (proc)(/*CJCLogger::Instance(),*/ factory);
-	if (!br) THROW_ERROR(ERR_APP, _T("failure on getting factory."));
-	JCASSERT( factory.valid() );
-
-	// create parameters
-	if (m_filename.empty() )	m_filename = L"tst_img01";
-	stdext::auto_interface<jcparam::CParamSet> param;
-	CreateParameter(param);
-
-	factory->CreateDriver(_T(""), static_cast<jcparam::IValue*>(param), img);
-	JCASSERT( img.valid() );
-
+	if ( !m_driver.empty() )	/*	THROW_ERROR(ERR_USER, _T("driver must be set."));*/
+	{
+		LoadUserModeDriver(m_driver, img);
+	}
 
 #ifdef LOCAL_DEBUG
 	LOG_DEBUG(_T("open image file: %s"), m_filename.c_str() );
@@ -159,36 +195,16 @@ int CCoreMntTestApp::Run(void)
 #endif
 
 #ifndef LOCAL_DEBUG
-	CSyncMountManager mount_manager;
-	CJCStringT wdm_path;
-	
-	SYSTEM_INFO si; 
-	GetNativeSystemInfo(&si); 
-	if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_IA64)	THROW_ERROR(ERR_APP, _T("do not support ia64"))
-	else if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
-	{    //64 位操作系统 
-		LOG_DEBUG(_T("plarform = x64"));
-		wdm_path = app_path + _T("\\CoreMntWdm64.sys");
-	}
-	else
-	{
-		LOG_DEBUG(_T("plarform = x86"));
-		wdm_path = app_path + _T("\\CoreMntWdm.sys");    // 32 位操作系统 
-	}
-
-	mount_manager.InstallDriver(wdm_path);
-
 
 	if (m_device_name.empty() ) m_device_name = _T("disk0");
 	CJCStringT symbo_link = CJCStringT(_T("")) + _T("\\DosDevices\\") + m_device_name;
 	m_dev_id = mount_manager.CreateDevice(m_file_size, symbo_link);		// length in sectors;
-
-	//_tprintf( _T("device: %s%d was created.\n"), SYMBO_DIRECT_DISK, m_dev_id);
 	_tprintf( _T("device: %s was created.\n"), symbo_link.c_str());
 
 	if (m_connect)
 	{
 		LOG_DEBUG(_T("connect to device %d"), m_dev_id);
+		if (!img.valid())	THROW_ERROR(ERR_USER, _T("User mode driver is not loaded."));
 		mount_manager.Connect(m_dev_id, img);
 	}
 

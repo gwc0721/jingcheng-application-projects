@@ -17,6 +17,7 @@
 #define MAX_MOUNTED_DISK	(5)
 #define MAX_IRP_QUEUE		(32)
 
+#define WDM_FN				_T("CoreMntWdm")
 ///
 #define EXCHANGE_BUFFER_SIZE	(1024 * 1024)
 
