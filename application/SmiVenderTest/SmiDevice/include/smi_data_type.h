@@ -34,6 +34,8 @@ public:
 	// physical parameter
 	JCSIZE		m_p_spp;		// sectors per physical page	
 	JCSIZE		m_p_ppb;		// physical page per physical block
+	JCSIZE		m_p_bpd;		// physical block number per die
+	JCSIZE		m_p_die;		// die number of NAND flash
 	// flash parameter
 	JCSIZE		m_f_block_num;
 	JCSIZE		m_f_ppb;			// page per block

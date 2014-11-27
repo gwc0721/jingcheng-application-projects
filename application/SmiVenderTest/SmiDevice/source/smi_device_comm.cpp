@@ -292,6 +292,9 @@ bool CSmiDeviceComm::GetCardInfo(CCardInfo & card_info)
 
 	// physical parameter
 	card_info.m_p_ppb = m_p_page_per_block;		// physical page per physical block
+	card_info.m_p_bpd = m_f_block_num / (m_ce_num / m_interleave);
+	// 总共NAND数
+	card_info.m_p_die = m_ce_num * m_channel_num;
 
 	card_info.m_f_block_num = m_f_block_num;
 	card_info.m_f_ppb = m_f_page_per_block;
