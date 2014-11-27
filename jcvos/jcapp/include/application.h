@@ -31,6 +31,9 @@
 
 namespace jcapp
 {
+	// {D8AE8880-341F-4e8f-B93D-3A700B5E30AA}
+	extern const GUID JCAPP_GUID;
+
 ///////////////////////////////////////////////////////////////////////////////
 // -- enum type support
 	template <typename ENUM_T>
@@ -74,6 +77,17 @@ namespace jcapp
 #define ARGU_SUPPORT_INFILE		0x80000000
 #define ARGU_SUPPORT_OUTFILE	0x40000000
 #define ARGU_SUPPORT_HELP		0x20000000
+#define ARGU_SUPPORT			0x10000000
+
+	class CJCAppBase
+	{
+	public:
+		virtual ~CJCAppBase() {};
+		void GetAppPath(CJCStringT & path);
+
+	public:
+		static CJCAppBase * GetApp(void);
+	};
 
 	class AppArguSupport
 	{
@@ -104,27 +118,34 @@ namespace jcapp
 		void ArguCleanUp(void) {};
 	};
 
+
 	template <typename ARGU> 
-	class CJCAppBase : public ARGU
+	class CJCAppSupport : public CJCAppBase, public ARGU
 	{
 	public:
-		CJCAppBase(DWORD prop = (ARGU_SUPPORT_INFILE | ARGU_SUPPORT_OUTFILE | ARGU_SUPPORT_HELP) ) : ARGU(prop) {};
-		void GetAppPath(CJCStringT & path);
+		CJCAppSupport(DWORD prop = (ARGU_SUPPORT | ARGU_SUPPORT_INFILE 
+			| ARGU_SUPPORT_OUTFILE | ARGU_SUPPORT_HELP) ) : ARGU(prop) {};
+		//bool CmdLineParse(BYTE * base);
+		//FILE * OpenInputFile(void);
+		//FILE * OpenOutputFile(void);
 
 	public:
 		void CleanUp(void)
 		{
 			ARGU::ArguCleanUp();
 		}
+
+	//protected:
+	//	DWORD m_prop;
 	};
 
 	template <class BASE>
-	class CJCApp : public BASE
+	class CJCApp : public BASE, public CSingleToneBase
 	{
 	public:
 		CJCApp(void)
 		{
-			if (m_app == NULL) m_app = this;
+			//if (m_app == NULL) m_app = this;
 			LOGGER_SELECT_COL( 0
 				| CJCLogger::COL_TIME_STAMP
 				| CJCLogger::COL_FUNCTION_NAME
@@ -134,16 +155,26 @@ namespace jcapp
 		}
 		virtual ~CJCApp(void) {}
 
+	// for single tone
+	virtual void Release(void)	{delete this;};
+	virtual const GUID & GetGuid(void) const {return JCAPP_GUID;};
+	static CJCApp<BASE> * Instance(void)
+	{
+		static CJCApp<BASE> * instance = NULL;
+		if (instance == NULL)	CSingleToneEntry::GetInstance< CJCApp<BASE> >(instance);
+		return instance;
+	};
+	static const GUID & Guid() {return JCAPP_GUID;};
+
 	public:
 		int Initialize(void);
 		void CleanUp(void) { BASE::CleanUp(); }
 
-		template <class APP_TYPE>
-		static APP_TYPE* GetApp(void)  { return dynamic_cast<APP_TYPE*>(m_app); }
+		//template <class APP_TYPE>
+		//static APP_TYPE* GetApp(void)  { return dynamic_cast<APP_TYPE*>(m_app); }
 
-
-	protected:
-		BASE * m_app;
+	//protected:
+	//	BASE * m_app;
 	};
 
 	template<class BASE>
@@ -152,17 +183,6 @@ namespace jcapp
 		BASE::CmdLineParse((BYTE*)(static_cast<BASE*>(this)) );
 		return __super::Initialize();
 	}
-
-	template<class ARGU>
-	void CJCAppBase<ARGU>::GetAppPath(CJCStringT &path)
-	{
-		TCHAR str[FILENAME_MAX];
-		GetModuleFileName(NULL, str, FILENAME_MAX-1);
-		LPTSTR _path = _tcsrchr(str, _T('\\'));
-		if (_path) _path[0] = 0;
-		path = str;
-	}
-
 };
 
 

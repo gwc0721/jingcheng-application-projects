@@ -10,6 +10,7 @@
 #ifdef JCAPP_LOGGER_SUPPORT
 #endif	//JCAPP_LOGGER_SUPPORT
 
+/*
 #ifdef JCAPP_MAIN_SUPPORT
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -50,3 +51,5 @@ int _tmain(int argc, _TCHAR* argv[])
 }
 	
 #endif	//JCAPP_MAIN_SUPPORT
+	*/
+
