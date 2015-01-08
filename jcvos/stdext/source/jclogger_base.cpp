@@ -60,11 +60,16 @@ CJCLoggerNode * CJCLoggerLocal::EnableCategory(const CJCStringW & name, int leve
     {
         // Create new logger
         CJCLoggerNode * logger = CJCLoggerNode::CreateLoggerNode(name, level);
-		_LOG_(_T("logger node: 0x%08X, %s, this=0x%08X\n"), (UINT32)(logger), name.c_str(), (UINT32)this )
+		_LOG_(_T("add logger: 0x%08X, %s, this=0x%08X\n"), (UINT32)(logger), name.c_str(), (UINT32)this )
         std::pair<LoggerCategoryMap::iterator, bool> rc;
         rc = m_logger_category.insert(LoggerCategoryMap::value_type(name, logger) );
         it = rc.first;
     }
+	else
+	{
+		_LOG_(_T("enable logger: 0x%08X, %s, this=0x%08X\n"), 
+			(UINT32)(it->second), name.c_str(), (UINT32)this )
+	}
     return it->second;
 }
 
@@ -240,6 +245,9 @@ void CJCLoggerLocal::CreateAppender(LPCTSTR app_type, LPCTSTR file_name, DWORD p
 	}
 	if (temp)
 	{
+		TCHAR msg[256];
+		JCSIZE len = _stprintf_s(msg, _T("[APPENDER] change to %s : %s\n"), app_type, file_name?file_name:_T(""));
+		m_appender->WriteString(msg, len );
 		delete m_appender;
 		m_appender = temp;
 	}

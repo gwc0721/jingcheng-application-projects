@@ -194,23 +194,6 @@ bool CSingleToneManager::RegisterStInstance(const GUID & guid, CSingleToneBase *
 	while (ii != hash);
 
 	return br;
-
-/*
-	// find a empty entry
-	EnterCriticalSection(&m_critical);
-	UINT ii = 0;
-	for (; ii<MAX_INSTANCE; ++ii)
-	{
-		if (m_instance[ii] == NULL) break;
-	}
-	if (ii < MAX_INSTANCE)
-	{
-		memcpy_s(m_instance_id + ii, sizeof(GUID), &guid, sizeof(GUID));
-		m_instance[ii] = obj;
-	}
-	LeaveCriticalSection(&m_critical);
-	return (ii < MAX_INSTANCE);
-*/
 }
 
 bool CSingleToneManager::QueryStInstance(const GUID & guid, CSingleToneBase * & obj)
@@ -238,18 +221,6 @@ bool CSingleToneManager::QueryStInstance(const GUID & guid, CSingleToneBase * & 
 	LeaveCriticalSection(&m_critical);
 
 	return br;
-
-/*
-	// search guid by linear
-	EnterCriticalSection(&m_critical);
-	UINT ii = 0;
-	for (; ii <MAX_INSTANCE; ++ii)
-	{
-		if (IsEqualGUID(guid, m_instance_id[ii])) break;
-	}
-	if (ii < MAX_INSTANCE)	obj = m_instance[ii];
-	LeaveCriticalSection(&m_critical);
-*/
 }
 
 void CSingleToneManager::CleanUp(void)
@@ -273,9 +244,6 @@ void CSingleToneManager::CleanUp(void)
 	LeaveCriticalSection(&m_critical);
 	DeleteCriticalSection(&m_critical);
 }
-
-//void RemoveStInstance(const GUID * guid);
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //-- CSingleToneEntry
@@ -301,7 +269,9 @@ CSingleToneEntry::CSingleToneEntry(void)
 	{
 		JCSIZE ir = VirtualQuery(ptr, &mbi, sizeof(mbi));
 		if (ir == 0)	_FATAL_(_T("fatal error: VirtualQuery failed\n"));
-		if ( (mbi.State & MEM_COMMIT) && CSingleToneManager::IsSingleToneManager(ptr) )
+		if ( (mbi.State & MEM_COMMIT) && (mbi.Protect == PAGE_READWRITE)
+			&& (mbi.Type == MEM_PRIVATE)
+			&& CSingleToneManager::IsSingleToneManager(ptr) )
 		{
 			_LOG_(_T("found signature at add = 0x%08X\n"), (ULONG32)ptr);
 			m_base = reinterpret_cast<CSingleToneManager*>(ptr);
@@ -319,6 +289,10 @@ CSingleToneEntry::CSingleToneEntry(void)
 		_LOG_(_T("allocated new virtual page at add = 0x%08X\n"), m_base);
 		m_entry_id = 0;
 		m_base->Initialize(page_size, this);
+// for debug
+		VirtualQuery(m_base, &mbi, sizeof(mbi) );
+		_LOG_(_T("alloc_base=%08X, alloc_prot=%X, "), (UINT)(mbi.AllocationBase), mbi.AllocationProtect);
+		_LOG_(_T("size=%08X, prot=%X, type=%X\n"), mbi.RegionSize, mbi.Protect, mbi.Type);
 	}
 }
 
