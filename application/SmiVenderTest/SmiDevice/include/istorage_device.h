@@ -2,7 +2,6 @@
 
 #include <stdext.h>
 
-#define SECTOR_SIZE	(512)
 
 const char IF_NAME_STORAGE_DEVICE[] = "IStorageDevice";
 const char IF_NAME_ATA_DEVICE[] = "IAtaDevice";

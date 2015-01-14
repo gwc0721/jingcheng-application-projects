@@ -2,7 +2,7 @@
 #include "storage_device_comm.h"
 #include <ntddscsi.h>
 
-LOCAL_LOGGER_ENABLE(_T("CStorageDeviceComm"), LOGGER_LEVEL_ERROR); 
+LOCAL_LOGGER_ENABLE(_T("CStorageDeviceComm"), LOCAL_LOG_LEV); 
 
 CStorageDeviceComm::CStorageDeviceComm(HANDLE dev)
 	: m_dev(dev), m_capacity(0)
@@ -240,7 +240,7 @@ void CStorageDeviceComm::UnmountAllLogical(void)
 
 	static const TCHAR PHYSICAL_DRIVE[] = _T("PhysicalDrive");
 	static const JCSIZE PHDRV_LEN = _tcslen(PHYSICAL_DRIVE);
-	static TCHAR lgdrv_name[] = _T("\\\\.\\x:");
+	TCHAR lgdrv_name[] = _T("\\\\.\\x:");
 
 	// Check physical drive number
 	LPCTSTR str_drv_no = _tcsstr(m_device_name.c_str(), PHYSICAL_DRIVE);

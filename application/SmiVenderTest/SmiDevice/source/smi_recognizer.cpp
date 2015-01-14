@@ -1,6 +1,5 @@
 ﻿#include "stdafx.h"
 
-
 #include <stdext.h>
 
 LOCAL_LOGGER_ENABLE(_T("SmiRecognizer"), LOGGER_LEVEL_ERROR);
@@ -78,6 +77,11 @@ bool CSmiRecognizer::RecognizeDevice(
 		const CJCStringT & force_storage, const CJCStringT & force_device)
 {
 	LOG_STACK_TRACE();
+	stdext::auto_interface<IStorageDevice> storage_device;
+	bool br = AutoStorageDevice(device_name, force_storage, storage_device);
+	if ( (!br) || (!storage_device.valid()) ) return false;
+
+/*
 	LOG_TRACE(_T("Recogizing driver %s"), device_name);
 
 	if ( 0  == m_storage_map.size() ) Register();
@@ -97,7 +101,6 @@ bool CSmiRecognizer::RecognizeDevice(
 	if( INVALID_HANDLE_VALUE == hdev) return false;
 
 	DWORD junk = 0;
-	stdext::auto_interface<IStorageDevice> storage_device;
 
 	if ( !force_storage.empty() )
 	{
@@ -145,7 +148,7 @@ bool CSmiRecognizer::RecognizeDevice(
 		return false;
 	}
 	storage_device->SetDeviceName(device_name);
-
+*/
 	// Get Inquery buffer
 	stdext::auto_array<BYTE>	inquery_buf(4* SECTOR_SIZE);
 	memset((BYTE*)inquery_buf, 0, SECTOR_SIZE);
@@ -197,7 +200,7 @@ bool CSmiRecognizer::RecognizeDevice(
 	if ( _tcscmp(creator->m_name, _T("DUMMY")) != 0 )	storage_device->UnmountAllLogical();
 
 	JCASSERT(creator->m_creator);
-	bool br = (*creator->m_creator)(storage_device, smi_device);
+	br = (*creator->m_creator)(storage_device, smi_device);
 	if (!br || !smi_device) 
 	{
 		LOG_ERROR(_T("Failure on creating SMI device %s"), creator->m_name );
@@ -248,18 +251,133 @@ SMI_DEVICE_TYPE CSmiRecognizer::AchieveDeviceType(IStorageDevice * dev)
 	return dev_type;
 }
 
+UINT CSmiRecognizer::GetDriveNumber(TCHAR drive_letter)
+{
+	LOG_STACK_TRACE();
+	static TCHAR lgdrv_name[] = _T("\\\\.\\%c:");
+	
+	TCHAR logic_drive_name[32];
+	_stprintf_s(logic_drive_name, lgdrv_name, drive_letter);
+
+	HANDLE hlgdrv = CreateFile(logic_drive_name, 
+					GENERIC_READ|GENERIC_WRITE, 
+		  			FILE_SHARE_READ|FILE_SHARE_WRITE, 
+					NULL, 
+					OPEN_EXISTING, 
+					0 | FILE_FLAG_NO_BUFFERING, 
+					NULL );
+	if( INVALID_HANDLE_VALUE == hlgdrv)
+	{
+		THROW_WIN32_ERROR(_T("failure on openning drive %s:"), logic_drive_name);
+	}
+	stdext::auto_handle<HANDLE> logic_drv(hlgdrv);
+
+	VOLUME_DISK_EXTENTS		ext;
+	DWORD read_size = 0;
+	BOOL br = DeviceIoControl(logic_drv, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0,
+			&ext, sizeof(ext), &read_size, NULL);
+	if ( !br ) THROW_WIN32_ERROR(_T("Failure on getting disk extents %c:"), drive_letter );
+	if (ext.NumberOfDiskExtents <=0) THROW_ERROR(ERR_APP, _T("there is no physical drive for %c:"), drive_letter );
+
+	UINT drive_number = ext.Extents[0].DiskNumber;
+	return drive_number;
+}
+
+
+bool CSmiRecognizer::AutoStorageDevice(const CJCStringT & dev_name, const CJCStringT & force_storage, IStorageDevice * & storage_device)
+{
+	LOG_STACK_TRACE();
+	LPCTSTR device_name = dev_name.c_str();
+	JCASSERT(device_name)
+	JCASSERT(NULL == storage_device);
+
+	if ( 0  == m_storage_map.size() ) Register();
+	LOG_TRACE(_T("Recogizing driver %s"), device_name);
+
+	bool found = false;
+	LOG_DEBUG(_T("Opening driver %s"), device_name);
+	HANDLE hdev = CreateFile(device_name, 
+					GENERIC_READ|GENERIC_WRITE, 
+			  		FILE_SHARE_READ|FILE_SHARE_WRITE, 
+					NULL, 
+					OPEN_EXISTING, 
+					0 | FILE_FLAG_NO_BUFFERING, 
+					NULL );
+	if( INVALID_HANDLE_VALUE == hdev) return false;
+
+	DWORD junk = 0;
+
+	if ( !force_storage.empty() )
+	{
+		LOG_DEBUG(_T("Force storage %s"), force_storage.c_str() );
+		bool br = CreateStorageDevice(force_storage, hdev, storage_device);
+		if (!br) CloseHandle(hdev);
+		return br;
+	}
+
+	STORAGE_ITERATOR it = m_storage_map.begin();
+	STORAGE_ITERATOR endit = m_storage_map.end();
+	for ( ; it != endit; ++ it)
+	{
+		CStorageDeviceInfo & info = it->second;
+		LOG_DEBUG(_T("Trying storage %s"), info.m_name );
+		
+		JCASSERT(info.m_creator);
+		(*info.m_creator)(hdev, storage_device);
+		bool br = storage_device->Recognize();
+		if (br )
+		{
+			LOG_DEBUG(_T("Storage %s is match for %s"), info.m_name, device_name);
+			break;
+		}
+		storage_device->Detach(hdev);
+		storage_device->Release();
+		storage_device = NULL;
+	}
+	
+	if (!storage_device) 
+	{
+		CloseHandle(hdev);
+		return false;
+	}
+	storage_device->SetDeviceName(device_name);
+	return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //-- class factories
 
-void CreateStorageDevice(const CJCStringT & dev_name, HANDLE dev, IStorageDevice * & i_dev)
+
+bool CSmiRecognizer::CreateStorageDevice(const CJCStringT & force_storage, HANDLE dev, IStorageDevice * & storage_device)
 {
-	JCASSERT(i_dev == NULL);
-	if (dev_name == _T("SCSI_DEVICE") )		CScsiStorageDevice::Create(dev, i_dev);
+	LOG_STACK_TRACE();
+	JCASSERT(dev);
+	JCASSERT(dev != INVALID_HANDLE_VALUE);
+
+	LOG_DEBUG(_T("Force storage %s"), force_storage.c_str() );
+	STORAGE_ITERATOR it = m_storage_map.find(force_storage);
+	if ( it == m_storage_map.end() )
+		THROW_ERROR(ERR_PARAMETER, _T("Unknow storage device %s"), force_storage.c_str() );
+	CStorageDeviceInfo & info = it->second;
+	if (NULL == info.m_creator) THROW_ERROR(
+		ERR_UNSUPPORT, _T("Storage device %s doesn't support force create"), force_storage.c_str() );
+	(*info.m_creator)(dev, storage_device);
+	JCASSERT(storage_device);
+	bool br = storage_device->Recognize();
+	if (!br ) 
+	{
+		LOG_DEBUG(_T("Force storage %s failed"), force_storage.c_str() );
+		storage_device->Detach(dev);
+		storage_device->Release();
+		return false;
+	}
+	return true;
 }
 
-void CreateSmiDevice(const CJCStringT & ctrl_name, IStorageDevice * storage, ISmiDevice * & i_dev)
+bool CreateSmiDevice(const CJCStringT & ctrl_name, IStorageDevice * storage, ISmiDevice * & i_dev)
 {
 	JCASSERT(i_dev == NULL);
 	if (ctrl_name == _T("SMI_COMM"))			CSmiDeviceComm::Create(storage, i_dev);
 	else if (ctrl_name == _T("SM2232"))			CSM2232::CreateDevice(storage, i_dev);
+	return true;
 }

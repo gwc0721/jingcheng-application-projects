@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "ismi_device.h"
 #include <map>
@@ -38,12 +38,17 @@ protected:
 	typedef std::pair<CJCStringT, CSmiDeviceCreator>	DEVICE_PAIR;
 
 public:
-	static bool RecognizeDevice(LPCTSTR device_name, ISmiDevice * &smi_dev, const CJCStringT & force_storage, const CJCStringT & force_device);
 	static bool RegisterStorageDevice(const CStorageDeviceInfo & info);
 	static bool RegisterSmiDevice(const CSmiDeviceCreator & info);
 	static void Register(void);
 
+//--
 	static bool CreateDummyDevice(ISmiDevice * & smi_dev);
+	static bool RecognizeDevice(LPCTSTR device_name, ISmiDevice * &smi_dev, const CJCStringT & force_storage, const CJCStringT & force_device);
+	static bool AutoStorageDevice(const CJCStringT & dev_name, const CJCStringT & force_storage, IStorageDevice * & dev);
+	static bool CreateStorageDevice(const CJCStringT & dev_name, HANDLE dev, IStorageDevice * & i_dev);
+	// 从逻辑盘符取得物理驱动器号
+	static UINT GetDriveNumber(TCHAR drive_letter);
 
 protected:
 	static SMI_DEVICE_TYPE AchieveDeviceType(IStorageDevice * dev);
@@ -59,7 +64,7 @@ protected:
 //-- class factories
 extern "C"
 {
-	void CreateStorageDevice(const CJCStringT & dev_name, HANDLE dev, IStorageDevice * & i_dev);
-	void CreateSmiDevice(const CJCStringT & ctrl_name, IStorageDevice * storage, ISmiDevice * & i_dev);
+	//bool AutoStorageDevice(const CJCStringT & dev_name, const CJCStringT & force_storage, IStorageDevice * & dev);
+	bool CreateSmiDevice(const CJCStringT & ctrl_name, IStorageDevice * storage, ISmiDevice * & i_dev);
 };
 
