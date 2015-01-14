@@ -11,6 +11,16 @@ LOCAL_LOGGER_ENABLE(_T("SyncMntManager"), LOGGER_LEVEL_DEBUGINFO);
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- 
+CSyncMountManager::CSyncMountManager(void)
+: m_driver_module(NULL)
+{
+}
+
+CSyncMountManager::~CSyncMountManager(void)
+{
+	if (m_driver_module)	FreeLibrary(m_driver_module);
+}
+
 
 UINT CSyncMountManager::CreateDevice(ULONG64 total_sec, const CJCStringT & symbo_link)
 {
@@ -42,6 +52,9 @@ void CSyncMountManager::Disconnect(UINT dev_id)
 	if (it == m_driver_map.end() ) THROW_ERROR(ERR_PARAMETER, _T("dev id %d do not exist"), dev_id);
 	CDriverControl * drv_ctrl = it->second;
 	drv_ctrl->Disconnect();
+
+	m_driver_map.erase(it->first);
+	delete drv_ctrl;
 }
 
 void CSyncMountManager::UnmountImage(UINT dev_id)
@@ -49,10 +62,7 @@ void CSyncMountManager::UnmountImage(UINT dev_id)
 	DRIVER_MAP_IT it = m_driver_map.find(dev_id);
 	if (it == m_driver_map.end() ) THROW_ERROR(ERR_PARAMETER, _T("dev id %d do not exist"), dev_id);
 	CDriverControl * drv_ctrl = it->second;
-	m_driver_map.erase(it->first);
-
 	drv_ctrl->Unmount();
-	delete drv_ctrl;
 }
 
 template <> void stdext::CCloseHandle<SC_HANDLE>::DoCloseHandle(SC_HANDLE hdl)
@@ -133,4 +143,46 @@ void CSyncMountManager::UninstallDriver(void)
 	// delete service
 	br = DeleteService(srv);
 	if (!br) LOG_DEBUG(_T("delete service failed, code=%d"), GetLastError() );
+}
+
+bool CSyncMountManager::LoadUserModeDriver(const CJCStringT & drv_path, const CJCStringT & drv_name, jcparam::IValue * param, IImage * & img/*, HMODULE & module*/)
+{
+	JCASSERT(NULL == img);
+	JCASSERT(NULL == m_driver_module);
+
+	//CJCStringT drv_path;
+	//drv_path = m_app_path + _T("\\") + driver + _T(".dll");
+	//_tprintf(_T("Loading user driver %s ..."), drv_path.c_str() );
+
+	m_driver_module = LoadLibrary(drv_path.c_str());
+	if (m_driver_module == NULL) THROW_WIN32_ERROR(_T(" failure on loading driver %s "), drv_path.c_str() );
+
+	// load entry
+	GET_DRV_FACT_PROC proc = (GET_DRV_FACT_PROC) (GetProcAddress(m_driver_module, "GetDriverFactory") );
+	if (proc == NULL)	THROW_WIN32_ERROR(_T("file %s is not a virtual disk driver."), drv_path.c_str() );
+
+	stdext::auto_interface<IDriverFactory> factory;
+	BOOL br = (proc)(factory);
+	if (!br) THROW_ERROR(ERR_APP, _T("failure on getting factory."));
+	JCASSERT( factory.valid() );
+
+	// create parameters
+	//stdext::auto_interface<jcparam::CParamSet> param;
+	//CreateParameter(param);
+
+	factory->CreateDriver(drv_name, param, img);
+	JCASSERT(img);
+	//m_status = ST_DRV_LOADED;
+	//_tprintf(_T("Succeded\n"));
+
+	return true;
+}
+
+void CSyncMountManager::UnloadDriver(void)
+{
+	if (m_driver_module)
+	{
+		FreeLibrary(m_driver_module);
+		m_driver_module = NULL;
+	}
 }
