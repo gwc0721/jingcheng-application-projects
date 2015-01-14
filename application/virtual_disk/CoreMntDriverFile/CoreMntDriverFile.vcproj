@@ -187,6 +187,18 @@
 				RelativePath=".\source\dllmain.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\source\driver_factory.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\source\file_nand.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\source\page_mode_driver.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -198,7 +210,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\source\driver_factory.h"
+				>
+			</File>
+			<File
 				RelativePath=".\source\DriverImageFile.h"
+				>
+			</File>
+			<File
+				RelativePath=".\source\page_mode_driver.h"
 				>
 			</File>
 			<File
