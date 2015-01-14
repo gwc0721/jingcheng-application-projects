@@ -16,6 +16,10 @@
 #define FN_PRETEST_LOG	_T("log\\pretest.bin")
 #define FN_BOOTISP_LOG	_T("log\\bootisp.bin")
 
+#define FN_INQUERY		_T("inquery.bin")
+#define FN_CMD_F083		_T("f083.bin")
+#define FN_CMD_F800		_T("f800.bin")
+
 #define MAX_ISP_SEC		1024
 #define BOOTISP_SIZE	2
 
@@ -28,3 +32,11 @@
 #define SEG_STORAGE			_T("storage")
 #define FIELD_STORAGE_FILE	_T("storage_file")
 #define FIELD_TOTAL_SEC		_T("total_sectors")
+
+#define SEG_CARD_MODE			_T("card_mode")
+#define FIELD_CHUNK_SIZE		_T("chunk_size")
+#define FIELD_CHUNK_PER_PAGE	_T("page_chunk")
+#define FIELD_PAGE_PER_BLOCK	_T("block_page")
+#define FIELD_BLOCK_NUM			_T("block_number")
+
+#define SEG_TESTER				__T("tester")

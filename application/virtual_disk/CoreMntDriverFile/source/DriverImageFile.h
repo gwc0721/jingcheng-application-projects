@@ -1,58 +1,8 @@
 ﻿#pragma once
 
 #include "../../CoreMntLib/include/mntImage.h"
-
-
-class CDriverFactory : public IDriverFactory
-{
-public:
-	CDriverFactory(void);
-	~CDriverFactory(void);
-
-public:
-	inline virtual void AddRef()	{};			// static object
-	inline virtual void Release(void)	{};		// static object
-	virtual bool QueryInterface(const char * if_name, IJCInterface * &if_ptr){return false;};
-
-	virtual bool	CreateDriver(const CJCStringT & driver_name, jcparam::IValue * param, IImage * & driver);
-	virtual UINT	GetRevision(void) const;
-};
-
-class CDeviceConfig
-{
-public:
-
-	void LoadFromFile(const CJCStringT & fn);
-
-// storage
-	CJCStringT	m_storage_file;
-	ULONG64		m_total_sec;
-
-// system_info
-	CJCStringT	m_data_folder;
-	JCSIZE		m_max_isp_len;
-	//CJCStringT	
-
-protected:
-	//template<typename T>
-	//bool LoadConfig(LPCTSTR sec, LPCTSTR key, T & val, bool mandatory = false);
-	//{
-	//	val = GetPrivateProfileInt(sec, key, 0, m_config_file);
-	//	if ( (-1 == val) && (mandatory)) THROW_ERROR(ERR_PARAMETER, _T("failure on loading local config %s/%s"), sec, key);
-	//	LOG_DEBUG(_T("local config %s/%s=%d"), sec, key, val);
-	//	return true;
-	//}
-
-	//bool LoadConfigU64(LPCTSTR sec, LPCTSTR key, ULONG64 & val, const ULONG64 def_val);
-	//bool LoadConfig(LPCTSTR sec, LPCTSTR key, int & val, bool mandatory = false);
-	bool LoadConfig(LPCTSTR sec, LPCTSTR key, ULONG64 & val, bool mandatory = false);
-
-	bool LoadConfig(LPCTSTR sec, LPCTSTR key, CJCStringT & val, bool mandatory = false);
-	bool LoadConfig(LPCTSTR sec, LPCTSTR key, LPTSTR str, JCSIZE len, bool mandatory = false);
-
-protected:
-	CJCStringT	m_config_path;
-};
+#include "config.h"
+#include "driver_factory.h"
 
 class CDriverImageFile : public IImage
 {
@@ -72,11 +22,10 @@ public:
 	virtual ULONG32	DeviceControl(ULONG code, READ_WRITE read_write, UCHAR * buf, ULONG32 & data_size, ULONG32 buf_size);
 	virtual ULONG64	GetSize(void) const {return m_file_secs;}
 
-	//
-	bool Initialize(void);
-
 protected:
+	bool Initialize(void);
 	HANDLE OpenStorageFile(const CJCStringT fn, ULONG64 total_sec);
+	JCSIZE LoadBinFile(const CJCStringT & fn, const CJCStringT & folder, UCHAR * buf, JCSIZE buf_len, bool mandatory = false);
 	JCSIZE LoadBinFile(const CJCStringT & fn, UCHAR * buf, JCSIZE buf_len, bool mandatory = false);
 	void SaveBinFile(const CJCStringT & fn, UCHAR * buf, JCSIZE buf_len);
 
@@ -117,6 +66,15 @@ protected:
 	UCHAR m_buf_orgbad[MAX_ISP_SEC * SECTOR_SIZE];
 
 	UCHAR m_buf_bootisp[BOOTISP_SIZE * SECTOR_SIZE];
+
+	// for SOLO_TESTER
+	UCHAR m_buf_inquery[SECTOR_SIZE];
+	UCHAR m_buf_f083[SECTOR_SIZE];
+	UCHAR m_buf_f800[SECTOR_SIZE];
+
+	// card mode
+	JCSIZE m_chunk_size;
+	JCSIZE m_page_size;
 
 
 	JCSIZE m_isp_len;
