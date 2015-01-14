@@ -60,7 +60,8 @@ struct CORE_MNT_COMM
 //#define CORE_MNT_MOUNT_RESPONSE		CORE_MNT_COMM
 #define CORE_MNT_UNMOUNT_REQUEST	CORE_MNT_COMM
 
-#define SECTOR_SIZE		512
+//#define SECTOR_SIZE		512
+//#define SECTOR_TO_BYTE(sec)		( (sec) << 9)
 
 #define TOC_DATA_TRACK          0x04
 
