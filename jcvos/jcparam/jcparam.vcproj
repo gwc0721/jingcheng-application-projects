@@ -839,6 +839,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\ibinary_buf.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\ivalue.h"
 				>
 			</File>

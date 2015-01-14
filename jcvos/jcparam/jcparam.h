@@ -11,4 +11,5 @@
 #include "include/table_base.h"
 #include "include/jcstream.h"
 #include "include/general_table.h"
+#include "include/ibinary_buf.h"
 //#include "include/dynamic_table.h"
