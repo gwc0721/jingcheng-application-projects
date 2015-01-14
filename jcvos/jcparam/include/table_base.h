@@ -251,24 +251,6 @@ namespace jcparam
 		virtual void FromStream(IJCStream * str, jcparam::VAL_FORMAT)
 		{/*DO NOT SUPPORT*/}
 
-		//virtual void WriteHeader(FILE * file) 		{}
-
-		//virtual void Format(FILE * file, LPCTSTR format)	{NOT_SUPPORT0;}
-
-		//bool QueryInterface(const char * if_name, IJCInterface * &if_ptr)
-		//{
-		//	JCASSERT(NULL == if_ptr);
-		//	bool br = false;
-		//	if ( FastCmpA(IF_NAME_VALUE_FORMAT, if_name) )
-		//	{
-		//		if_ptr = static_cast<IJCInterface*>(this);
-		//		if_ptr->AddRef();
-		//		br = true;
-		//	}
-		//	else br = __super::QueryInterface(if_name, if_ptr);
-		//	return br;
-		//}
-
 		virtual void PushBack(IValue * row)
 		{
 			ROW_BASE_TYPE * _row = dynamic_cast<ROW_BASE_TYPE*> (row);
