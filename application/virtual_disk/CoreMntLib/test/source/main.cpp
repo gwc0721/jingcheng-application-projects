@@ -14,7 +14,6 @@
 
 LOCAL_LOGGER_ENABLE(_T("CoreMntTest"), LOGGER_LEVEL_DEBUGINFO);
 
-
 #include "../../include/mntSyncMountmanager.h"
 #include "../../include/mntImage.h"
 
@@ -58,8 +57,18 @@ public:
 	bool	m_install_driver, m_uninstall_driver;
 
 protected:
-	HMODULE	m_driver_module;
-	CJCStringT	m_app_path;
+	enum DRIVER_STATUS
+	{	
+		ST_INIT	=0,	ST_DRV_INSTALLED =1, 
+		ST_DRV_LOADED=2, 
+		ST_DRV_CONNECTED=3,
+		ST_MOUNTED=4
+	};
+protected:
+	CSyncMountManager	m_mount_manager;
+	//HMODULE				m_driver_module;
+	CJCStringT			m_app_path;
+	DRIVER_STATUS				m_status;
 };
 
 typedef jcapp::CJCApp<CCoreMntTestApp>	CApplication;
@@ -103,9 +112,10 @@ CCoreMntTestApp::CCoreMntTestApp(void)
 	: jcapp::CJCAppSupport<jcapp::AppArguSupport>(ARGU_SUPPORT_HELP | ARGU_SUPPORT_OUTFILE)
 	, m_dev_id(UINT_MAX), m_file_size(0x100000LL), m_mnt_point(0)
 	, m_exit_event(NULL), m_connect(false), m_remove(UINT_MAX)
-	, m_driver_module(NULL) 
+	//, m_driver_module(NULL) 
 	, m_install_driver(false), m_uninstall_driver(false)
 {
+	m_status = ST_INIT;
 }
 
 void CCoreMntTestApp::InstallDriver(CSyncMountManager & mntmng,const CJCStringT & driver)
@@ -124,34 +134,41 @@ void CCoreMntTestApp::InstallDriver(CSyncMountManager & mntmng,const CJCStringT 
 		LOG_DEBUG(_T("plarform = x86"));
 		wdm_path = m_app_path + _T("\\") WDM_FN _T(".sys");    // 32 位操作系统 
 	}
+	_tprintf(_T("Installing driver %s ..."), wdm_path.c_str());
 	mntmng.InstallDriver(wdm_path);
+
+	m_status = ST_DRV_INSTALLED;
+	_tprintf(_T("Succeeded. \n"));
 }
 
 void CCoreMntTestApp::LoadUserModeDriver(const CJCStringT & driver, IImage * & img)
 {
-	JCASSERT(NULL == img);
-
+	//JCASSERT(NULL == img);
 	CJCStringT drv_path;
 	drv_path = m_app_path + _T("\\") + driver + _T(".dll");
-	m_driver_module = LoadLibrary(drv_path.c_str());
-	if (m_driver_module == NULL) THROW_WIN32_ERROR(_T(" failure on loading driver %s "), drv_path.c_str() );
+	_tprintf(_T("Loading user driver %s ..."), drv_path.c_str() );
 
-	// load entry
-	GET_DRV_FACT_PROC proc = (GET_DRV_FACT_PROC) (GetProcAddress(m_driver_module, "GetDriverFactory") );
-	if (proc == NULL)	THROW_WIN32_ERROR(_T("file %s is not a virtual disk driver."), drv_path.c_str() );
+	//m_driver_module = LoadLibrary(drv_path.c_str());
+	//if (m_driver_module == NULL) THROW_WIN32_ERROR(_T(" failure on loading driver %s "), drv_path.c_str() );
 
-	stdext::auto_interface<IDriverFactory> factory;
-	BOOL br = (proc)(factory);
-	if (!br) THROW_ERROR(ERR_APP, _T("failure on getting factory."));
-	JCASSERT( factory.valid() );
+	//// load entry
+	//GET_DRV_FACT_PROC proc = (GET_DRV_FACT_PROC) (GetProcAddress(m_driver_module, "GetDriverFactory") );
+	//if (proc == NULL)	THROW_WIN32_ERROR(_T("file %s is not a virtual disk driver."), drv_path.c_str() );
+
+	//stdext::auto_interface<IDriverFactory> factory;
+	//BOOL br = (proc)(factory);
+	//if (!br) THROW_ERROR(ERR_APP, _T("failure on getting factory."));
+	//JCASSERT( factory.valid() );
 
 	// create parameters
-	if (m_filename.empty() )	m_filename = L"tst_img01";
 	stdext::auto_interface<jcparam::CParamSet> param;
 	CreateParameter(param);
+	m_mount_manager.LoadUserModeDriver(drv_path, _T("vendor_test"), static_cast<jcparam::IValue*>(param), img/*, m_driver_module*/);
 
-	factory->CreateDriver(_T(""), static_cast<jcparam::IValue*>(param), img);
+	//factory->CreateDriver(_T(""), static_cast<jcparam::IValue*>(param), img);
 	JCASSERT(img);
+	m_status = ST_DRV_LOADED;
+	_tprintf(_T("Succeded\n"));
 }
 
 
@@ -161,14 +178,18 @@ int CCoreMntTestApp::Run(void)
 	SetConsoleCtrlHandler(HandlerRoutine, TRUE);
 
 	// get app dir
-	//CJCStringT app_path;
 	__super::GetAppPath(m_app_path);
 
-	CSyncMountManager mount_manager;
-
 	// install / uninstall driver	
-	if (m_install_driver)			InstallDriver(mount_manager, _T(""));
-	else if (m_uninstall_driver)	mount_manager.UninstallDriver();
+	if (m_install_driver)			InstallDriver(m_mount_manager, _T(""));
+	else if (m_uninstall_driver)
+	{
+		_tprintf(_T("Uninstalling driver..."));
+		m_mount_manager.UninstallDriver();
+		_tprintf(_T("Succeded\n"));
+		m_status = ST_INIT;
+		return 0;
+	}
 
 	if (m_remove < UINT_MAX)
 	{
@@ -179,54 +200,45 @@ int CCoreMntTestApp::Run(void)
 	}
 
 	stdext::auto_interface<IImage>	img;
-
 	// load driver
-	if ( !m_driver.empty() )	/*	THROW_ERROR(ERR_USER, _T("driver must be set."));*/
-	{
-		LoadUserModeDriver(m_driver, img);
-	}
+	if (m_driver.empty() )	return 0;
 
-#ifdef LOCAL_DEBUG
-	LOG_DEBUG(_T("open image file: %s"), m_filename.c_str() );
-	img = new FileImage(m_filename.c_str(), m_file_size );
-
-	//std::auto_ptr<IImage> img(new FileImage(m_filename.c_str() ) );
- //   std::auto_ptr<IImage> sparse(new SparseImage(img, 0, m_file_size * SECTOR_SIZE, BLOCK_LENGTH, 512, true));
-#endif
+	LoadUserModeDriver(m_driver, img);
+	JCASSERT( img.valid() );
+	m_file_size = img->GetSize();
 
 #ifndef LOCAL_DEBUG
 
 	if (m_device_name.empty() ) m_device_name = _T("disk0");
 	CJCStringT symbo_link = CJCStringT(_T("")) + _T("\\DosDevices\\") + m_device_name;
-	m_dev_id = mount_manager.CreateDevice(m_file_size, symbo_link);		// length in sectors;
+	m_dev_id = m_mount_manager.CreateDevice(m_file_size, symbo_link);		// length in sectors;
 	_tprintf( _T("device: %s was created.\n"), symbo_link.c_str());
 
 	if (m_connect)
 	{
+		_tprintf(_T("Connecting..."));
 		LOG_DEBUG(_T("connect to device %d"), m_dev_id);
 		if (!img.valid())	THROW_ERROR(ERR_USER, _T("User mode driver is not loaded."));
-		mount_manager.Connect(m_dev_id, img);
+		m_mount_manager.Connect(m_dev_id, img);
+		_tprintf(_T("Succeeded\n"));
+		m_status = ST_DRV_CONNECTED;
 	}
 
 	if (m_mnt_point)
 	{
+		_tprintf(_T("Mounting device to volumn %C: ..."), m_mnt_point);
 		LOG_DEBUG(_T("mount device %d to %c:"), m_dev_id, m_mnt_point);
-		mount_manager.MountDriver(m_dev_id, m_mnt_point);
+		m_mount_manager.MountDriver(m_dev_id, m_mnt_point);
+		_tprintf(_T("Succeeded\n"));
+		m_status = ST_MOUNTED;
 	}
 #endif
 
-	printf("press ctrl+c for unmount...\n");
-	//_getch();
-	
-#ifndef LOCAL_DEBUG
-	WaitForSingleObject(m_exit_event, -1);
-	LOG_DEBUG(_T("unmount device"))
-	mount_manager.Disconnect(m_dev_id);
-	mount_manager.UnmountImage(m_dev_id);
-#else
-	_getch();
-#endif
-
+	if (m_status >= ST_DRV_CONNECTED)
+	{
+		printf("Press ctrl+c for disconnect...\n");
+		WaitForSingleObject(m_exit_event, -1);
+	}
 	return 0;
 }
 
@@ -260,8 +272,30 @@ bool CCoreMntTestApp::Initialize(void)
 
 void CCoreMntTestApp::CleanUp(void)
 {
+	if (m_status >= ST_MOUNTED)		
+	{
+		_tprintf(_T("Unmount volumn... "));
+		m_mount_manager.UnmountImage(m_dev_id);
+		_tprintf(_T("Succeeded\n"));
+		m_status = ST_DRV_CONNECTED;
+	}
+
+	if (m_status >= ST_DRV_CONNECTED)	
+	{
+		_tprintf(_T("Disconnect... "));
+		m_mount_manager.Disconnect(m_dev_id);
+		_tprintf(_T("Succeeded\n"));
+		m_status = ST_DRV_LOADED;
+	}
+
+	if ( (m_status >= ST_DRV_LOADED) /*&& m_driver_module*/)
+	{
+		//FreeLibrary(m_driver_module);
+		m_mount_manager.UnloadDriver();
+		m_status = ST_DRV_INSTALLED;
+	}
+
 	CloseHandle(m_exit_event);
-	FreeLibrary(m_driver_module);
 	__super::CleanUp();
 }
 
