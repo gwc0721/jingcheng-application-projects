@@ -1,6 +1,11 @@
 #pragma once
 
+#include "../local_config.h"
 #include "../../jcparam/jcparam.h"
+
+#ifdef WIN32
+#pragma comment (lib, "version.lib")
+#endif
 
 #define BEGIN_ARGU_DEF_TABLE()	\
 	jcparam::CArguDefList jcapp::AppArguSupport::m_cmd_parser( jcparam::CArguDefList::RULE()	
@@ -82,11 +87,28 @@ namespace jcapp
 	class CJCAppBase
 	{
 	public:
+		CJCAppBase(void);
 		virtual ~CJCAppBase() {};
 		void GetAppPath(CJCStringT & path);
+		bool LoadApplicationInfo(void);
+
+		void ShowVersionInfo(FILE * out);
+		void ShowAppInfo(FILE * out);
+		virtual void ShowHelpInfo(FILE *out) = 0;
+
+		virtual int Initialize(void) = 0;
+		virtual int Run(void) = 0;
+		virtual void CleanUp(void) = 0;
+		virtual LPCTSTR AppDescription(void) const = 0;
+		//virtual bool IsShowHelp(void) const = 0;
+
+	protected:
+		UINT	m_ver[4];
 
 	public:
 		static CJCAppBase * GetApp(void);
+	protected:
+		static CJCAppBase * m_instance;
 	};
 
 	class AppArguSupport
@@ -109,6 +131,7 @@ namespace jcapp
 
 	protected:
 		DWORD m_prop;
+		//bool	m_show_help;
 	};
 
 	class AppNoArguSupport
@@ -125,18 +148,16 @@ namespace jcapp
 	public:
 		CJCAppSupport(DWORD prop = (ARGU_SUPPORT | ARGU_SUPPORT_INFILE 
 			| ARGU_SUPPORT_OUTFILE | ARGU_SUPPORT_HELP) ) : ARGU(prop) {};
-		//bool CmdLineParse(BYTE * base);
-		//FILE * OpenInputFile(void);
-		//FILE * OpenOutputFile(void);
-
 	public:
-		void CleanUp(void)
+		virtual void CleanUp(void)
 		{
 			ARGU::ArguCleanUp();
 		}
-
-	//protected:
-	//	DWORD m_prop;
+		virtual void ShowHelpInfo(FILE * out)
+		{
+			_ftprintf_s(out, _T("\t usage:\n"));
+			m_cmd_parser.OutputHelpString(out);
+		}
 	};
 
 	template <class BASE>
@@ -145,7 +166,19 @@ namespace jcapp
 	public:
 		CJCApp(void)
 		{
-			//if (m_app == NULL) m_app = this;
+#if APP_GLOBAL_SINGLE_TONE > 0
+			// register app pointer to single tone
+			CSingleToneEntry * entry = CSingleToneEntry::Instance();
+			CSingleToneBase * ptr = NULL;
+			entry->QueryStInstance(GetGuid(), ptr);
+			JCASSERT(ptr == NULL);
+			entry->RegisterStInstance(GetGuid(), static_cast<CSingleToneBase *>(this) );
+#else
+			// register app pointer to jcapp base
+			JCASSERT(CJCAppBase::m_instance == NULL);
+			CJCAppBase::m_instance = static_cast<CJCAppBase *>(this);
+#endif
+
 			LOGGER_SELECT_COL( 0
 				| CJCLogger::COL_TIME_STAMP
 				| CJCLogger::COL_FUNCTION_NAME
@@ -155,34 +188,41 @@ namespace jcapp
 		}
 		virtual ~CJCApp(void) {}
 
-	// for single tone
-	virtual void Release(void)	{delete this;};
-	virtual const GUID & GetGuid(void) const {return JCAPP_GUID;};
-	static CJCApp<BASE> * Instance(void)
-	{
+		// for single tone
+		virtual void Release(void)	{delete this;};
+		virtual const GUID & GetGuid(void) const {return JCAPP_GUID;};
+		static CJCApp<BASE> * Instance(void)
+		{
+#if APP_GLOBAL_SINGLE_TONE > 0
+		// global single tone support
 		static CJCApp<BASE> * instance = NULL;
 		if (instance == NULL)	CSingleToneEntry::GetInstance< CJCApp<BASE> >(instance);
 		return instance;
-	};
-	static const GUID & Guid() {return JCAPP_GUID;};
+#else
+ 		// local single tone support
+		static CJCApp<BASE> instance;
+		return & instance;
+#endif
+		};
+		static const GUID & Guid() {return JCAPP_GUID;};
 
 	public:
 		int Initialize(void);
 		void CleanUp(void) { BASE::CleanUp(); }
-
-		//template <class APP_TYPE>
-		//static APP_TYPE* GetApp(void)  { return dynamic_cast<APP_TYPE*>(m_app); }
-
-	//protected:
-	//	BASE * m_app;
+		//virtual bool IsShowHelp(void) const {return m_show_help;}
 	};
+
 
 	template<class BASE>
 	int CJCApp<BASE>::Initialize(void)
 	{
-		BASE::CmdLineParse((BYTE*)(static_cast<BASE*>(this)) );
+		bool br = BASE::CmdLineParse((BYTE*)(static_cast<BASE*>(this)) );
 		return __super::Initialize();
 	}
+
+	typedef CJCAppSupport<AppArguSupport>	CJCAppicationSupport;
+
+	int local_main(int argc, _TCHAR* argv[]);
 };
 
 
