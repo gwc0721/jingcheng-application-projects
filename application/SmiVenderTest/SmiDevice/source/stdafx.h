@@ -12,6 +12,9 @@
 
 #ifdef _DEBUG
 #define LOG_OUT_CLASS_SIZE
+#define LOCAL_LOG_LEV	LOGGER_LEVEL_DEBUGINFO
+#else
+#define LOCAL_LOG_LEV	LOGGER_LEVEL_ERROR
 #endif
 
 #include <stdio.h>
