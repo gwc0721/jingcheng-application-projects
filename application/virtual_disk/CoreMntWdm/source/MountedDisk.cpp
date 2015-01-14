@@ -17,8 +17,10 @@ extern "C"
 
 #ifdef _AMD64_
 #define SCSI_PASS_THROUGH_DIRECT_T SCSI_PASS_THROUGH_DIRECT32
+#define SCSI_PASS_THROUGH_T SCSI_PASS_THROUGH32
 #else
 #define SCSI_PASS_THROUGH_DIRECT_T SCSI_PASS_THROUGH_DIRECT
+#define SCSI_PASS_THROUGH_T SCSI_PASS_THROUGH
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -384,11 +386,14 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 			spt_len + sense_len + data_len, 0, ier);
 
 		UCHAR * buf = ier.m_kernel_buf;
+		// copy header
 		RtlCopyMemory(buf, sptd, spt_len);	buf+= spt_len;
+		// copy sense info
 		RtlCopyMemory(buf, sptd + sense_offset, sense_len);	buf+=sense_len;
 		if (sptd->DataIn == SCSI_IOCTL_DATA_OUT) 
 		{
 			KdPrint(("copy data for write, len = %d\n", data_len));
+			// copy input data
 			RtlCopyMemory(buf, data_buf, data_len);
 		}
 		SynchExchange(ier);
@@ -404,6 +409,38 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 			RtlCopyMemory(data_buf, buf, data_len);
 		}
 		SynchExchangeClean(ier, spt_len + sense_len);
+		break;									 }
+
+	case IOCTL_SCSI_PASS_THROUGH: {
+		KdPrint( ("[IRP] disk <- IRP_MJ_DEVICE_CONTROL::IOCTL_SCSI_PASS_THROUGH\n") );
+		KdPrint(("sizeof(SCSI_PASS_THROUGH)=%d\n",sizeof(SCSI_PASS_THROUGH_DIRECT_T)));
+		SCSI_PASS_THROUGH_T * sptd = reinterpret_cast<SCSI_PASS_THROUGH_T*>(
+				irp->AssociatedIrp.SystemBuffer);
+
+		ULONG32 spt_len = sizeof(SCSI_PASS_THROUGH_T);
+		UCHAR sense_len = sptd->SenseInfoLength;
+		ULONG sense_offset = sptd->SenseInfoOffset;
+
+		ULONG data_len = sptd->DataTransferLength;
+		ULONG32 data_offset = sptd->DataBufferOffset;
+		ULONG32 buf_size = max(io_stack->Parameters.DeviceIoControl.InputBufferLength,
+			io_stack->Parameters.DeviceIoControl.OutputBufferLength);
+
+		IRP_EXCHANGE_REQUEST ier;
+		SynchExchangeInitBuf(irp, IRP_MJ_DEVICE_CONTROL, IOCTL_SCSI_PASS_THROUGH, READ_AND_WRITE, 
+			buf_size, 0, ier);
+
+		UCHAR * buf = ier.m_kernel_buf;
+		RtlCopyMemory(buf, sptd, io_stack->Parameters.DeviceIoControl.InputBufferLength);
+		SynchExchange(ier);
+
+		// 返回data
+		buf = ier.m_kernel_buf;
+		RtlCopyMemory(irp->AssociatedIrp.SystemBuffer, buf, io_stack->Parameters.DeviceIoControl.OutputBufferLength);
+		//KdPrint(("return data: len=%d, [0]=%02X, [d]=%02X", 
+		//	io_stack->Parameters.DeviceIoControl.OutputBufferLength, (UCHAR*)(irp->AssociatedIrp.SystemBuffer)[0],
+		//	((UCHAR*)(irp->AssociatedIrp.SystemBuffer)+sptd->DataBufferOffset)[0] ));
+		SynchExchangeClean(ier, io_stack->Parameters.DeviceIoControl.OutputBufferLength);
 		break;									 }
 
 	case IOCTL_DISK_GET_DRIVE_LAYOUT:		{
