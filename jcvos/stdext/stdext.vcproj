@@ -693,7 +693,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalIncludeDirectories="..\comm;include;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="false"
@@ -868,6 +868,10 @@
 			</File>
 			<File
 				RelativePath=".\include\jclogger_base.h"
+				>
+			</File>
+			<File
+				RelativePath=".\local_config.h"
 				>
 			</File>
 			<File

@@ -20,12 +20,16 @@ namespace stdext
 	    {
 		    ERR_OK =		0,
 		    ERR_WARNING	=	0x01000000,
+			// 参数行错误，输入文件错误等，
 		    ERR_PARAMETER = 0x02000000,
-		    // 用户错误：不是由程序本引起的错误。由用户不当操作、或者不正确的输入引起的错误。
+				// 参数行错误
+				ERR_ARGUMENT =	0x02100000,
+		    // 用户操作错误：不是由程序本引起的错误。由用户不当操作、或者不正确的输入引起的错误。
 		    //	这类错误通常是可恢复的。在记录错误时，不记录错误发生的源代码位置。
-		    ERR_USER =		0x03000000,		
+		    ERR_USER =		0x03000000,	
+			// 应用程序执行错误，程序设计错误，错误的使用库函数等
 		    ERR_APP =		0x04000000,
-			ERR_UNSUPPORT = 0x04800000,
+				ERR_UNSUPPORT = 0x04800000,
 			ERR_DEVICE =	0x05000000,
 		    ERR_CLIENT =	0x06000000,
 		    ERR_SERVER =	0x07000000,
@@ -41,7 +45,7 @@ namespace stdext
 		};
 
     public:
-		CJCException(LPCTSTR msg, ERROR_LEVEL level = ERR_APP, int id = 0);
+		CJCException(LPCTSTR msg, ERROR_LEVEL level = ERR_APP, UINT id = 0);
         CJCException(const CJCException & exp);
 		int GetErrorID(void) { return m_err_id;}
         virtual ~CJCException(void) throw();
@@ -52,6 +56,9 @@ namespace stdext
         CJCStringT      m_err_msg;
 		CJCStringA		m_msg_utf8;
     };
+
+// 应用程序参数行错误
+//#define ERR_ID_ARGUMENT		(0x02100000)
 
 ////////////
 // for win32 only
@@ -87,6 +94,14 @@ inline void _NOTSUPPORT(LPCTSTR msg = NULL)
 		LPTSTR __temp_str = new TCHAR[512];			\
 		stdext::jc_sprintf(__temp_str, 512, __VA_ARGS__);	\
 		stdext::CJCException err(__temp_str, stdext::CJCException::level); \
+		delete [] __temp_str;						\
+        LogException(__FUNCTION__, __LINE__, err);	\
+        throw err; }
+
+#define THROW_ERROR_EX(level, id, ...)   {					\
+		LPTSTR __temp_str = new TCHAR[512];			\
+		stdext::jc_sprintf(__temp_str, 512, __VA_ARGS__);	\
+		stdext::CJCException err(__temp_str, stdext::CJCException::level, id); \
 		delete [] __temp_str;						\
         LogException(__FUNCTION__, __LINE__, err);	\
         throw err; }

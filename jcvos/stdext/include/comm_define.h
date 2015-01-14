@@ -28,6 +28,14 @@ inline UINT64 MAKEQWORD(UINT a, UINT b)
 	return ((UINT64)(a) & 0xffffffff) | (((UINT64)b & 0xffffffff) << 32);
 }
 
+#define LODWORD(a)			((ULONG32)(a & 0xFFFFFFFF))
+#define HIDWORD(a)			((ULONG32)((a >> 32) & 0xFFFFFFFF))
+
+#define SECTOR_SIZE				(512)
+#define SECTOR_TO_BYTE(sec)		( (sec) << 9 )
+#define SECTOR_TO_BYTEL(sec)	( ((FILESIZE)(sec)) << 9 )
+
+
 
 // 关于字符串和UNICODE的定义
 

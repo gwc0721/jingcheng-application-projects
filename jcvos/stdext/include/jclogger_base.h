@@ -1,11 +1,11 @@
 ﻿#pragma once
 
-#define LOG_SINGLE_TONE_SUPPORT 1
+#include "../local_config.h"
+
+//#define LOG_SINGLE_TONE_SUPPORT 1
 
 #include "comm_define.h"
-
 #include <map>
-
 #include "single_tone.h"
 
 #define LOGGER_MSG_BUF_SIZE     1024
@@ -82,19 +82,13 @@ public:
     CJCLoggerLocal(CJCLoggerAppender * appender = NULL);
     virtual ~CJCLoggerLocal(void);
 
-	//void CleanUp(void);
-	//virtual void Release(void) {delete this;};
-
 	void CreateAppender(LPCTSTR app_type, LPCTSTR file_name, DWORD prop);
-
     bool RegisterLoggerNode(CJCLoggerNode * node);
     bool UnregisterLoggerNode(CJCLoggerNode * node);
     void WriteString(LPCTSTR str, JCSIZE len);
-
 	DWORD GetColumnSelect(void) const	{return m_column_select;}
 	void SetColumnSelect(DWORD sel)		{ m_column_select = sel; }
 	void SetProperty(DWORD prop)		{ m_prop = prop; }
-
 	inline double GetTimeStampCycle()			{return m_ts_cycle;}
 
 	// Read config from text file
@@ -111,7 +105,6 @@ public:
     CJCLoggerNode * GetLogger(const CJCStringT & name);
 
 	static const GUID & Guid(void) {return m_guid;};
-	//virtual const GUID & GetGuid(void) const {return m_guid;};
 
 protected:
 	void ParseAppender(LPTSTR line);
@@ -154,8 +147,6 @@ class CJCLoggerNode
 public:
     CJCLoggerNode(const CJCStringW & name, int level, CJCLogger * logger = NULL);
     virtual ~CJCLoggerNode(void);
-
-	//friend class CJCLogger;
 
 public:
     static CJCLoggerNode * CreateLoggerNode(const CJCStringW & name, int level)
