@@ -7,7 +7,7 @@
 LOCAL_LOGGER_ENABLE(CJCStringT(_T("ERROR")), LOGGER_LEVEL_ERROR);
 
 stdext::CJCException::CJCException(
-    LPCTSTR msg, stdext::CJCException::ERROR_LEVEL level, int id )
+    LPCTSTR msg, stdext::CJCException::ERROR_LEVEL level, UINT id )
     : m_err_id(level | id)
     , m_err_msg(msg)
 {
@@ -45,7 +45,7 @@ stdext::CWin32Exception::CWin32Exception(DWORD err_id, const CJCStringT& msg, st
 		(LPTSTR) &strSysMsg, 
 		0, NULL );
 	TCHAR str_err_id[32];
-	jc_sprintf(str_err_id, _T(" #%d: "), err_id);
+	jc_sprintf(str_err_id, _T(" \n#%d: "), err_id);
 	m_err_msg = msg + str_err_id + strSysMsg;
 	LocalFree(strSysMsg);
 }
