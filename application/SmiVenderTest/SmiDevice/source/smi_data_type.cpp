@@ -180,7 +180,7 @@ void CDataVector::CDataVectorInfo::ToStream(void * row, jcparam::IJCStream * str
 		bin_stream->Release();
 	}
 
-	if (data)	stream->Format(_T("<#%X,%X>"), data->GetOffset(), data->GetSectors());
+	if (data)	stream->Format(_T("<#%X;%X>"), data->GetOffset(), data->GetSectors());
 	else		stream->Format(_T("no data"));
 }
 
