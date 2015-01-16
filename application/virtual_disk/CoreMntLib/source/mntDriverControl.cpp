@@ -275,7 +275,10 @@ DWORD CDriverControl::Run(void)
 		LOG_DEBUG(_T("open core mnt dev: name %s, handle: 0x%08X"), mnt_symbo_link.c_str(), exchange_dev);
 		if (exchange_dev == INVALID_HANDLE_VALUE) THROW_WIN32_ERROR(_T("failure on opening core mnt (%s)"), mnt_symbo_link.c_str());
 		
-		buf = new UCHAR[EXCHANGE_BUFFER_SIZE];
+		//buf = new UCHAR[EXCHANGE_BUFFER_SIZE];
+		buf = (UCHAR*)(VirtualAlloc(
+			NULL, EXCHANGE_BUFFER_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+		if (!buf) THROW_WIN32_ERROR(_T("failure on allocating buffer."));
 
 		CORE_MNT_EXCHANGE_REQUEST request;
 
@@ -285,9 +288,10 @@ DWORD CDriverControl::Run(void)
 		request.m_read_write = 0;
 
 		request.lastStatus = 0;
-		request.lastSize = 0;
+		request.proc_size = 0;
 		request.m_buf = (ULONG64)(buf);
-		request.dataSize = EXCHANGE_BUFFER_SIZE;
+		request.buf_size = EXCHANGE_BUFFER_SIZE;
+		LOG_DEBUG(_T("user mode buffer size: %dKB"), EXCHANGE_BUFFER_SIZE / 1024);
 
 		SetEvent(m_thd_event);
 		while (true)
@@ -320,12 +324,12 @@ DWORD CDriverControl::Run(void)
 			{
 			case IRP_MJ_READ:
 				status = m_image->Read(buf, offset, size);
-				request.lastSize = response.size;
+				request.proc_size = response.size;
 				break;
 
 			case IRP_MJ_WRITE:
 				status = m_image->Write(buf, offset, size);
-				request.lastSize = response.size;
+				request.proc_size = response.size;
 				break;
 
 			case IRP_MJ_FLUSH_BUFFERS:
@@ -334,7 +338,7 @@ DWORD CDriverControl::Run(void)
 			case IRP_MJ_DEVICE_CONTROL:	{
 				ULONG32 data_size = response.size;
 				status = m_image->DeviceControl(response.m_minor_code, (READ_WRITE)(response.m_read_write), buf, data_size, EXCHANGE_BUFFER_SIZE);
-				request.lastSize = data_size;
+				request.proc_size = data_size;
 				break;						}
 
 			case IRP_MJ_QUERY_INFORMATION:
@@ -353,23 +357,20 @@ DWORD CDriverControl::Run(void)
 	}
 	catch (stdext::CJCException & err)
 	{
+		stdext::jc_fprintf(stderr, _T("error on exchanging: %s\n"), err.WhatT() );
+		ir = err.GetErrorID();
 	}
 
-	delete [] buf;
+	if (buf)
+	{
+		VirtualFree(buf, EXCHANGE_BUFFER_SIZE, MEM_DECOMMIT | MEM_RELEASE);
+	}
+	//delete [] buf;
 	CloseHandle(exchange_dev);
-
 	return ir;
 }
 
-/*
-void CDriverControl::RequestExchange(CORE_MNT_EXCHANGE_REQUEST &request, CORE_MNT_EXCHANGE_RESPONSE &response)
-{
-	//LOG_STACK_TRACE();
-	//JCASSERT(m_exchange);
-	//DWORD written = 0;
-	//BOOL br = DeviceIoControl(m_exchange, CORE_MNT_EXCHANGE_IOCTL,
-	//			&request, sizeof(request), &response, sizeof(response), &written, NULL);
-	//if (!br) THROW_WIN32_ERROR(_T("send exchange request failed."));
-}
-*/
+
+
+
 
