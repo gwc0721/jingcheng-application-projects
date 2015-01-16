@@ -106,6 +106,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="call $(WINDDK)\bin\setenv.bat $(WINDDK) free WIN7"
 			/>
 		</Configuration>
 		<Configuration

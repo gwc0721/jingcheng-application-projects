@@ -225,6 +225,7 @@ void CMountedDisk::Release(void)
 
 void CMountedDisk::CompleteLastIrp(IRP_EXCHANGE_REQUEST * ier)
 {
+	LOG_STACK_TRACE("");
 	if (!ier) return;
 	if (ier->m_complete)
 	{	// 由exchange负责完成IRP
@@ -253,14 +254,17 @@ void CMountedDisk::SynchExchangeInitBuf(IN PIRP irp, IN UCHAR mj, IN ULONG mi, I
 	KeInitializeEvent(&(ier.m_event), SynchronizationEvent, FALSE);
 }
 
-void CMountedDisk::SynchExchange(IN IRP_EXCHANGE_REQUEST & ier)
+NTSTATUS CMountedDisk::SynchExchange(IN IRP_EXCHANGE_REQUEST & ier)
 {
+	LOG_STACK_TRACE("");
 	m_irp_queue.push(&ier);
 	KeWaitForSingleObject(&(ier.m_event), Executive, KernelMode, FALSE, NULL);
+	return ier.m_status;
 }
 
 void CMountedDisk::SynchExchangeClean(IN IRP_EXCHANGE_REQUEST & ier, IN ULONG data_len)
 {
+	LOG_STACK_TRACE("");
 	ExFreePool(ier.m_kernel_buf);
 	ier.m_irp->IoStatus.Status = ier.m_status;
 	ier.m_irp->IoStatus.Information = data_len;
@@ -396,19 +400,23 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 			// copy input data
 			RtlCopyMemory(buf, data_buf, data_len);
 		}
-		SynchExchange(ier);
-
-		// 返回data
-		buf = ier.m_kernel_buf;
-		RtlCopyMemory(irp->AssociatedIrp.SystemBuffer, buf, spt_len); buf+= spt_len;
-		RtlCopyMemory(sptd + sense_offset, buf, sense_len);	buf += sense_len;
-
-		if (sptd->DataIn == SCSI_IOCTL_DATA_IN)	// read
+		NTSTATUS st = SynchExchange(ier);
+		ULONG out_len = 0;
+		if (st == STATUS_SUCCESS)
 		{
-			KdPrint(("copy data for write, len = %d\n", data_len));
-			RtlCopyMemory(data_buf, buf, data_len);
+			// 返回data
+			buf = ier.m_kernel_buf;
+			RtlCopyMemory(irp->AssociatedIrp.SystemBuffer, buf, spt_len); buf+= spt_len;
+			RtlCopyMemory(sptd + sense_offset, buf, sense_len);	buf += sense_len;
+			out_len = spt_len + sense_len;
+
+			if (sptd->DataIn == SCSI_IOCTL_DATA_IN)	// read
+			{
+				KdPrint(("copy data for read, len = %d\n", data_len));
+				RtlCopyMemory(data_buf, buf, data_len);
+			}
 		}
-		SynchExchangeClean(ier, spt_len + sense_len);
+		SynchExchangeClean(ier, out_len);
 		break;									 }
 
 	case IOCTL_SCSI_PASS_THROUGH: {
@@ -432,15 +440,15 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 
 		UCHAR * buf = ier.m_kernel_buf;
 		RtlCopyMemory(buf, sptd, io_stack->Parameters.DeviceIoControl.InputBufferLength);
-		SynchExchange(ier);
-
-		// 返回data
-		buf = ier.m_kernel_buf;
-		RtlCopyMemory(irp->AssociatedIrp.SystemBuffer, buf, io_stack->Parameters.DeviceIoControl.OutputBufferLength);
-		//KdPrint(("return data: len=%d, [0]=%02X, [d]=%02X", 
-		//	io_stack->Parameters.DeviceIoControl.OutputBufferLength, (UCHAR*)(irp->AssociatedIrp.SystemBuffer)[0],
-		//	((UCHAR*)(irp->AssociatedIrp.SystemBuffer)+sptd->DataBufferOffset)[0] ));
-		SynchExchangeClean(ier, io_stack->Parameters.DeviceIoControl.OutputBufferLength);
+		NTSTATUS st = SynchExchange(ier);
+		ULONG out_len = 0;
+		if (st == STATUS_SUCCESS)
+		{	// 返回data
+			buf = ier.m_kernel_buf;
+			out_len = io_stack->Parameters.DeviceIoControl.OutputBufferLength;
+			RtlCopyMemory(irp->AssociatedIrp.SystemBuffer, buf, out_len);
+		}
+		SynchExchangeClean(ier, out_len);
 		break;									 }
 
 	case IOCTL_DISK_GET_DRIVE_LAYOUT:		{
@@ -464,7 +472,7 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 		outputBuffer->PartitionEntry->RewritePartition = FALSE;
 		outputBuffer->PartitionEntry->StartingOffset = RtlConvertUlongToLargeInteger (0);
 		// length in sectors
-		outputBuffer->PartitionEntry->PartitionLength.QuadPart= m_total_sectors * SECTOR_SIZE;
+		outputBuffer->PartitionEntry->PartitionLength.QuadPart= SECTOR_TO_BYTE(m_total_sectors);
 		outputBuffer->PartitionEntry->HiddenSectors = 1L;
 
 		irp->IoStatus.Status = STATUS_SUCCESS;
@@ -510,7 +518,7 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 			break;
 		}
 		get_length_information = (PGET_LENGTH_INFORMATION) irp->AssociatedIrp.SystemBuffer;
-		get_length_information->Length.QuadPart = m_total_sectors * SECTOR_SIZE;		// length in sectors
+		get_length_information->Length.QuadPart = SECTOR_TO_BYTE(m_total_sectors);	// length in sectors
 		irp->IoStatus.Status = STATUS_SUCCESS;
 		irp->IoStatus.Information = sizeof(GET_LENGTH_INFORMATION);
 		break;								}
@@ -527,7 +535,7 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 		}
 		partition_information = (PPARTITION_INFORMATION) irp->AssociatedIrp.SystemBuffer;
 		partition_information->StartingOffset.QuadPart = 0;
-		partition_information->PartitionLength.QuadPart = m_total_sectors * SECTOR_SIZE;
+		partition_information->PartitionLength.QuadPart = SECTOR_TO_BYTE(m_total_sectors);
 		partition_information->HiddenSectors = 0;
 		partition_information->PartitionNumber = 0;
 		partition_information->PartitionType = 0;
@@ -551,7 +559,7 @@ bool CMountedDisk::LocalDispatchIoCtrl(IN PIRP irp)
 		partition_information_ex = (PPARTITION_INFORMATION_EX) irp->AssociatedIrp.SystemBuffer;
 		partition_information_ex->PartitionStyle = PARTITION_STYLE_MBR;
 		partition_information_ex->StartingOffset.QuadPart = 0;
-		partition_information_ex->PartitionLength.QuadPart = m_total_sectors * SECTOR_SIZE;
+		partition_information_ex->PartitionLength.QuadPart = SECTOR_TO_BYTE(m_total_sectors);
 		partition_information_ex->PartitionNumber = 0;
 		partition_information_ex->RewritePartition = FALSE;
 		partition_information_ex->Mbr.PartitionType = 0;
@@ -733,6 +741,9 @@ NTSTATUS CMountedDisk::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, O
 	LOG_STACK_TRACE("");
 	LogProcessName();
 
+	//!! m_last_irp对于同一个CMountedDisk对象是线程不安全的。
+	//!! 这里User mode utility (LIB)保证对于同一个device，以单线程调用RequestExchange
+
 	// 返回上次处理结果
 	if (request->m_major_func != IRP_MJ_NOP)
     {
@@ -741,34 +752,66 @@ NTSTATUS CMountedDisk::RequestExchange(IN CORE_MNT_EXCHANGE_REQUEST * request, O
         m_last_irp->m_status = request->lastStatus;
         if( request->m_read_write & READ )	
         {	// 需要返回 data
-			KdPrint(("return data to irp, len=%d\n", request->lastSize));
+			KdPrint(("return data to irp, len=%d\n", request->proc_size));
 			ASSERT(m_last_irp->m_kernel_buf);
 			if (m_last_irp->m_kernel_buf)		RtlCopyMemory(
-				m_last_irp->m_kernel_buf, (PVOID)(request->m_buf), request->lastSize);
+				(m_last_irp->m_kernel_buf + m_last_irp->m_processed), (PVOID)(request->m_buf), request->proc_size);
         }
-		CompleteLastIrp(m_last_irp);
-		m_last_irp = NULL;
+		m_last_irp->m_processed += request->proc_size;
+		if ( (m_last_irp->m_processed >= m_last_irp->m_data_len)
+			|| (m_last_irp->m_read_write == (WRITE | READ) )
+			|| (m_last_irp->m_status != STATUS_SUCCESS) )
+		{
+			CompleteLastIrp(m_last_irp);
+			m_last_irp = NULL;
+		}
     }
 
 	// 处理本次请求
-    ASSERT(m_last_irp == NULL);
-	m_irp_queue.pop(m_last_irp);
-	ASSERT(m_last_irp);
+    //ASSERT(m_last_irp == NULL);
+	if ( !m_last_irp )
+	{	// 上次的irp已经全部完成，从队列中获取新的irp
+		m_irp_queue.pop(m_last_irp);
+		ASSERT(m_last_irp);
+		m_last_irp->m_processed = 0;
+	}
 
 	KdPrint(("send irp, func:%d, code:0x%08X\n", m_last_irp->m_major_func, m_last_irp->m_minor_code));
 
 	response->m_major_func = m_last_irp->m_major_func;
 	response->m_minor_code = m_last_irp->m_minor_code;
 	response->m_read_write = m_last_irp->m_read_write;
-	response->size = m_last_irp->m_data_len;
-	response->offset = m_last_irp->m_offset;
+
+	KdPrint(("user mode buffer size: %dKB\n", request->buf_size / 1024));
+
+	ASSERT(m_last_irp->m_data_len >  m_last_irp->m_processed);
+	if ( (m_last_irp->m_read_write == (WRITE | READ) ) && (m_last_irp->m_data_len > request->buf_size) )
+	{	// read/write 请求不支持分批处理
+		KdPrint(("user mode buffer too small: request:0x%X\n", m_last_irp->m_data_len));
+		response->size = m_last_irp->m_data_len;
+		// 结束m_last_irp
+		m_last_irp->m_status = STATUS_NO_MEMORY;
+		CompleteLastIrp(m_last_irp);
+		m_last_irp = NULL;
+		return STATUS_NO_MEMORY;
+	}
+
+	ULONG32 transfer_size = m_last_irp->m_data_len - m_last_irp->m_processed;
+	if (transfer_size > request->buf_size)	transfer_size = request->buf_size;
+	response->size = transfer_size;
+
+	//response->size = m_last_irp->m_data_len;
+	//response->offset = m_last_irp->m_offset;
+
+	response->offset = m_last_irp->m_offset + m_last_irp->m_processed;
 
 	if (m_last_irp->m_read_write & WRITE)
 	{
-		KdPrint(("copy data, len=%d\n", response->size));
+		KdPrint(("copy data, len=%d\n", transfer_size));
 		ASSERT(m_last_irp->m_kernel_buf);
 		if (m_last_irp->m_kernel_buf)	RtlCopyMemory(
-			(PVOID)(request->m_buf), m_last_irp->m_kernel_buf, response->size);
+			(PVOID)(request->m_buf), (m_last_irp->m_kernel_buf + m_last_irp->m_processed), transfer_size);
+		//m_last_irp->m_processed += transfer_size;
 	}
 	return STATUS_SUCCESS;
 }

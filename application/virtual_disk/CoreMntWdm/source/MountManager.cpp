@@ -146,7 +146,6 @@ NTSTATUS CMountManager::Mount(IN OUT CORE_MNT_MOUNT_REQUEST & request)
 	}
 
 	dev_id = ii;
-	//ASSERT(ii < MAX_MOUNTED_DISK);
 	KdPrint( ("found disk id:%d\n", dev_id) );
 	// 找到空位置
 	InterlockedIncrement(&m_disk_count);
@@ -164,17 +163,6 @@ NTSTATUS CMountManager::Mount(IN OUT CORE_MNT_MOUNT_REQUEST & request)
 	str_id[0] = dev_id + L'0';
 	RtlAppendUnicodeToString(&str_device_name, str_id);
 	KdPrint( ("disk name:%Z\n", str_device_name) );
-
-	//int jj=0;
-	//while ( DIRECT_DISK_PREFIX[jj] !=0 )
-	//{
-	//	device_name_buffer[jj] = DIRECT_DISK_PREFIX[jj];
-	//	++jj;
-	//}
-	//device_name_buffer[jj++] = dev_id + L'0';
-	//device_name_buffer[jj] = 0;
-	//KdPrint( ("disk name:%S\n", device_name_buffer) );
-	//RtlInitUnicodeString(&str_device_name, device_name_buffer);
 
     NTSTATUS status;
 
@@ -284,9 +272,9 @@ NTSTATUS CMountManager::DispatchDeviceControl(IN PIRP irp, IN PIO_STACK_LOCATION
 		}
 		CORE_MNT_EXCHANGE_REQUEST * request = (CORE_MNT_EXCHANGE_REQUEST *)buffer;
 		CORE_MNT_EXCHANGE_RESPONSE response = {0};
-		RequestExchange(request, &response);
+		status = RequestExchange(request, &response);
 		RtlCopyMemory(buffer, &response, sizeof(CORE_MNT_EXCHANGE_RESPONSE) );
-		status = STATUS_SUCCESS;
+		//status = STATUS_SUCCESS;
 		break;								}
 
 	case CORE_MNT_UNMOUNT_IOCTL:		{
