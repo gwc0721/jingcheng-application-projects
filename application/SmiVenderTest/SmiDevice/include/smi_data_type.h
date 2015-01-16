@@ -254,7 +254,7 @@ class CSectorBuf;
 
 
 class CSectorBuf
-	: virtual public jcparam::IVisibleValue
+	: virtual public jcparam::IBinaryBuffer
 	, public CJCInterfaceBase
 {
 	friend bool CreateSectorBuf(FILESIZE sec_add);
@@ -281,9 +281,10 @@ protected:
 	void OutputBinary(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE len) const;
 
 public:
-	BYTE* Lock(void)	{ return m_array; }
+	virtual BYTE* Lock(void)	{ return m_array; }
 	const BYTE* Lock(void) const {return m_array;}
-	void Unlock(void) const {};
+	virtual void Unlock(BYTE * ptr) {};
+	virtual JCSIZE GetSize(void) const {return SECTOR_SIZE;}
 
 protected:
 	BYTE 		m_array[SECTOR_SIZE];

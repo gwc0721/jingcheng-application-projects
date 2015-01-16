@@ -343,6 +343,7 @@ bool CStorageDeviceComm::ScsiWrite(BYTE * buf, FILESIZE lba, JCSIZE secs, UINT t
 
 FILESIZE CStorageDeviceComm::GetCapacity(void)
 {
+	LOG_STACK_TRACE();
 	if (0 == m_capacity)
 	{
 		BYTE buf[12];
@@ -351,6 +352,7 @@ FILESIZE CStorageDeviceComm::GetCapacity(void)
 		cb[0] = 0x25;
 
 		ScsiCommand(read, buf, 8, cb, 10, 600);
+		LOG_DEBUG(_T("%02X, %02X, %02X, %02X, "), buf[0], buf[1], buf[2], buf[3]);
 		m_capacity = MAKELONG(MAKEWORD(buf[3], buf[2]), MAKEWORD(buf[1], buf[0]));
 		++ m_capacity;
 	}

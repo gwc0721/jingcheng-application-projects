@@ -265,7 +265,7 @@ void CLT2244::FlashAddToPhysicalAdd(const CFlashAddress & add, CSmiCommand & cmd
 	else block_cmd.chunk() = add.m_chunk;	
 
 	if ( option & ISmiDevice::RFO_DISABLE_ECC ) mode |= 0x08;
-	if (option & ISmiDevice::RFO_DISABLE_SCRAMB ) mode |= 0x40;
+	if (option & ISmiDevice::RFO_DISABLE_SCRAMB ) mode |= 0x04;
 
 	//if (false == ecc)		mode |= 8;
 	

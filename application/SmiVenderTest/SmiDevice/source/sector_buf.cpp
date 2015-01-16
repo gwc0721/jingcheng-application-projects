@@ -47,11 +47,11 @@ void CSectorBuf::OutputBinary(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE
 {
 	JCASSERT(stream);
 	JCASSERT(m_array);
-	Lock();
+	//Lock();
 	JCSIZE len = SECTOR_SIZE;
 
 	stream->Put((const wchar_t*)(m_array), len /2 );
-	Unlock();
+	//Unlock(NULL);
 }
 
 void CSectorBuf::OutputText(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE out_len) const
@@ -80,7 +80,7 @@ void CSectorBuf::OutputText(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE o
 	stream->Put(str_buf, STR_BUF_LEN-2);
 
 	// output data
-	Lock();
+	//Lock();
 
 	// 仅支持行对齐
 	JCSIZE add = (m_sec_add * SECTOR_SIZE) & 0xFFFFFF;
@@ -109,7 +109,7 @@ void CSectorBuf::OutputText(jcparam::IJCStream * stream, JCSIZE offset, JCSIZE o
 		stream->Put(str_buf, STR_BUF_LEN-2);
 	}
 	stream->Put(_T('\n'));
-	Unlock();
+	//Unlock(NULL);
 }
 
 
