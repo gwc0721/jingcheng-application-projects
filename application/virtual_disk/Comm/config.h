@@ -18,8 +18,9 @@
 #define MAX_IRP_QUEUE		(32)
 
 #define WDM_FN				_T("CoreMntWdm")
-///
-#define EXCHANGE_BUFFER_SIZE	(1024 * 1024)
+// 32MB (64K sec, max of lba48)
+#define EXCHANGE_BUFFER_SIZE	(32 * 1024 * 1024)
+//#define EXCHANGE_BUFFER_SIZE	(2 * 512)
 
 #define COREMNT_CLASS_GUID { 0x54659e9c, 0xb407, 0x4269, { 0x99, 0xf2, 0x9a, 0x20, 0xd8, 0x9e, 0x35, 0x75 } }
 

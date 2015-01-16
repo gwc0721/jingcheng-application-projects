@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "config.h"
 
@@ -25,12 +25,13 @@ struct CORE_MNT_EXCHANGE_REQUEST
 	UCHAR	m_read_write;
 	ULONG	m_minor_code;
 
-    //ULONG32 lastType; 
-    ULONG32 lastStatus; 
-    ULONG32 lastSize; 
+
+    ULONG32 lastStatus;
+	// 对于write：已收到字节数；read：已经读取的字节数；read/write：已经读取的字节数
+    ULONG32 proc_size; 
 	ULONG64	m_buf;
-    //UCHAR *  data;
-    ULONG32 dataSize;
+	// user mode buffer size
+    ULONG32 buf_size;
 };
 
 struct CORE_MNT_EXCHANGE_RESPONSE
@@ -39,7 +40,6 @@ struct CORE_MNT_EXCHANGE_RESPONSE
 	UCHAR	m_read_write;
 	ULONG	m_minor_code;
 
-    //ULONG32 type;
     ULONG32 size; 
     ULONG64 offset; 
 };
@@ -57,11 +57,7 @@ struct CORE_MNT_COMM
 	UINT32 dev_id;
 };
 
-//#define CORE_MNT_MOUNT_RESPONSE		CORE_MNT_COMM
 #define CORE_MNT_UNMOUNT_REQUEST	CORE_MNT_COMM
-
-//#define SECTOR_SIZE		512
-//#define SECTOR_TO_BYTE(sec)		( (sec) << 9)
 
 #define TOC_DATA_TRACK          0x04
 
@@ -79,4 +75,5 @@ struct CORE_MNT_COMM
 #define CORE_MNT_DISCONNECT_IOCTL \
     CTL_CODE(CORE_MNT_DISPATCHER, 0x803, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
-
+#define STATUS_ERR_BUFFER_NOT_ENOUGH	\
+	(STATUS_SEVERITY_ERROR |  
