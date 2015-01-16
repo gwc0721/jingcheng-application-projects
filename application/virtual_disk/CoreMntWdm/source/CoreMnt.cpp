@@ -183,12 +183,8 @@ NTSTATUS IrpHandler(IN PDEVICE_OBJECT fdo, IN PIRP pIrp )
 
 	LOG_STACK_TRACE("");
 	NTSTATUS status;
-  //  if(fdo == gDeviceObject)
-  //  {
-		//KdPrint(("irp handler for gDeviceObject\n"));
-  //      return CompleteIrp(pIrp, STATUS_SUCCESS,0);
-  //  }
-	/*else */if (fdo == g_mount_device)
+	
+	if (fdo == g_mount_device)
 	{
 		CMountManager * mm = reinterpret_cast<CMountManager *>(fdo->DeviceExtension);		ASSERT(mm);
 		status = ControlDeviceIrpHandler(mm, fdo, pIrp);
@@ -290,10 +286,7 @@ NTSTATUS HandleRemoveDevice(CMountManager * pdx, PIRP Irp)
 	LOG_STACK_TRACE("");
 
 	Irp->IoStatus.Status = STATUS_SUCCESS;
-
 	NTSTATUS status = DefaultPnpHandler(pdx, Irp);
-	//IoDeleteSymbolicLink(&(UNICODE_STRING)pdx->ustrSymLinkName);
-
 	IoSetDeviceInterfaceState(&pdx->ustrSymLinkName, FALSE);
 	RtlFreeUnicodeString(&pdx->ustrSymLinkName);
 
@@ -368,24 +361,14 @@ NTSTATUS CoreMntPnp(IN PDEVICE_OBJECT fdo,
 		"IRP_MN_DEVICE_USAGE_NOTIFICATION",
 		"IRP_MN_SURPRISE_REMOVAL",
 	};
-	//if (fdo == gDeviceObject)			str_dev = "dev";
-	/*else*/ if (fdo == g_mount_device)		str_dev = "mount";
+	
+	if (fdo == g_mount_device)		str_dev = "mount";
 	else								str_dev = "disk";
 	if (fcn < arraysize(fcnname) )		str_func = fcnname[fcn];
 	else								str_func = "UNKNOWN_PNP_REQUEST";
 	KdPrint(("[IRP] %s <- PNP::%s\n", str_dev, str_func));
 #endif
 
-//#ifndef COREMNT_PNP_SUPPORT
-//	if (fdo != gDeviceObject)
-//	{
-//		irp->IoStatus.Status = STATUS_SUCCESS;
-//		irp->IoStatus.Information = 0;
-//		IoCompleteRequest(irp, IO_NO_INCREMENT);
-//		return status;
-//	}
-//	PDEVICE_EXTENSION pdx = (PDEVICE_EXTENSION) fdo->DeviceExtension;
-//#else
 	if (fdo != g_mount_device)
 	{
 		CMountedDisk * mnt_disk = reinterpret_cast<CMountedDisk*>(fdo->DeviceExtension);
@@ -400,7 +383,6 @@ NTSTATUS CoreMntPnp(IN PDEVICE_OBJECT fdo,
 		IoCompleteRequest(irp, IO_NO_INCREMENT);
 		return STATUS_NOT_SUPPORTED;
 	}
-//#endif
 
 	static NTSTATUS (*fcntab[])(CMountManager *, PIRP) = 
 	{

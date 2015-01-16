@@ -21,7 +21,9 @@ struct IRP_EXCHANGE_REQUEST
 	bool	m_complete;
 	KEVENT	m_event;
 	PIRP	m_irp;
-
+	// 完成进度。当user mode driver的缓存小于m_data_len时，分批完成
+	// m_processed表示已经传输的字节数。
+	ULONG32	m_processed;
 };
 
 template <typename ELEMENT>
@@ -76,14 +78,14 @@ public:
 
 protected:
 	// 如果Driver能够处理IRP则处理并返回true，不能处理，则返回false，入队列，给USER处理
-	bool LocalDispatch(IN PIRP irp);
+	//bool LocalDispatch(IN PIRP irp);
 	bool LocalDispatchIoCtrl(IN PIRP irp);
     void CompleteLastIrp(NTSTATUS status, ULONG information);
 	void AsyncExchange(IN PIRP irp, IN UCHAR mj, IN ULONG mi, IN READ_WRITE rw, IN ULONG buf_size,
 			IN ULONG64 offset, IN UCHAR* buf);
 	void SynchExchangeInitBuf(IN PIRP irp, IN UCHAR mj, IN ULONG mi, IN READ_WRITE rw, IN ULONG buf_size,
 			IN ULONG64 offset, OUT IRP_EXCHANGE_REQUEST & ier);
-	void SynchExchange(IN IRP_EXCHANGE_REQUEST & ier);
+	NTSTATUS SynchExchange(IN IRP_EXCHANGE_REQUEST & ier);
 	void SynchExchangeClean(IN IRP_EXCHANGE_REQUEST & ier, IN ULONG data_len);
 
 protected:
