@@ -30,9 +30,13 @@ public:
 	CCoreMntTestApp(void);
 
 public:
-	bool Initialize(void);
+	virtual int Initialize(void);
 	virtual int Run(void);
-	void CleanUp(void);
+	virtual void CleanUp(void);
+	virtual LPCTSTR AppDescription(void) const { return 
+		_T("CoreMnt Management Utility\n")
+		_T("\t by Jingcheng Yuan\n");
+	};
 
 protected:
 	void CreateParameter(jcparam::CParamSet * &param);
@@ -143,29 +147,15 @@ void CCoreMntTestApp::InstallDriver(CSyncMountManager & mntmng,const CJCStringT 
 
 void CCoreMntTestApp::LoadUserModeDriver(const CJCStringT & driver, IImage * & img)
 {
-	//JCASSERT(NULL == img);
 	CJCStringT drv_path;
 	drv_path = m_app_path + _T("\\") + driver + _T(".dll");
-	_tprintf(_T("Loading user driver %s ..."), drv_path.c_str() );
-
-	//m_driver_module = LoadLibrary(drv_path.c_str());
-	//if (m_driver_module == NULL) THROW_WIN32_ERROR(_T(" failure on loading driver %s "), drv_path.c_str() );
-
-	//// load entry
-	//GET_DRV_FACT_PROC proc = (GET_DRV_FACT_PROC) (GetProcAddress(m_driver_module, "GetDriverFactory") );
-	//if (proc == NULL)	THROW_WIN32_ERROR(_T("file %s is not a virtual disk driver."), drv_path.c_str() );
-
-	//stdext::auto_interface<IDriverFactory> factory;
-	//BOOL br = (proc)(factory);
-	//if (!br) THROW_ERROR(ERR_APP, _T("failure on getting factory."));
-	//JCASSERT( factory.valid() );
+	_tprintf(_T("Loading user driver %s ...\n"), drv_path.c_str() );
 
 	// create parameters
 	stdext::auto_interface<jcparam::CParamSet> param;
 	CreateParameter(param);
 	m_mount_manager.LoadUserModeDriver(drv_path, _T("vendor_test"), static_cast<jcparam::IValue*>(param), img/*, m_driver_module*/);
 
-	//factory->CreateDriver(_T(""), static_cast<jcparam::IValue*>(param), img);
 	JCASSERT(img);
 	m_status = ST_DRV_LOADED;
 	_tprintf(_T("Succeded\n"));
@@ -263,11 +253,11 @@ void CCoreMntTestApp::CreateParameter(jcparam::CParamSet * &param)
 }
 
 
-bool CCoreMntTestApp::Initialize(void)
+int CCoreMntTestApp::Initialize(void)
 {
 	m_exit_event = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if (m_exit_event == NULL) THROW_WIN32_ERROR(_T("failure on creating event."));
-	return true;
+	return 1;
 }
 
 void CCoreMntTestApp::CleanUp(void)
