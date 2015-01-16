@@ -21,6 +21,7 @@ public:
 	virtual bool DeviceLock(void)	{return error(); }
 	virtual bool DeviceUnlock(void) 	{return false; }
 	virtual bool Dismount(void)	{return error(); }
+	virtual bool StartStopUnit(bool stop) {return error();};
 
 	virtual void SetDeviceName(LPCTSTR name) 	{error(); }
 	virtual void UnmountAllLogical(void) {};

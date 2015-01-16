@@ -44,6 +44,8 @@ public:
 	virtual bool SectorWrite(const BYTE * buf, FILESIZE lba, JCSIZE sectors);
 	virtual bool ScsiRead(BYTE * buf, FILESIZE lba, JCSIZE secs, UINT timeout);
 	virtual bool ScsiWrite(BYTE * buf, FILESIZE lba, JCSIZE secs, UINT timeout);
+	virtual bool StartStopUnit(bool stop);
+
 	// 用于性能测试，单位us。
 	virtual UINT GetLastInvokeTime(void);
 

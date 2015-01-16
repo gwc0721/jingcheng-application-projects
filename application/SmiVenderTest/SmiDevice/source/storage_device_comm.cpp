@@ -4,6 +4,8 @@
 
 LOCAL_LOGGER_ENABLE(_T("CStorageDeviceComm"), LOCAL_LOG_LEV); 
 
+#define CMD_BLOCK_SIZE	16
+
 CStorageDeviceComm::CStorageDeviceComm(HANDLE dev)
 	: m_dev(dev), m_capacity(0)
 	, m_last_invoke_time(0)
@@ -364,6 +366,31 @@ UINT CStorageDeviceComm::GetLastInvokeTime(void)
 	return ( (UINT)(m_last_invoke_time / CJCLogger::Instance()->GetTimeStampCycle()) ); 
 }
 
+bool CStorageDeviceComm::StartStopUnit(bool stop)
+{
+	BYTE cmd_block[CMD_BLOCK_SIZE];
+	stdext::auto_array<BYTE>	_buf(SECTOR_SIZE);
+
+	bool br;
+	if (stop)
+	{	// power off
+		memset(cmd_block, 0, sizeof(BYTE) * CMD_BLOCK_SIZE);
+		cmd_block[0] = 0x1B, cmd_block[1] = 0, cmd_block[4] = 0x02;
+		br = ScsiCommand(read, _buf, 0, cmd_block, CMD_BLOCK_SIZE, 60);
+	}
+	else
+	{	// power on
+		memset(cmd_block, 0, sizeof(BYTE) * CMD_BLOCK_SIZE);
+		cmd_block[0] = 0x1B, cmd_block[1] = 0, cmd_block[4] = 0;
+		br = ScsiCommand(read, _buf, 0, cmd_block, CMD_BLOCK_SIZE, 60);
+		if (!br) return false;
+
+		memset(cmd_block, 0, sizeof(BYTE) * CMD_BLOCK_SIZE);
+		cmd_block[0] = 0x0, cmd_block[1] = 0, cmd_block[4] = 0;
+		br = ScsiCommand(read, _buf, 0, cmd_block, CMD_BLOCK_SIZE, 60);
+	}
+	return br;
+}
 
 /*
 void CStorageDeviceComm::GetTimeOut(UINT &rd, UINT &wr)

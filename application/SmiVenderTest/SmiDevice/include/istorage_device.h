@@ -44,6 +44,7 @@ public:
 
 	virtual bool ScsiRead(BYTE * buf, FILESIZE lba, JCSIZE secs, UINT timeout) = 0;
 	virtual bool ScsiWrite(BYTE * buf, FILESIZE lba, JCSIZE secs, UINT timeout) = 0;
+	virtual bool StartStopUnit(bool stop) = 0;
 
 	// 用于性能测试，单位us。
 	virtual UINT GetLastInvokeTime(void) = 0;
@@ -64,7 +65,6 @@ public:
 
 	virtual bool Recognize() = 0;
 	virtual void Detach(HANDLE & dev) = 0;
-
 
 #ifdef _DEBUG
 	virtual HANDLE GetHandle() = 0;
