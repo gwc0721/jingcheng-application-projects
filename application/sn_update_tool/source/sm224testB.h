@@ -9,14 +9,14 @@
 #define     Channel 4
 #define     CE      8
 /////////////////////////////////////////////////////////////////////////////
-// CSM224testBApp:
+// CUpdateSnToolApp:
 // See sm224testB.cpp for the implementation of this class
 //
 
-class CSM224testBApp : public CWinApp
+class CUpdateSnToolApp : public CWinApp
 {
 public:
-	CSM224testBApp();
+	CUpdateSnToolApp();
 
 	CHAR szPreloadPath[256];
 	int nEntryState;

@@ -8,13 +8,13 @@ enum TEST_MODE
 	MODE_UPDATE_VERIFY, MODE_VERIFY_ONLY,
 };
 /////////////////////////////////////////////////////////////////////////////
-// CUPSNTOOL_SelTestMode dialog
+// CUpsnSelTestModeDlg dialog
 
-class CUPSNTOOL_SelTestMode : public CDialog
+class CUpsnSelTestModeDlg : public CDialog
 {
 // Construction
 public:
-	CUPSNTOOL_SelTestMode(CWnd* pParent = NULL);   // standard constructor
+	CUpsnSelTestModeDlg(CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	enum { IDD = IDD_DIALOG_UPSN_SelectTestMode };

@@ -7,6 +7,8 @@
 #define KEY_MODEL_NAME		_T("name")
 #define KEY_CONFIG_FILE		_T("config_file")
 #define KEY_PREFIX			_T("PREFIX")
+#define KEY_CONTROLLER		_T("controller")
+
 // run external process after succeeded update sn
 #define SEC_EXTPROC			_T("EXTERNAL")
 #define KEY_EXT_PATH		_T("PATH")
@@ -20,6 +22,9 @@
 #define KEY_OEM_MODEL_NAME	_T("ModelName")
 #define	KEY_VENDOR			_T("VENDOR")
 #define KEY_CAPACITY		_T("Capacity(dec)")
+#define KEY_CAP_CYLINDER	_T("CapacitySetting_C(decimal)")
+#define KEY_CAP_HEADER		_T("CapacitySetting_H(decimal)")
+#define KEY_CAP_SECTOR		_T("CapacitySetting_S(decimal)")
 #define KEY_IF_SETTING		_T("I/F Setting")
 #define KEY_TRIM			_T("TRIM")
 #define KEY_DEVSLP			_T("DEVSLP")
@@ -27,6 +32,8 @@
 #define	KEY_ISP				_T("ISP")
 #define	KEY_FLASHID			_T("FLASHID")
 #define KEY_DIS_ISP_CHECK	_T("DisableISPcheckversion")
+#define KEY_UDMA_SETTING	_T("UDMAModeSetting")
+
 // checksum for isp file
 #define KEY_ISP_CHECKSUM	_T("ISPchecksum")
 #define KEY_SN_PREFIX		_T("SNPREFIX")
@@ -69,9 +76,7 @@
 
 
 #define MPISP_LENGTH		(64 * 1024)
-#define	ISP_LENGTH			(384 * 1024)
 #define ISP_VER_LENGTH		10
-#define	ISP_VER_OFFSET		0x0D
 
 #define MAX_STRING_LEN		256
 
@@ -84,21 +89,12 @@
 #define ENGLISHVERSION			 1
 #endif
 
-//2244LT identify offset
-#define CHS_START_ADDR_2244LT      0xA0E
-#define SN_START_ADDR_2244LT       0xA14
-#define MODEL_START_ADDR_2244LT    0xA36
-#define VENDOR_START_ADDR_2244LT   0xB02
 
-//2244LT CID offset
-#define IF_ADDR_2244LT       0x99F
-#define TRIM_ADDR_2244LT     0x9A5
-#define DEVSLP_ADDR_2244LT   0x9A5
 
 //2244LT Flash ID in flash id command
 #define FLASH_ID_OFFSET     0x40
 #define FLASH_ID_SIZE       0x80
-#define SECTOR_SIZE			512
+//#define SECTOR_SIZE			512
 
 
 #define SN_LENGTH_WORD		10

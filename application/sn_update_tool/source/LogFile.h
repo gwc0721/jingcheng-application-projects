@@ -3,7 +3,7 @@
 struct DEVICE_INFO
 {
 	DWORD	m_size;
-	char	m_drive_letter;
+	TCHAR	m_drive_letter;
 	CString m_drive_name;
 	CString m_serial_number;
 	CString m_model_name;

@@ -13,30 +13,30 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
-// CUpdateSNTool_Caution dialog
-CUpdateSNTool_Caution::CUpdateSNTool_Caution(CWnd* pParent /*=NULL*/)
-	: CDialog(CUpdateSNTool_Caution::IDD, pParent)
+// CUpsnCautionDlg dialog
+CUpsnCautionDlg::CUpsnCautionDlg(CWnd* pParent /*=NULL*/)
+	: CDialog(CUpsnCautionDlg::IDD, pParent)
 	, m_caution(CUpsnCaution::CAUTION_NONE)
 {
 }
 
 
-void CUpdateSNTool_Caution::DoDataExchange(CDataExchange* pDX)
+void CUpsnCautionDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 }
 
 
-BEGIN_MESSAGE_MAP(CUpdateSNTool_Caution, CDialog)
+BEGIN_MESSAGE_MAP(CUpsnCautionDlg, CDialog)
 	ON_BN_CLICKED(ID_Retry, OnRetry)
 	ON_WM_CTLCOLOR()
 	ON_WM_PAINT()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
-// CUpdateSNTool_Caution message handlers
+// CUpsnCautionDlg message handlers
 
-BOOL CUpdateSNTool_Caution::OnInitDialog() 
+BOOL CUpsnCautionDlg::OnInitDialog() 
 {
 	CDialog::OnInitDialog();
 	
@@ -60,19 +60,19 @@ BOOL CUpdateSNTool_Caution::OnInitDialog()
 	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
-void CUpdateSNTool_Caution::OnRetry() 
+void CUpsnCautionDlg::OnRetry() 
 {
 	// TODO: Add your control notification handler code here
 	EndDialog(CAUTION_RETRY);
 }
 
-void CUpdateSNTool_Caution::OnCancel() 
+void CUpsnCautionDlg::OnCancel() 
 {
 	// TODO: Add extra cleanup here
 	EndDialog(CAUTION_CANCEL);
 }
 
-HBRUSH CUpdateSNTool_Caution::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor) 
+HBRUSH CUpsnCautionDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor) 
 {
 	HBRUSH hbr = CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
 	
@@ -94,7 +94,7 @@ HBRUSH CUpdateSNTool_Caution::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 	return hbr;
 }
 
-void CUpdateSNTool_Caution::OnPaint() 
+void CUpsnCautionDlg::OnPaint() 
 {
 	CPaintDC dc(this); // device context for painting
 	

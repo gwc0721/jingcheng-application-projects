@@ -1,11 +1,7 @@
 // UPSNTOOL_SelTestMode.cpp : implementation file
 //
-
 #include "stdafx.h"
 #include "sm224testB.h"
-
-#include "smidisk.h"
-
 #include "SM224UpdatedSNToolMPDlg.h"
 #include "UPSNTOOL_SelTestMode.h"
 
@@ -18,37 +14,37 @@ static char THIS_FILE[] = __FILE__;
 
 
 /////////////////////////////////////////////////////////////////////////////
-// CUPSNTOOL_SelTestMode dialog
+// CUpsnSelTestModeDlg dialog
 
 
-CUPSNTOOL_SelTestMode::CUPSNTOOL_SelTestMode(CWnd* pParent /*=NULL*/)
-	: CDialog(CUPSNTOOL_SelTestMode::IDD, pParent)
+CUpsnSelTestModeDlg::CUpsnSelTestModeDlg(CWnd* pParent /*=NULL*/)
+	: CDialog(CUpsnSelTestModeDlg::IDD, pParent)
 {
 }
 
 
-void CUPSNTOOL_SelTestMode::DoDataExchange(CDataExchange* pDX)
+void CUpsnSelTestModeDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_COMBO1, m_model_list);
 }
 
 
-BEGIN_MESSAGE_MAP(CUPSNTOOL_SelTestMode, CDialog)
+BEGIN_MESSAGE_MAP(CUpsnSelTestModeDlg, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON_SNupdateNverify, OnBUTTONSNupdateNverify)
 	ON_BN_CLICKED(IDC_BUTTON_SNverifyOnly, OnBUTTONSNverifyOnly)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
-// CUPSNTOOL_SelTestMode message handlers
-BOOL CUPSNTOOL_SelTestMode::OnInitDialog() 
+// CUpsnSelTestModeDlg message handlers
+BOOL CUpsnSelTestModeDlg::OnInitDialog() 
 {
 	CDialog::OnInitDialog();
 	CString str;
 	// TODO: Add extra initialization here
 
 	// Show application version
-	CSM224testBApp * app = dynamic_cast<CSM224testBApp *>(AfxGetApp());
+	CUpdateSnToolApp * app = dynamic_cast<CUpdateSnToolApp *>(AfxGetApp());
 	ASSERT(app);
 	str.Format(_T("SMI. Update Serial Number Tool  Ver. %s"), app->GetVer() );
 	this->SetWindowText(str);
@@ -57,7 +53,6 @@ BOOL CUPSNTOOL_SelTestMode::OnInitDialog()
 	bool br = LoadModelList();
 	if (!br)
 	{
-		//PostMessage(WM_CLOSE, 0, 0);
 		EndDialog(0);
 		return FALSE;
 	}
@@ -66,7 +61,7 @@ BOOL CUPSNTOOL_SelTestMode::OnInitDialog()
 	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
-void CUPSNTOOL_SelTestMode::OnBUTTONSNupdateNverify() 
+void CUpsnSelTestModeDlg::OnBUTTONSNupdateNverify() 
 {
 	// TODO: Add your control notification handler code here
 	UpdateData();
@@ -74,7 +69,7 @@ void CUPSNTOOL_SelTestMode::OnBUTTONSNupdateNverify()
 	StartUpdate(mode_index, MODE_UPDATE_VERIFY);
 }
 
-void CUPSNTOOL_SelTestMode::OnBUTTONSNverifyOnly() 
+void CUpsnSelTestModeDlg::OnBUTTONSNverifyOnly() 
 {
 	// TODO: Add your control notification handler code here
 	UpdateData();
@@ -82,21 +77,17 @@ void CUPSNTOOL_SelTestMode::OnBUTTONSNverifyOnly()
 	StartUpdate(mode_index, MODE_VERIFY_ONLY);
 }
 
-bool CUPSNTOOL_SelTestMode::StartUpdate(int model_index, TEST_MODE test_mode)
+bool CUpsnSelTestModeDlg::StartUpdate(int model_index, TEST_MODE test_mode)
 {
-	CSM224UpdatedSNToolMPDlg dlg;
-	//dlg.m_test_mode = test_mode;
-	//dlg.m_model_index = model_index;
-	//ShowWindow(SW_HIDE);
+	CUpdateSnToolDlg dlg;
 	dlg.Start(test_mode, model_index);
-	//ShowWindow(SW_SHOW);
 	return true;
 }
 
 
-bool CUPSNTOOL_SelTestMode::LoadModelList(void)
+bool CUpsnSelTestModeDlg::LoadModelList(void)
 {
-	CSM224testBApp * app = dynamic_cast<CSM224testBApp *>(AfxGetApp());
+	CUpdateSnToolApp * app = dynamic_cast<CUpdateSnToolApp *>(AfxGetApp());
 	ASSERT(app);
 
 	CString model_file =  app->GetRunFolder() + FILE_MODEL_LIST;

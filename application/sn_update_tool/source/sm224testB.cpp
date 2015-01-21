@@ -15,32 +15,17 @@ static char THIS_FILE[] = __FILE__;
 
 LOCAL_LOGGER_ENABLE(_T("upsn"), LOGGER_LEVEL_DEBUGINFO);
 
-/*
-#if 0
-LOGGER_TO_DEBUG(0, 0
-		| CJCLogger::COL_TIME_STAMP
-		| CJCLogger::COL_FUNCTION_NAME 
-		//| CJCLogger::COL_REAL_TIME
-		, 0);
-#else
-LOGGER_TO_FILE(0, _T("update_sn_tool.log"), 
-		CJCLogger::COL_TIME_STAMP |
-		CJCLogger::COL_FUNCTION_NAME | 
-		CJCLogger::COL_REAL_TIME, 0);
-#endif
-*/
-
 /////////////////////////////////////////////////////////////////////////////
 // CSm320testBApp
 
-BEGIN_MESSAGE_MAP(CSM224testBApp, CWinApp)
+BEGIN_MESSAGE_MAP(CUpdateSnToolApp, CWinApp)
 	ON_COMMAND(ID_HELP, CWinApp::OnHelp)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
-// CSM224testBApp construction
+// CUpdateSnToolApp construction
 
-CSM224testBApp::CSM224testBApp()
+CUpdateSnToolApp::CUpdateSnToolApp()
 {
 	// TODO: add construction code here,
 	// Place all significant initialization in InitInstance
@@ -54,14 +39,14 @@ CSM224testBApp::CSM224testBApp()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// The one and only CSM224testBApp object
+// The one and only CUpdateSnToolApp object
 
-CSM224testBApp theApp;
+CUpdateSnToolApp theApp;
 
 /////////////////////////////////////////////////////////////////////////////
-// CSM224testBApp initialization
+// CUpdateSnToolApp initialization
 
-BOOL CSM224testBApp::InitInstance()
+BOOL CUpdateSnToolApp::InitInstance()
 {
 	if (!AfxSocketInit())
 	{
@@ -81,14 +66,6 @@ BOOL CSM224testBApp::InitInstance()
 	Enable3dControlsStatic();	// Call this when linking to MFC statically
 #endif
 
-	//FILE * config_file = NULL;
-	//_tfopen_s(&config_file, _T("jclog.cfg"), _T("r"));
-	//if (config_file)
-	//{
-	//	CJCLogger::Instance()->Configurate(config_file);
-	//	fclose(config_file);
-	//}
-
 	LOG_RELEASE(_T("Update Serial Number Tool"));
 	ReadVersionInfo();
 	LOG_RELEASE(_T("Ver. %s"), m_str_ver);
@@ -96,7 +73,7 @@ BOOL CSM224testBApp::InitInstance()
 
 	// Get run folder
 	GetRunFolder(m_run_folder);
-	CUPSNTOOL_SelTestMode	dlg;
+	CUpsnSelTestModeDlg	dlg;
 	m_pMainWnd = &dlg;
 
 	int nResponse = dlg.DoModal();
@@ -117,7 +94,7 @@ BOOL CSM224testBApp::InitInstance()
 	return FALSE;
 }
 
-bool CSM224testBApp::ReadVersionInfo(void)
+bool CUpdateSnToolApp::ReadVersionInfo(void)
 {
 	TCHAR app_path[MAX_PATH];
 	CString str_prod_ver;
@@ -126,7 +103,6 @@ bool CSM224testBApp::ReadVersionInfo(void)
 	UINT ver_info_size = GetFileVersionInfoSize(app_path, 0);
 
 	stdext::auto_array<BYTE> ver_buf(ver_info_size);
-	//BYTE * ver_buf = new BYTE[ver_info_size];
 
 	BOOL br = GetFileVersionInfo(app_path, 0, ver_info_size, ver_buf);
 	if ( 0 == br )	return false;
@@ -157,13 +133,11 @@ bool CSM224testBApp::ReadVersionInfo(void)
 	_stscanf_s(reinterpret_cast<TCHAR *>(p_prod_ver), _T("%d, %d"), &main_ver, &sub_ver);
 	m_str_ver.Format(_T("%d.%d"), main_ver, sub_ver);
 
-//exit:
-//	delete [] ver_buf;
 	return true;
 }
 
 
-void CSM224testBApp::GetRunFolder(CString & path)
+void CUpdateSnToolApp::GetRunFolder(CString & path)
 {
 	TCHAR cur_dir[MAX_STRING_LEN];
 	GetCurrentDirectory(MAX_STRING_LEN-1, cur_dir);
