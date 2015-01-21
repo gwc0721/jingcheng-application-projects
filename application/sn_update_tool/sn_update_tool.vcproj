@@ -431,23 +431,23 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\sm224testB.cpp"
+				RelativePath=".\source\UpdateSnTool.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\source\SM224UpdatedSNToolMPDlg.cpp"
+				RelativePath=".\source\UpdateSnToolDlg.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\source\UpdateSNTool_Caution.cpp"
+				RelativePath=".\source\UpsnCaution.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\source\UPSNTool_MessageBox.cpp"
+				RelativePath=".\source\UpsnMessageDlg.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\source\UPSNTOOL_SelTestMode.cpp"
+				RelativePath=".\source\UpsnTestModeDlg.cpp"
 				>
 			</File>
 		</Filter>
@@ -476,27 +476,27 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\sm224testB.h"
-				>
-			</File>
-			<File
-				RelativePath=".\source\SM224UpdatedSNToolMPDlg.h"
-				>
-			</File>
-			<File
 				RelativePath=".\source\stdafx.h"
 				>
 			</File>
 			<File
-				RelativePath=".\source\UpdateSNTool_Caution.h"
+				RelativePath=".\source\UpdateSnTool.h"
 				>
 			</File>
 			<File
-				RelativePath=".\source\UPSNTool_MessageBox.h"
+				RelativePath=".\source\UpdateSnToolDlg.h"
 				>
 			</File>
 			<File
-				RelativePath=".\source\UPSNTOOL_SelTestMode.h"
+				RelativePath=".\source\UpsnCaution.h"
+				>
+			</File>
+			<File
+				RelativePath=".\source\UpsnMessageDlg.h"
+				>
+			</File>
+			<File
+				RelativePath=".\source\UpsnTestModeDlg.h"
 				>
 			</File>
 		</Filter>
@@ -509,15 +509,15 @@
 				>
 			</File>
 			<File
-				RelativePath=".\res\sm224testB.ico"
+				RelativePath=".\res\UpdateSnTool.ico"
 				>
 			</File>
 			<File
-				RelativePath=".\res\sm224testB.rc"
+				RelativePath=".\res\UpdateSnTool.rc"
 				>
 			</File>
 			<File
-				RelativePath=".\res\sm224testB.rc2"
+				RelativePath=".\res\UpdateSnTool.rc2"
 				>
 			</File>
 		</Filter>

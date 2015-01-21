@@ -1,5 +1,5 @@
 #pragma once
-// UPSNTool_MessageBox.h : header file
+// UpsnMessageDlg.h : header file
 
 #include "../res/resource.h"
 #include "LogFile.h"

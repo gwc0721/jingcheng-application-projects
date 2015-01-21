@@ -1,4 +1,4 @@
-// sm224testB.h : main header file for the SM224TESTB application
+// UpdateSnTool.h : main header file for the SM224TESTB application
 #pragma once
 
 #ifndef __AFXWIN_H__

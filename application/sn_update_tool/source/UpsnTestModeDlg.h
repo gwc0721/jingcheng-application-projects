@@ -1,5 +1,5 @@
 #pragma once
-// UPSNTOOL_SelTestMode.h : header file
+// UpsnTestModeDlg.h : header file
 
 #include "../res/resource.h"
 

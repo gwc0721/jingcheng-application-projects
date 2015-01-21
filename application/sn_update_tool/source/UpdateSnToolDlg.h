@@ -1,7 +1,7 @@
 ﻿#pragma once
-// SM224UpdatedSNToolMPDlg.h : header file
+// UpdateSnToolDlg.h : header file
 #include "LogFile.h"
-#include "UPSNTOOL_SelTestMode.h"
+#include "UpsnTestModeDlg.h"
 #include <FerriSDK.h>
 
 //model name length

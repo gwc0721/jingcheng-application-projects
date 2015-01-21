@@ -1,9 +1,9 @@
 // UPSNTOOL_SelTestMode.cpp : implementation file
 //
 #include "stdafx.h"
-#include "sm224testB.h"
-#include "SM224UpdatedSNToolMPDlg.h"
-#include "UPSNTOOL_SelTestMode.h"
+#include "UpdateSnTool.h"
+#include "UpdateSnToolDlg.h"
+#include "UpsnTestModeDlg.h"
 
 
 #ifdef _DEBUG
