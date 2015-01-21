@@ -2,9 +2,9 @@
 //
 
 #include "stdafx.h"
-#include "sm224testB.h"
-#include "UpdateSNTool_Caution.h"
-#include "UPSNTool_MessageBox.h"
+#include "UpdateSnTool.h"
+#include "UpsnCaution.h"
+#include "UpsnMessageDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

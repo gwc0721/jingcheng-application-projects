@@ -1,5 +1,5 @@
 #pragma once
-// UpdateSNTool_Caution.h : header file
+// UpsnCaution.h : header file
 //
 #include "../res/resource.h"
 

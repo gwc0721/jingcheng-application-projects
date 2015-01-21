@@ -3,7 +3,7 @@
 #include "stdafx.h"
 #include "../res/resource.h"
 
-#include "sm224testB.h"
+#include "UpdateSnTool.h"
 #include "ColorListCtrl.h"
 
 #ifdef _DEBUG

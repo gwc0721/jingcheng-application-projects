@@ -3,8 +3,8 @@
 #include "stdafx.h"
 #include <vld.h>
 
-#include "sm224testB.h"
-#include "UPSNTOOL_SelTestMode.h"
+#include "UpdateSnTool.h"
+#include "UpsnTestModeDlg.h"
 #include <stdext.h>
 
 #ifdef _DEBUG

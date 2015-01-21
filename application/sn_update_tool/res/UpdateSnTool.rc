@@ -50,7 +50,7 @@ BEGIN
     "LANGUAGE 4, 1\r\n"
     "#pragma code_page(950)\r\n"
     "#endif //_WIN32\r\n"
-    "#include ""res\\sm224testB.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""res\\UpdateSnTool.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
     "#include ""l.cht\\afxres.rc""          // Standard components\r\n"
     "#endif\r\n"
     "\0"
@@ -78,7 +78,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDR_MAINFRAME           ICON                    "sm224testB.ico"
+IDR_MAINFRAME           ICON                    "UpdateSnTool.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -320,7 +320,7 @@ END
 LANGUAGE 4, 1
 #pragma code_page(950)
 #endif //_WIN32
-#include "res\sm224testB.rc2"  // non-Microsoft Visual C++ edited resources
+#include "res\UpdateSnTool.rc2"  // non-Microsoft Visual C++ edited resources
 #include "l.cht\afxres.rc"          // Standard components
 #endif
 

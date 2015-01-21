@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "LogFile.h"
-#include "UPSNTool_MessageBox.h"
+#include "UpsnMessageDlg.h"
 
 CLogFile::CLogFile(void)
 {

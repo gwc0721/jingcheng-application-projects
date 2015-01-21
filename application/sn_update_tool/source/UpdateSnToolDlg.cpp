@@ -4,10 +4,10 @@
 
 LOCAL_LOGGER_ENABLE(_T("upsn"), LOGGER_LEVEL_NOTICE);
 
-#include "sm224testB.h"
-#include "SM224UpdatedSNToolMPDlg.h"
-#include "UPSNTool_MessageBox.h"
-#include "UpdateSNTool_Caution.h"
+#include "UpdateSnTool.h"
+#include "UpdateSnToolDlg.h"
+#include "UpsnMessageDlg.h"
+#include "UpsnCaution.h"
 #include "ColorListCtrl.h"
 
 #pragma warning(disable:4089)
