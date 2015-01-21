@@ -23,13 +23,13 @@ protected:
 };
 
 /////////////////////////////////////////////////////////////////////////////
-// CUpdateSNTool_Caution dialog
+// CUpsnCautionDlg dialog
 
-class CUpdateSNTool_Caution : public CDialog
+class CUpsnCautionDlg : public CDialog
 {
 // Construction
 public:
-	CUpdateSNTool_Caution(CWnd* pParent = NULL);   // standard constructor
+	CUpsnCautionDlg(CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
 	enum { IDD = IDD_DIALOG_UpdateSNTool_caution };

@@ -30,6 +30,9 @@
 #define UPSN_ReadISP_FAIL               0xA04
 #define UPSN_VERIFY_FW_VERSION			0xA05
 #define UPSN_EXTER_TIMEOUT				0xA06
+#define UPSN_VERIFY_CHS					0xA07
+#define UPSN_VERIFY_UDMA				0xA08
+
 #define UPSN_MIN_EXTER_ERR				1
 #define UPSN_MAX_EXTER_ERR				100
 
@@ -41,13 +44,13 @@ struct MSG_DEFINE
 	LPCTSTR	m_err_msg;
 };
 /////////////////////////////////////////////////////////////////////////////
-// UPSNTool_MessageBox dialog
+// CUpsnMessageDlg dialog
 
-class UPSNTool_MessageBox : public CDialog
+class CUpsnMessageDlg : public CDialog
 {
 // Construction
 public:
-	UPSNTool_MessageBox(CWnd* pParent = NULL);   // standard constructor
+	CUpsnMessageDlg(CWnd* pParent = NULL);   // standard constructor
 // Dialog Data
 	enum { IDD = IDD_DIALOG_UPSN_MessageBox };
 

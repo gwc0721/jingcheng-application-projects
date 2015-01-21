@@ -1,12 +1,10 @@
-﻿// UPSNTool_MessageBox.cpp : implementation file
+﻿// CUpsnMessageDlg.cpp : implementation file
 //
 
 #include "stdafx.h"
 #include "sm224testB.h"
 #include "UPSNTool_MessageBox.h"
 #include "UpdateSNTool_Caution.h"
-#include "smidisk.h"
-
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -14,7 +12,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-const MSG_DEFINE UPSNTool_MessageBox::m_msg_define[] = {
+const MSG_DEFINE CUpsnMessageDlg::m_msg_define[] = {
 	// msg code,			pass/fail,	beep,			message
 	{UPSN_PASS,				true,		MB_ICONWARNING,	_T("Update S/N Complete !")},
 	{UPSN_SCANDRIVE_FAIL,	false,		(UINT)(-1),		_T("Scan Drive Fail!")},
@@ -34,23 +32,26 @@ const MSG_DEFINE UPSNTool_MessageBox::m_msg_define[] = {
 	{UPSN_VERIFY_IF_FAIL,	false,		(UINT)(-1),		_T("Compare I/F Setting Not Match!")},
 	{UPSN_VERIFY_TRIM_FAIL, false,		(UINT)(-1),		_T("Compare TRIM Not Match!")},
 	{UPSN_VERIFY_DEVSLP_FAIL, false,	(UINT)(-1),		_T("Compare DEVSLP Not Match!")},
+	{UPSN_VERIFY_FW_VERSION, false,		(UINT)(-1),		_T("Compare f/w version not match!")},
+	{UPSN_VERIFY_CHS,		false,		(UINT)(-1),		_T("Compare CHS setting not match!")},
+	{UPSN_VERIFY_UDMA,		false,		(UINT)(-1),		_T("Compare UDMA mode not match!")},
+
 	{UPSN_WriteISP_Compare_FAIL, false, (UINT)(-1),		_T("Write ISP and Read ISP to Compare Not Match!")},
 	{UPSN_ReadISP_FAIL,		false,		(UINT)(-1),		_T("Read ISP FAIL!")},
-	{UPSN_VERIFY_FW_VERSION, false,		(UINT)(-1),		_T("Compare f/w version not match!")},
 	{UPSN_EXTER_TIMEOUT,	false,		(UINT)(-1),		_T("External test timeout.")},
 	{UPSN_MAX_EXTER_ERR,	false,		(UINT)(-1),		_T("External test returned an error.")},
 	{UPSN_UNKNOW_FAIL,		false,		(UINT)(-1),		_T("Unknow Fail !!")},		// last one must be unknow message
 };
 
-const DWORD UPSNTool_MessageBox::m_msg_count = sizeof(UPSNTool_MessageBox::m_msg_define) / sizeof(MSG_DEFINE);
+const DWORD CUpsnMessageDlg::m_msg_count = sizeof(CUpsnMessageDlg::m_msg_define) / sizeof(MSG_DEFINE);
 
 
 /////////////////////////////////////////////////////////////////////////////
-// UPSNTool_MessageBox dialog
+// CUpsnMessageDlg dialog
 
 
-UPSNTool_MessageBox::UPSNTool_MessageBox(CWnd* pParent /*=NULL*/)
-	: CDialog(UPSNTool_MessageBox::IDD, pParent)
+CUpsnMessageDlg::CUpsnMessageDlg(CWnd* pParent /*=NULL*/)
+	: CDialog(CUpsnMessageDlg::IDD, pParent)
 	, m_msg_pass_fail(_T(""))
 	, m_msg_content(_T(""))
 	, m_msg_error_code(_T(""))
@@ -58,7 +59,7 @@ UPSNTool_MessageBox::UPSNTool_MessageBox(CWnd* pParent /*=NULL*/)
 }
 
 
-void UPSNTool_MessageBox::DoDataExchange(CDataExchange* pDX)
+void CUpsnMessageDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	DDX_Text(pDX, IDC_STATIC_MEG1, m_msg_pass_fail);
@@ -67,22 +68,22 @@ void UPSNTool_MessageBox::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(UPSNTool_MessageBox, CDialog)
+BEGIN_MESSAGE_MAP(CUpsnMessageDlg, CDialog)
 	ON_BN_CLICKED(ID_UPSN_MSGBOX_OK, OnUpsnMsgboxOk)
 	ON_WM_CTLCOLOR()
 	ON_WM_PAINT()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
-// UPSNTool_MessageBox message handlers
+// CUpsnMessageDlg message handlers
 
-BOOL UPSNTool_MessageBox::OnInitDialog() 
+BOOL CUpsnMessageDlg::OnInitDialog() 
 {
 	ASSERT(m_device_info);
 	CDialog::OnInitDialog();
 	// TODO: Add extra initialization here
 
-	CSM224testBApp * app = dynamic_cast<CSM224testBApp *>(AfxGetApp());
+	CUpdateSnToolApp * app = dynamic_cast<CUpdateSnToolApp *>(AfxGetApp());
 	ASSERT(app);
 	m_strToolVer = app->GetVer();
 
@@ -120,12 +121,12 @@ BOOL UPSNTool_MessageBox::OnInitDialog()
 	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
-void UPSNTool_MessageBox::OnUpsnMsgboxOk() 
+void CUpsnMessageDlg::OnUpsnMsgboxOk() 
 {
 	CDialog::OnOK();
 }
 
-HBRUSH UPSNTool_MessageBox::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor) 
+HBRUSH CUpsnMessageDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor) 
 {
 	HBRUSH hbr = CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
 	
@@ -146,7 +147,7 @@ HBRUSH UPSNTool_MessageBox::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 	return hbr;
 }
 
-void UPSNTool_MessageBox::OnPaint() //L0130 Lance add for NECi request
+void CUpsnMessageDlg::OnPaint() //L0130 Lance add for NECi request
 {
 	CPaintDC dc(this); // device context for painting
 	

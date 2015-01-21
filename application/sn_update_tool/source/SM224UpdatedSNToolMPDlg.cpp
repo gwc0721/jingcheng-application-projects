@@ -1,25 +1,14 @@
-// SM224UpdatedSNToolMPDlg.cpp : implementation file
+﻿// SM224UpdatedSNToolMPDlg.cpp : implementation file
 #include "stdafx.h"
 #include <stdext.h>
 
 LOCAL_LOGGER_ENABLE(_T("upsn"), LOGGER_LEVEL_NOTICE);
 
 #include "sm224testB.h"
-
-#include "smidisk.h"
-
 #include "SM224UpdatedSNToolMPDlg.h"
 #include "UPSNTool_MessageBox.h"
 #include "UpdateSNTool_Caution.h"
-#include <cfgmgr32.h>
-#include <process.h>
-#include <Windows.h>
-#include <Winuser.h>
-#include <WinSock.h>
 #include "ColorListCtrl.h"
-#include <Setupapi.h>
-#include <cfgmgr32.h>
-#include <winioctl.h>
 
 #pragma warning(disable:4089)
 
@@ -66,9 +55,9 @@ void PassAllMessage()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// CSM224UpdatedSNToolMPDlg dialog
-CSM224UpdatedSNToolMPDlg::CSM224UpdatedSNToolMPDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CSM224UpdatedSNToolMPDlg::IDD, pParent)
+// CUpdateSnToolDlg dialog
+CUpdateSnToolDlg::CUpdateSnToolDlg(CWnd* pParent /*=NULL*/)
+	: CDialog(CUpdateSnToolDlg::IDD, pParent)
 	, m_str_test_model_name(_T(""))
 	, m_capacity(0)
 	, m_str_count_current(_T(""))
@@ -81,13 +70,14 @@ CSM224UpdatedSNToolMPDlg::CSM224UpdatedSNToolMPDlg(CWnd* pParent /*=NULL*/)
 	, m_edit_input_sn(NULL)
 	, m_scan_timer(0)
 	, m_str_fw_rev(_T(""))
+	, m_ferri_factory(NULL)
+	, m_flash_id(NULL)
 {
 	memset(m_vendor_specific, 0, VENDOR_LENGTH + 1);
-	memset(m_flash_id, 0, SECTOR_SIZE);
 }
 
 
-void CSM224UpdatedSNToolMPDlg::DoDataExchange(CDataExchange* pDX)
+void CUpdateSnToolDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_LIST_SNUpdatedTool, m_ListUpdatedSNTool);
@@ -98,22 +88,21 @@ void CSM224UpdatedSNToolMPDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CSM224UpdatedSNToolMPDlg, CDialog)
+BEGIN_MESSAGE_MAP(CUpdateSnToolDlg, CDialog)
 	ON_BN_CLICKED(ID_Start, OnStartUpdatedSN)
-	ON_BN_CLICKED(IDC_BUTTON_ScanDrive, OnBUTTONScanDrive)
 	ON_BN_CLICKED(ID_Quit, OnQuit)
 	ON_WM_PAINT()
 	ON_WM_TIMER()
-	ON_EN_CHANGE(IDC_EDIT_InputSN, OnChangeEDITInputSN)
-	ON_BN_CLICKED(IDC_BUTTON_SetSN, OnBUTTONSetSN)
-	ON_BN_CLICKED(IDC_BUTTON_ClearCnt, OnBUTTONClearCnt)
+	ON_EN_CHANGE(IDC_EDIT_InputSN, OnEditInputSn)
+	ON_BN_CLICKED(IDC_BUTTON_SetSN, OnButtonSetSn)
+	ON_BN_CLICKED(IDC_BUTTON_ClearCnt, OnButtonClearCnt)
 	ON_WM_CTLCOLOR()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
-// CSM224UpdatedSNToolMPDlg message handlers
+// CUpdateSnToolDlg message handlers
 
-BOOL CSM224UpdatedSNToolMPDlg::OnInitDialog() 
+BOOL CUpdateSnToolDlg::OnInitDialog() 
 {
 	CDialog::OnInitDialog();
 
@@ -129,7 +118,7 @@ BOOL CSM224UpdatedSNToolMPDlg::OnInitDialog()
 		RetrieveController();
 
 		CString str_title;
-		CSM224testBApp * app = dynamic_cast<CSM224testBApp *>(AfxGetApp());
+		CUpdateSnToolApp * app = dynamic_cast<CUpdateSnToolApp *>(AfxGetApp());
 		ASSERT(app);
 
 		str_title.Format(_T("SMI. Update Serial Number Tool  Ver. %s"), app->GetVer() );
@@ -165,6 +154,9 @@ BOOL CSM224UpdatedSNToolMPDlg::OnInitDialog()
 		m_str_fw_rev.Format(_T("[%s]"), m_fw_ver);
 		UpdateData(FALSE);
 		m_edit_input_sn->SetFocus();
+		
+		// Load SDK
+		InitializeSdk(m_controller, m_ferri_factory);
 	}
 	catch (stdext::CJCException & err)
 	{
@@ -177,7 +169,7 @@ BOOL CSM224UpdatedSNToolMPDlg::OnInitDialog()
 	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
-void CSM224UpdatedSNToolMPDlg::SetStatus(COLORREF cr, LPCTSTR status)
+void CUpdateSnToolDlg::SetStatus(COLORREF cr, LPCTSTR status)
 {
 	m_ListUpdatedSNTool.SetTextColor(cr);
 	m_ListUpdatedSNTool.SetItemText(0,List_STATUS, status);
@@ -185,17 +177,13 @@ void CSM224UpdatedSNToolMPDlg::SetStatus(COLORREF cr, LPCTSTR status)
 }
 
 
-void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN() 
+void CUpdateSnToolDlg::OnStartUpdatedSN() 
 {
-	CString Sn_H5;
-	BOOL isSN_equal_A=FALSE,isSN_equal_B=FALSE,isVendorModelName=FALSE,isNotSN16Char=FALSE;
-	BOOL isModelFlashID=FALSE; //check if correct flash
-	BOOL isCorrectConfigTxt=FALSE; //check if correct config.txt
-	BOOL isMatchSelectedModelSN=0;
-	int SNStr_cnt=0;
-
 	m_btn_scan_drive->EnableWindow(TRUE);
 	m_btn_start->EnableWindow(FALSE);	
+
+	IFerriDevice * ferri_dev = NULL;
+
 #ifdef NECI
 	m_btn_quit->EnableWindow(TRUE); //L0130 Lance modify for NECi request
 	m_edit_input_sn->EnableWindow(TRUE);//L0130 Lance modify for NECi request
@@ -212,9 +200,7 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 #endif
 
 	//scan device
-	HANDLE device = NULL;
-	UPSNTool_MessageBox UPSN_MessageBox;
-
+	CUpsnMessageDlg UPSN_MessageBox;
 	CTime	start_time;
 
 	DEVICE_INFO	info;
@@ -230,118 +216,106 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 	info.m_error_code = UPSN_UNKNOW_FAIL;
 	info.m_pass_fail = false;
 
+	bool br = false;
 	try
 	{
 		LOG_NOTICE(_T("start update sn, count %d / %d"), m_count_current, m_count_limit);
-		char drive_letter = 0;
-		CString drive_name;
-		bool br = false;
 		LOG_DEBUG(_T("Test Mode: %d"), m_test_mode); 
-		if (!dummy_test)
+		
+		SetStatus(COLOR_BLUE, _T("Scanning.."));
+
+		m_ferri_factory->ScanDevice(ferri_dev);
+		CString str_port;
+		str_port.Format(_T("Port%d"), ferri_dev->GetTesterPort() );
+		m_ListUpdatedSNTool.SetItemText(0,0, str_port);
+		PassAllMessage();
+
+		if (!ferri_dev)
 		{
-			br = ScanDrive(drive_letter, drive_name, device);
-			if( !br || NULL == device || INVALID_HANDLE_VALUE == device)//"no scan drive" or "scan drive fail"
-			{
-				MessageBox(_T("Please Check Device and Scan Drive again"), _T(""), MB_OK);
-				throw new CUpsnWarning;
-			}
-			info.m_drive_letter = drive_letter;
-			info.m_drive_name = drive_name;
+			MessageBox(_T("Please Check Device and Scan Drive again"), _T(""), MB_OK);
+			throw new CUpsnWarning;
 		}
-		else
-		{
-			LOG_WARNING(_T("dummy sacn..."));
-			info.m_drive_letter = _T('Z');
-			info.m_drive_name = _T("\\.\Z:");
-			if (m_test_mode == MODE_UPDATE_VERIFY)	info.m_error_code = UPSN_PASS;
-			else if (m_test_mode == MODE_VERIFY_ONLY)	info.m_error_code = UPSN_VERIFYSN_PASS;
-			
-		}
+		ferri_dev->SetMpisp(m_mpisp, m_mpisp_len);
+		info.m_drive_letter = ferri_dev->GetDriveLetter();
+		CJCStringT str_drive_name;
+		ferri_dev->GetDriveName(str_drive_name);
+		info.m_drive_name = str_drive_name.c_str();
+
 		SetStatus(COLOR_BLUE, _T("Loading...") );
 
 		start_time = CTime::GetCurrentTime();
 		Sleep(500);
 
-		if (!dummy_test)
+
+		info.m_init_bad = ferri_dev->GetInitialiBadBlockCount();
+		stdext::auto_array<BYTE> identify_buf(SECTOR_SIZE);
+		memset(identify_buf, 0, sizeof(SECTOR_SIZE));
+		br = ferri_dev->ReadIdentify(identify_buf, SECTOR_SIZE);
+		if (!br)
 		{
-			info.m_init_bad = Get_InitialBadBlockCount(FALSE, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, device);
-			BYTE IDTable[SECTOR_SIZE];
-			memset(IDTable,0,sizeof(IDTable));
-			int ir = Get_IDENTIFY(FALSE, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, device, IDTable);
-
-			if (!ir)
-			{
-				MessageBox(_T("Failure on reading id table"), _T(""), MB_OK);
-				throw new CUpsnWarning;
-			}
-
-			// get current serial number and show
-			CString current_sn;
-			ReadConvertString(IDTable + SN_OFFSET_ID, current_sn, SN_LENGTH);
-			m_ListUpdatedSNTool.SetItemText(0, List_CurrentSN, current_sn);
-			//info.m_serial_number = current_sn;
-
-			// get model name and show
-			CString current_model_name;
-			ReadConvertString(IDTable + MODEL_OFFSET_ID, current_model_name, MODEL_LENGTH);
-			m_ListUpdatedSNTool.SetItemText(0, List_ModelName, current_model_name);
-			//info.m_model_name = current_model_name;
-
-			// check sn
-			LOG_DEBUG(_T("input sn = %s"), m_input_sn);
-			bool verify_sn = true;
-			if ( ( (MODE_VERIFY_ONLY == m_test_mode) && (m_input_sn == m_global_prefix) ) )	
-			{
-				LOG_DEBUG(_T("skip verify sn"))
-				verify_sn = false;
-				info.m_serial_number = current_sn;
-				info.m_model_name = current_model_name;
-			}
-			else
-			{
-				// check sn
-				verify_sn = true;
-				if ( (m_input_sn.Left(5) != m_sn_prefix) || ( !CheckFlashID(device) ) )
-				{
-					LOG_ERROR(_T("sn do not match"))
-					throw new CUpsnCaution(CUpsnCaution::CAUTION_SN_CAPACITY);
-				}
-
-				if (m_input_sn.GetLength() < SN_LENGTH_OEM)
-				{
-					LOG_ERROR(_T("wrong sn length. length = %d"), m_input_sn.GetLength())
-					throw new CUpsnCaution(CUpsnCaution::CAUTION_SN_LENGTH);
-				}
-			}
-			// header of inputted serial number (prefix)
-			ir = UpdatedSNtoDevice(device, verify_sn);
-			info.m_error_code = ir;
-			// close device before run external cmd
-			TestClose(device); 
-			device = NULL;
+			MessageBox(_T("Failure on reading id table"), _T(""), MB_OK);
+			throw new CUpsnWarning;
 		}
+
+		// get current serial number and show
+		CString current_sn;
+		ReadConvertString(identify_buf + SN_OFFSET_ID, current_sn, SN_LENGTH);
+		m_ListUpdatedSNTool.SetItemText(0, List_CurrentSN, current_sn);
+
+		// get model name and show
+		CString current_model_name;
+		ReadConvertString(identify_buf + MODEL_OFFSET_ID, current_model_name, MODEL_LENGTH);
+		m_ListUpdatedSNTool.SetItemText(0, List_ModelName, current_model_name);
+
+		//--
+
+		bool verify_sn = true;
+		LOG_DEBUG(_T("input sn = %s"), m_input_sn);
+		if ( ( (MODE_VERIFY_ONLY == m_test_mode) && (m_input_sn == m_global_prefix) ) )	
+		{
+			LOG_DEBUG(_T("skip verify sn"))
+			verify_sn = false;
+			info.m_serial_number = current_sn;
+			info.m_model_name = current_model_name;
+		}
+		else
+		{	// check sn
+			verify_sn = true;
+			bool check_flash_id = true;
+			if (m_flash_id)	check_flash_id = ferri_dev->CheckFlashId(m_flash_id, SECTOR_SIZE);
+			else			LOG_WARNING(_T("ignore checking flash id."));
+			if ( (m_input_sn.Left(5) != m_sn_prefix) || ( !check_flash_id ) )
+			{
+				LOG_ERROR(_T("sn do not match"))
+				throw new CUpsnCaution(CUpsnCaution::CAUTION_SN_CAPACITY);
+			}
+
+			if (m_input_sn.GetLength() < SN_LENGTH_OEM)
+			{
+				LOG_ERROR(_T("wrong sn length. length = %d"), m_input_sn.GetLength())
+				throw new CUpsnCaution(CUpsnCaution::CAUTION_SN_LENGTH);
+			}
+		}
+		// header of inputted serial number (prefix)
+		int	ir = UpsnUpdateToDevice(ferri_dev, verify_sn);
+		info.m_error_code = ir;
+		// close device before run external cmd
+		ferri_dev->Disconnect();
 
 		SetStatus(COLOR_BLUE, _T("External test..."));
 		DWORD exit_code = ExcuseExternalProcess(info);
-		
-		if (!dummy_test)
+		SetStatus(COLOR_BLUE, _T("Getting runtime bad..."));
+		br = ferri_dev->Connect();
+		if ( !br )
 		{
-			SetStatus(COLOR_BLUE, _T("Getting runtime bad..."));
-			TestOpen(drive_letter, &device);
-			if ( NULL == device || INVALID_HANDLE_VALUE == device)
-			{
-				MessageBox(_T("Failure on openning device"), _T("Error!"), MB_OK);
-				throw new CUpsnWarning();
-			}
-			info.m_new_bad = GetRunTimeBad(device);
-			TestClose(device);
-			device = NULL;
+			MessageBox(_T("Failure on openning device"), _T("Error!"), MB_OK);
+			throw new CUpsnWarning();
 		}
+		info.m_new_bad = GetRunTimeBad(ferri_dev);
 		if ( 0 != exit_code ) throw new CUpsnError(exit_code);
 		info.m_pass_fail = true;
 
 		SetStatus(COLOR_BLUE, _T("Complete"));
-		//info.m_error_code = UPSN_PASS;
 
 		// log1
 		br = m_log_file.WriteLog1(info, start_time);
@@ -350,12 +324,41 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 	}
 	catch (stdext::CJCException &err)
 	{
-		MessageBox(err.WhatT(), _T("Error!"), MB_OK);
+		int err_code = err.GetErrorID();
+		CString msg;
+		if ( (err_code & 0xFFFF0000) == stdext::CJCException::ERR_DEVICE)
+		{
+			switch (err_code & 0xFFFF)
+			{
+			case FERR_NO_TESTER:	
+				msg = _T("No Tester!");
+				info.m_error_code = UPSN_SCANDRIVE_FAIL; 
+				break;
+
+			case FERR_NO_CARD:		
+				msg = _T("No Card!");
+				info.m_error_code = UPSN_SCANDRIVE_FAIL; 
+				break;
+
+			case FERR_OPEN_DRIVE_FAIL:
+				msg = _T("No Card!");
+				info.m_error_code = UPSN_OPENDRIVE_FAIL; 
+				break;
+
+			case FERR_CONTROLLER_NOT_MATCH:
+				msg = _T("Wrong Controller!");
+				info.m_error_code = UPSN_OPENDRIVE_FAIL; 
+				break;
+			}
+			SetStatus(COLOR_RED, msg);
+			m_log_file.WriteLog1(info, start_time);
+			UPSN_MessageBox.DoModal( &info );
+		}
+		else MessageBox(err.WhatT(), _T("Error!"), MB_OK);
 	}
 	catch (CUpsnError * pe)
 	{	// error
 		SetStatus(COLOR_RED, _T("Fail"));
-		//info.m_error_code = pe->GetErrorCode();
 		info.m_error_code = pe->GetErrorCode();
 		bool br = m_log_file.WriteLog1(info, start_time);
 		UPSN_MessageBox.DoModal( &info );
@@ -363,13 +366,13 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 	}
 	catch (CUpsnCaution * pe)
 	{
-		CUpdateSNTool_Caution caution_dlg;
+		CUpsnCautionDlg caution_dlg;
 		int ir = caution_dlg.DoModal(pe->GetErrorCode() );
-		if(CUpdateSNTool_Caution::CAUTION_RETRY == ir) 
+		if(CUpsnCautionDlg::CAUTION_RETRY == ir) 
 		{
 			ClearInputSn();
 		}
-		else if(CUpdateSNTool_Caution::CAUTION_CANCEL == ir)
+		else if(CUpsnCautionDlg::CAUTION_CANCEL == ir)
 		{
 			m_edit_input_sn->SetSel(0,-1);
 			m_edit_input_sn->Clear();
@@ -385,18 +388,19 @@ void CSM224UpdatedSNToolMPDlg::OnStartUpdatedSN()
 	m_edit_input_sn->EnableWindow(TRUE);
 	m_btn_quit->EnableWindow(TRUE);
 
-	UpdateCnt_UPSNTool(m_count_current + 1);
-	ReShowMainPage_UPSN();
-	OnChangeEDITInputSN();
+	UpsnUpdateCnt(m_count_current + 1);
+	ReShowMainPage();
+	OnEditInputSn();
 	ClearInputSn();
 	Invalidate(TRUE);
 	PassAllMessage();
 
-	if (NULL != device || INVALID_HANDLE_VALUE != device)	TestClose(device); 
+	if (ferri_dev) ferri_dev->Release();
+	ferri_dev = NULL;
 	return;
 }
 
-DWORD CSM224UpdatedSNToolMPDlg::ExcuseExternalProcess(const DEVICE_INFO & info)
+DWORD CUpdateSnToolDlg::ExcuseExternalProcess(const DEVICE_INFO & info)
 {
 	LOG_STACK_TRACE();
 
@@ -464,8 +468,6 @@ DWORD CSM224UpdatedSNToolMPDlg::ExcuseExternalProcess(const DEVICE_INFO & info)
 			attached_len = info.m_model_name.GetLength();
 			break;
 
-
-		//case _T(''):
 		default:
 			THROW_ERROR(ERR_PARAMETER, _T("unknow placeholder %%%c"), holder);
 		}
@@ -522,12 +524,13 @@ DWORD CSM224UpdatedSNToolMPDlg::ExcuseExternalProcess(const DEVICE_INFO & info)
 	return exit_code;
 }
 
-DWORD CSM224UpdatedSNToolMPDlg::GetRunTimeBad(HANDLE device)
+DWORD CUpdateSnToolDlg::GetRunTimeBad(IFerriDevice * dev)
 {
 	LOG_STACK_TRACE();
+	JCASSERT(dev);
 	stdext::auto_array<BYTE> buf(SECTOR_SIZE);
-	bool ir = Get_SMART(FALSE, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, device, buf);
-	if (!ir)
+	bool br = dev->ReadSmart(buf, SECTOR_SIZE);
+	if (!br)
 	{
 		MessageBox(_T("Failure on reading SMART."), _T("Error!"), MB_OK);
 		throw new CUpsnWarning();
@@ -538,197 +541,74 @@ DWORD CSM224UpdatedSNToolMPDlg::GetRunTimeBad(HANDLE device)
 	return new_bad;
 }
 
-void CSM224UpdatedSNToolMPDlg::OnBUTTONScanDrive()
-{
-	m_btn_scan_drive->SetWindowText( _T("Scanning..") );
-	m_btn_start->EnableWindow(FALSE);	
-	m_btn_quit->EnableWindow(FALSE);
-	m_btn_scan_drive->EnableWindow(FALSE);
-}
-
-
-bool CSM224UpdatedSNToolMPDlg::ScanDrive(char & drive_letter, CString & drive_name, HANDLE & device)
-{
-	int port_number = 0;
-	bool tester_connect = false;
-	bool hub_connect = false;
-	bool success = false;
-
-#ifndef _DEBUG
-	m_scan_timer = SetTimer(0x543,30*1000,0);//Scan Drive timer,30 seconds limit
-#endif
-    m_edit_input_sn->EnableWindow(TRUE);
-
-    BOOL    Find=FALSE;
-    UCHAR   InquiryData[SECTOR_SIZE];
-	HANDLE	hDevice = NULL;
-
-	for(int ii=0; ii<24; ii++)
-	{
-		drive_letter='C'+ii;
-        memset(InquiryData,0,SECTOR_SIZE);
-		drive_name.Format(_T("\\\\.\\%c:"), drive_letter);
-		hDevice = CreateFile(drive_name,
-			GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, 
-			NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, NULL );
-
-		if( hDevice == INVALID_HANDLE_VALUE )	continue;
-
-		if( Send_Inquiry_XP_SM333(hDevice, InquiryData, SECTOR_SIZE) )
-		{
-			m_tester = NON_SMI_TESTER;
-			Send_Initial_Card_Command(hDevice, true);
-			if(Send_Inquiry_Tester(hDevice, InquiryData, SECTOR_SIZE, m_tester)) 
-			{
-				LOG_DEBUG(_T("Drive %c is Tester"), drive_letter);
-				port_number = InquiryData[0X1D] ;
-				if(port_number == 0)	LOG_DEBUG(_T("Port %d is up"), port_number);
-				if((port_number==0)||(port_number==1))	port_number = 1;
-				tester_connect = true;
-				if (InquiryData[0x0C])
-				{
-					Find = TRUE;
-					hub_connect = true;
-				}
-				break;
-			}
-		}
-		CloseHandle(hDevice);
-		hDevice = NULL;
-	}
-	if (NULL != hDevice && INVALID_HANDLE_VALUE)	CloseHandle(hDevice);
-	hDevice = NULL;
-	CString Cstr_1; 
-
-	LOG_DEBUG(_T("found device %s"), drive_name);
-	SetStatus(COLOR_BLUE, _T("Scanning.."));
-	//port number
-	Cstr_1.Format( _T("Port%d"), port_number);
-	m_ListUpdatedSNTool.SetItemText(0,0,Cstr_1);
-	PassAllMessage();
-
-/////////////////////////////////////////////
-	device = INVALID_HANDLE_VALUE;
-	int api_ret=0;
-	//for record current Input S/N,read input serial number into g_InputSN
-	try
-	{
-		if( !tester_connect )
-		{
-			SetStatus(COLOR_BLUE, _T("") );
-			throw new CUpsnError(UPSN_SCANDRIVE_FAIL);
- 		}
-	
-		if( !hub_connect )
-		{
-			SetStatus(COLOR_RED, _T("No Card !") );
-			throw new CUpsnError(UPSN_SCANDRIVE_FAIL);
-		}
-
-		// hub_connect must be true
-		success = TestOpen(drive_letter, &device);
-		if(!success)
-		{
-			SetStatus(COLOR_RED, _T("Card Fail!") );
-			throw new CUpsnError(UPSN_OPENDRIVE_FAIL);
-		}
-
-		// successeed
-		Sleep(200);
-
-		int ic_ver = CheckIf_SMIChip(FALSE, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, device);
-
-		if(ic_ver == Unknown_CHIP)
-		{
-			SetStatus(COLOR_RED, _T("No Card !") );
-			throw new CUpsnError(UPSN_OPENDRIVE_FAIL);
-		}
-
-		if(ic_ver != m_controller_ver) 
-		{
-			MessageBox(_T("Please check IC version"), _T(""), MB_OK);
-			throw new CUpsnWarning();
-		}
-
-		success = true;
-	}
-	catch (...)
-	{
-		KillTimer(0x543);//kill scan drive timer ??
-		if (NULL != device &&  INVALID_HANDLE_VALUE != device)
-		{
-			TestClose(device); 
-			device = NULL;
-		}
-		throw;
-	}
-
-	KillTimer(0x543);//kill scan drive timer
-	return success;
-}
-
-int CSM224UpdatedSNToolMPDlg::UpdatedSNtoDevice(HANDLE device, bool verify_sn)
+int CUpdateSnToolDlg::UpsnUpdateToDevice(IFerriDevice * dev, bool verify_sn)
 {
 	LOG_STACK_TRACE();
-	ASSERT(NULL != device && INVALID_HANDLE_VALUE != device);
+	JCASSERT(dev);
 	bool success=false;
 
-	stdext::auto_array<BYTE>	isp_buf(ISP_LENGTH);
-	memset(isp_buf, 0, ISP_LENGTH);
-	DWORD isp_len = 0;
+	stdext::auto_interface<IIspBuffer> isp_buf;
+	dev->CreateIspBuf(0, isp_buf);		JCASSERT(isp_buf);
 
 	int ir = 0;
-
-	isp_len = UpsnLoadIspFile(device, isp_buf, ISP_LENGTH);
+	success = UpsnLoadIspFile(dev, isp_buf);
+	JCSIZE isp_data_len = isp_buf->GetSize();
 	if(MODE_UPDATE_VERIFY == m_test_mode)
 	{	//test mode(update sn and verify)
-		UPSN_UpdateISPfromConfig(isp_buf, isp_len);
-		success = UPSN_UpdateISP2244LT(device, isp_buf, isp_len);
+		UpsnUpdateIspFromConfig(isp_buf);
+		success = UpsnUpdateIspFerri(dev, isp_buf);
 		// verify before reset
-		UPSN_ReadISP2244LT(device, isp_buf, isp_len);
+		UpsnReadIspFerri(isp_data_len, dev, isp_buf);
 		//updated success and reset device!!										
-		success = Reset_UPSNTool(device);
+		SetStatus(COLOR_BLUE, _T("Card Power Off"));
+		success = dev->ResetTester();
+		SetStatus(COLOR_BLUE, _T("Card Power on"));
 		if(!success)	throw new CUpsnError(UPSN_Reset_FAIL);
-
 		//read isp back to check again
-		success = UPSN_ReadISP2244LT(device, isp_buf, isp_len);
-		ir = VerifySN_UPSNTool(device, verify_sn);
+		success = UpsnReadIspFerri(isp_data_len, dev, isp_buf);
+		ir = UpsnVerifySn(dev, verify_sn);
 		if( ir != UPSN_VERIFYSN_PASS )	throw new CUpsnError(ir);
 		ir = UPSN_PASS;
 	}
 	else	//only verify
 	{
-		ir = VerifySN_UPSNTool(device, verify_sn);
+		ir = UpsnVerifySn(dev, verify_sn);
 		if( ir != UPSN_VERIFYSN_PASS)	throw new CUpsnError(ir);
 	}		
 	return ir;
 }
 
-void CSM224UpdatedSNToolMPDlg::OnQuit() 
+void CUpdateSnToolDlg::OnQuit() 
 {
 	//K1024 Lance add for save current count to file
 	UpdateData();
 	WritePrivateProfileString(SEC_PARAMETER, KEY_COUNT_CURRENT, m_str_count_current, FILE_COUNT_CURRENT);
 	CDialog::OnCancel();
+
+	// clean
+	if (m_ferri_factory) m_ferri_factory->Release();
+	m_ferri_factory = NULL;
+	delete [] m_flash_id;
+	m_flash_id = NULL;
 }
 
-void CSM224UpdatedSNToolMPDlg::OnTimer(UINT nIDEvent) 
+void CUpdateSnToolDlg::OnTimer(UINT nIDEvent) 
 {
 	if(nIDEvent==0x543)//Re ScanDrive until 30 seconds time out
 	{
 		DEVICE_INFO info;
 		info.m_error_code = UPSN_SCANDRIVE_TimeOut_FAIL;
-		UPSNTool_MessageBox UPSN_MessageBox;
+		CUpsnMessageDlg UPSN_MessageBox;
 		KillTimer(0x543);//kill scan drive timer
 		//show error message box
 		UPSN_MessageBox.DoModal(&info);
-		OnChangeEDITInputSN();
+		OnEditInputSn();
 	}
 		
 	CDialog::OnTimer(nIDEvent);
 }
 
-BOOL CSM224UpdatedSNToolMPDlg::PreTranslateMessage(MSG* pMsg) 
+BOOL CUpdateSnToolDlg::PreTranslateMessage(MSG* pMsg) 
 {
 	if ((pMsg->message == WM_KEYDOWN) || (pMsg->message == WM_SYSKEYDOWN))
 	{
@@ -740,7 +620,7 @@ BOOL CSM224UpdatedSNToolMPDlg::PreTranslateMessage(MSG* pMsg)
 			if(KeyName == "Enter" || KeyName=="Num Enter")
 			{
 				//K1018 Lance add
-				if(!m_is_set_sn)	OnBUTTONSetSN();
+				if(!m_is_set_sn)	OnButtonSetSn();
 				else
 				{	
 					OnStartUpdatedSN(); 
@@ -753,7 +633,7 @@ BOOL CSM224UpdatedSNToolMPDlg::PreTranslateMessage(MSG* pMsg)
 	return CDialog::PreTranslateMessage(pMsg);
 }
 
-void CSM224UpdatedSNToolMPDlg::ReShowMainPage_UPSN()
+void CUpdateSnToolDlg::ReShowMainPage()
 {
 	m_btn_scan_drive->EnableWindow(TRUE);
 	m_btn_start->EnableWindow(TRUE);	
@@ -762,19 +642,19 @@ void CSM224UpdatedSNToolMPDlg::ReShowMainPage_UPSN()
 	ClearInputSn();
 }
 
-void CSM224UpdatedSNToolMPDlg::SetCursor_UPSN()
+void CUpdateSnToolDlg::UpsnSetCurson()
 {
 	m_edit_input_sn->SetFocus();
 }
 
-void CSM224UpdatedSNToolMPDlg::OnChangeEDITInputSN() 
+void CUpdateSnToolDlg::OnEditInputSn() 
 {
 	m_btn_set_sn->EnableWindow(TRUE);
 	m_btn_start->EnableWindow(FALSE);
 	m_is_set_sn = false; //L0130 Lance add for 20120117 NECi issue3 request
 }
 
-void CSM224UpdatedSNToolMPDlg::OnBUTTONSetSN() 
+void CUpdateSnToolDlg::OnButtonSetSn() 
 {
 	m_edit_input_sn->GetWindowText(m_input_sn);
 	m_input_sn.TrimRight();
@@ -785,17 +665,17 @@ void CSM224UpdatedSNToolMPDlg::OnBUTTONSetSN()
 	SetStatus(COLOR_BLUE, _T("Ready"));
 }
 
-void CSM224UpdatedSNToolMPDlg::OnBUTTONClearCnt() 
+void CUpdateSnToolDlg::OnButtonClearCnt() 
 {
 	CWnd* pWnd = GetParent();
 	int iLimitCnt=0;
 	int iValMesBox=0;
 	//L0130 Lance add for NECi request
 	iValMesBox=MessageBox(_T("                        Clear Counts?"), _T("SMI. Update Serial Number Tool"), MB_OKCANCEL);
-	if ( IDOK == iValMesBox ) UpdateCnt_UPSNTool(0);
+	if ( IDOK == iValMesBox ) UpsnUpdateCnt(0);
 }
 
-HBRUSH CSM224UpdatedSNToolMPDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor) 
+HBRUSH CUpdateSnToolDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor) 
 {
 	HBRUSH hbr = CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
 	pDC->SetBkMode(OPAQUE);
@@ -809,90 +689,99 @@ HBRUSH CSM224UpdatedSNToolMPDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor
 			break;	
 				 
 		case IDC_STATIC_LimitCnt:
-			 pDC->SetBkColor(RGB(170 , 170 , 170));	//color grey
-			 break;		 
+			pDC->SetBkColor(RGB(170 , 170 , 170));	//color grey
+			break;		 
 		}
 	}
 	return hbr;
 }
 
-bool CSM224UpdatedSNToolMPDlg::Reset_UPSNTool(HANDLE hDisk)
+int CUpdateSnToolDlg::UpsnVerifySn(IFerriDevice * dev, bool verify_sn)
 {
-	SetStatus(COLOR_BLUE, _T("Card Power Off"));
-
-	SMITesterPowerOff(hDisk, m_tester);
-	SMITesterPowerOn(hDisk, m_tester);
-
-	SetStatus(COLOR_BLUE, _T("Card Power on"));
-	return true;
-}
-
-int CSM224UpdatedSNToolMPDlg::VerifySN_UPSNTool(HANDLE hDisk, bool verify_sn)
-{
-	UCHAR IDTable[512];
-	HANDLE hRead= INVALID_HANDLE_VALUE;
-	HANDLE hWrite= INVALID_HANDLE_VALUE;
-    BYTE AdapterID=0;
-    BYTE TargetID=0;
-
+	stdext::auto_array<BYTE> idtable(SECTOR_SIZE);
 	ULONG iCapacity_C1;
 	CHAR	vendor_specific_cid[VENDOR_LENGTH + 1];
-	int api_ret;
 
 	//get idtable
-	memset(IDTable,0,sizeof(IDTable));
-	api_ret = Get_IDENTIFY(FALSE, hRead, hWrite, hDisk, IDTable);
-	if (0 == api_ret)	return (UPSN_VERIFYSN_FAIL);
+	memset(idtable,0,SECTOR_SIZE);
+	bool br = false;
+	br = dev->ReadIdentify(idtable, SECTOR_SIZE);
+	if (! br )	return (UPSN_VERIFYSN_FAIL);
+
+	WORD * widtab = (WORD*)((BYTE*)(idtable));
 
 	//capacity
-	iCapacity_C1=((IDTable[0x7B]<<24)+(IDTable[0x7A]<<16)+(IDTable[0x79]<<8)+(IDTable[0x78]));
+	iCapacity_C1=((idtable[0x7B]<<24)+(idtable[0x7A]<<16)+(idtable[0x79]<<8)+(idtable[0x78]));
 	if(m_capacity != iCapacity_C1) return (UPSN_CheckCapacity_FAIL);
 
 	//compare vendor specific
 	for(int ii = 0; ii < VENDOR_LENGTH_WORD; ii++)
 	{
-		vendor_specific_cid[ii * 2]=IDTable[0x103 + ii * 2];
-		vendor_specific_cid[(ii * 2) + 1]=IDTable[0x102 + ii*2];
+		vendor_specific_cid[ii * 2]=idtable[0x103 + ii * 2];
+		vendor_specific_cid[(ii * 2) + 1]=idtable[0x102 + ii*2];
 	}
 	if ( 0 != memcmp(vendor_specific_cid, m_vendor_specific, VENDOR_LENGTH) )
 		return (UPSN_VERIFYvendorspecfic_FAIL);
 
 	// compare model name
-	if ( !ConvertStringCompare(m_oem_model_name, IDTable + 0x36, MODEL_LENGTH) )
+	if ( !ConvertStringCompare(m_oem_model_name, idtable + 0x36, MODEL_LENGTH) )
 		return (UPSN_CheckModelName_FAIL);
 
 	//compare sn
 	if ( verify_sn)
 	{
 		LOG_DEBUG(_T("verify sn in idtable"));
-		if ( !ConvertStringCompare(m_input_sn, IDTable + 0x14, SN_LENGTH) )
+		if ( !ConvertStringCompare(m_input_sn, idtable + 0x14, SN_LENGTH) )
 			return (UPSN_VERIFYSN_FAIL);
 	}
+	
+	if (m_sata_speed > 0)
+	{	//check IF Setting word76 bit1~3
+		BYTE speed = 0;
+		if(m_sata_speed == 1) speed = 0x02;	//only support gen 1
+		else if(m_sata_speed == 2)	speed = 0x06;	//support gen 1/2
+		if((idtable[152] & 0x0E) != speed)	return (UPSN_VERIFY_IF_FAIL);
+	}
 
-	//check IF Setting word76 bit1~3
-	BYTE speed = 0;
+	if (m_trim_enable >= 0)
+	{	//check TRIM word169 bit1
+		int trim_idtable = (idtable[338] & 0x01);
+		if (m_trim_enable != trim_idtable)	return (UPSN_VERIFY_TRIM_FAIL);
+	}
 
-	if(m_sata_speed == 1) speed = 0x02;	//only support gen 1
-	else if(m_sata_speed == 2)	speed = 0x06;	//support gen 1/2
-    if((IDTable[152] & 0x0E) != speed)	return (UPSN_VERIFY_IF_FAIL);
+	if (m_devslp_enable >= 0)
+	{	//check device sleep word78 bit8
+		int devslp_idtable = idtable[157] & 0x01;
+		if (m_devslp_enable != devslp_idtable)	return (UPSN_VERIFY_DEVSLP_FAIL);
+	}
+	
+	if ( m_cap_c && m_cap_h && m_cap_s)
+	{	// check CHS setting
+		LOG_NOTICE(_T("checking chs: val=%X,%X,%X"), widtab[IDTAB_CYLINDERS_1], widtab[IDTAB_HEADS_1], widtab[IDTAB_SECTORS_1]);
+		LOG_DEBUG(_T("id_2=%d,%d,%d"), widtab[IDTAB_CYLINDERS_2], widtab[IDTAB_HEADS_2], widtab[IDTAB_SECTORS_2]);
 
-	//check TRIM word169 bit1
-	int trim_idtable = (IDTable[338] & 0x01);
-	if (m_trim_enable != trim_idtable)	return (UPSN_VERIFY_TRIM_FAIL);
-
-	//check device sleep word78 bit8
-	int devslp_idtable = IDTable[157] & 0x01;
-	if (m_devslp_enable != devslp_idtable)	return (UPSN_VERIFY_DEVSLP_FAIL);
+		if ( (m_cap_c != widtab[IDTAB_CYLINDERS_1]) || (m_cap_h != widtab[IDTAB_HEADS_1]) || (m_cap_s != widtab[IDTAB_SECTORS_1]) )
+			return (UPSN_VERIFY_CHS);
+		if ( (m_cap_c != widtab[IDTAB_CYLINDERS_2]) || (m_cap_h != widtab[IDTAB_HEADS_2]) || (m_cap_s != widtab[IDTAB_SECTORS_2]) )
+			return (UPSN_VERIFY_CHS);
+	}
+	if (m_udma_mode >= 0)
+	{	// Get UDMA mode from id
+		BYTE udma = 0;
+		for (int ii = 0; ii <= m_udma_mode; ++ii)	udma <<= 1, udma |=1;
+		LOG_NOTICE(_T("check udma: config=%d, exp=0x%02X, val=0x%02X"), m_udma_mode, udma, idtable[IDTAB_UDMA * 2]);
+		if (udma !=	idtable[IDTAB_UDMA * 2]) return (UPSN_VERIFY_UDMA);
+	}
 
 	// check firmware version
 	LOG_DEBUG(_T("check f/w version in idtable") );
-	if ( !ConvertStringCompare(m_fw_ver, IDTable + FWVER_OFFSET, FWVER_LENGTH, 0) )
+	if ( !ConvertStringCompare(m_fw_ver, idtable + FWVER_OFFSET, FWVER_LENGTH, 0) )
 		return (UPSN_VERIFY_FW_VERSION);
 
 	return UPSN_VERIFYSN_PASS;
 }
 
-void CSM224UpdatedSNToolMPDlg::UpdateCnt_UPSNTool(int new_count)
+void CUpdateSnToolDlg::UpsnUpdateCnt(int new_count)
 {
 	UpdateData();
 	m_count_current = new_count;
@@ -901,27 +790,23 @@ void CSM224UpdatedSNToolMPDlg::UpdateCnt_UPSNTool(int new_count)
 	UpdateData(FALSE);
 }
 
-DWORD CSM224UpdatedSNToolMPDlg::UpsnLoadIspFile(HANDLE device, BYTE * isp_buf, DWORD len)
+bool CUpdateSnToolDlg::UpsnLoadIspFile(IFerriDevice * dev, IIspBuffer * isp_buf)
 {
 	LOG_STACK_TRACE();
-	// load isp from file
-	FILE* stream = NULL;
-	LOG_DEBUG(_T("open isp file : %s"), m_isp_file_name);
-	_tfopen_s(&stream, m_isp_file_name, _T("rb"));
-	if ( stream == NULL)
+	JCASSERT(isp_buf);
+	JCASSERT(dev);
+	bool br = isp_buf->LoadFromFile(m_isp_file_name);
+
+	if (!br)
 	{
 		AfxMessageBox(_T("open ISP file error!!\n") );
 		throw new CUpsnError(UPSN_OPENFILE_FAIL);
 	}
-	DWORD isplength = fread(isp_buf, sizeof(BYTE), len, stream );		
-	fclose( stream );
-	if (0 == isplength)		throw new CUpsnError(UPSN_OPENFILE_FAIL);
 
 	// check sum
-	DWORD check_sum=CheckSum(isp_buf, isplength);
+	DWORD check_sum = isp_buf->CheckSum();
 	LOG_DEBUG(_T("isp checksum=:0x%08X"), check_sum);
 	LOG_DEBUG(_T("checksum in config=:0x%08X"), m_isp_check_sum);
-
 	if(m_isp_check_sum != check_sum )		throw new CUpsnError(UPSN_CheckSumNoMatch_FAIL);
 
 	// check isp version
@@ -930,179 +815,134 @@ DWORD CSM224UpdatedSNToolMPDlg::UpsnLoadIspFile(HANDLE device, BYTE * isp_buf, D
 		LOG_DEBUG(_T("check isp version"));
 
 		BYTE   isp_ver_device[ISP_VER_LENGTH + 10];
+		BYTE   isp_ver_isp[ISP_VER_LENGTH + 10];
 		memset(isp_ver_device, 0, ISP_VER_LENGTH + 10);
-		int ir = Get_IC_ISPVer(	FALSE, 
-			INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, 
-			device, isp_ver_device); //dll
+		br = dev->GetIspVersion(isp_ver_device, ISP_VER_LENGTH + 10);
 		LOG_DEBUG(_T("device isp version: %S"), isp_ver_device);
-
-		CString str_ver((char*)(isp_buf + ISP_VER_OFFSET), ISP_VER_LENGTH);
+		br = isp_buf->GetIspVersion(isp_ver_isp, ISP_VER_LENGTH + 10);
+		CString str_ver((const char*)(isp_ver_isp), ISP_VER_LENGTH);
 		LOG_DEBUG(_T("file isp version: %s"), str_ver)
 		
-		if ( !ir || 
-			memcmp(isp_ver_device, isp_buf + ISP_VER_OFFSET, ISP_VER_LENGTH) != 0)
+		if ( !br || 
+			memcmp(isp_ver_device, isp_ver_isp, ISP_VER_LENGTH) != 0)
 		{
 			throw new CUpsnError(UPSN_ISPVersionNoMatch_FAIL);
 		}
 	}
-	return isplength;
+	return true;
 }
 
 
-bool CSM224UpdatedSNToolMPDlg::UPSN_UpdateISP2244LT(HANDLE device, BYTE * isp_buf, DWORD isp_len)
+bool CUpdateSnToolDlg::UpsnUpdateIspFerri(IFerriDevice * dev, IIspBuffer * isp_buf)
 {
+	JCASSERT(dev);
+	JCASSERT(isp_buf);
+
 	CString ISPName;
-
 	//depend on config.txt to create new isp bin
-
 	//backup new isp bin
 	ISPName.Format(ISP_BACKUP_FILE_W, (m_model_index+1));
 	CString file_name = ISP_BACKUP_PATH;
 	file_name += ISPName;
 
 	//write ispbuf to bin file
-	FILE * stream = NULL;
-	_tfopen_s(&stream, file_name, _T("wb+"));
-	if (NULL == stream) throw new CUpsnError(UPSN_WRITEFILE_FAIL);
-	fwrite(isp_buf, sizeof(BYTE),isp_len, stream );
-	fclose( stream );
-	stream = NULL;
+	bool br = isp_buf->SaveToFile(file_name);
+	if (!br) throw new CUpsnError(UPSN_WRITEFILE_FAIL);
 
 	int retry_count = 0;
-	int api_ret=0;
+	br = false;
 	while ( retry_count < RETRY_TIMES)
 	{
-		api_ret = Update_ISP(FALSE, 
-			INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, 
-			device, m_mpisp_len, m_mpisp, isp_len, isp_buf); //dll
-		if (api_ret) break;
+		br = dev->DownloadIsp(isp_buf);
+		if (br) break;
 		retry_count ++;
 	}
-	if(0 == api_ret)	throw new CUpsnError(UPSN_DOWNLOADSN_FAIL);
+	if(!br)	throw new CUpsnError(UPSN_DOWNLOADSN_FAIL);
 
 	return true;
 }
 
-bool CSM224UpdatedSNToolMPDlg::UPSN_UpdateISPfromConfig(BYTE *ISPBuf, DWORD len)
+bool CUpdateSnToolDlg::UpsnUpdateIspFromConfig(IIspBuffer * isp_buf)
 {
 	LOG_STACK_TRACE();
+	JCASSERT(isp_buf);
+
     bool success = true;
 
-	FillConvertString(m_oem_model_name, ISPBuf + MODEL_START_ADDR_2244LT, MODEL_LENGTH);
-
+	// model name
+	isp_buf->SetModelName(m_oem_model_name, MODEL_LENGTH);
 	//save capacity to isp buffer
-	ISPBuf[CHS_START_ADDR_2244LT] = (UCHAR)((m_capacity & 0xFF0000) >> 16);
-	ISPBuf[CHS_START_ADDR_2244LT+1] = (UCHAR)((m_capacity & 0xFF000000) >> 24);
-	ISPBuf[CHS_START_ADDR_2244LT+2] = (UCHAR)(m_capacity & 0xFF);
-	ISPBuf[CHS_START_ADDR_2244LT+3] = (UCHAR)((m_capacity & 0xFF00) >> 8);
+	isp_buf->SetCapacity(m_capacity);
 
 	//I/F Setting
-	if(m_sata_speed == 1)
-	{
-		ISPBuf[IF_ADDR_2244LT] = ISPBuf[IF_ADDR_2244LT] | 0x10; //force sata gen1
-	}
-	else if(m_sata_speed == 2)
-	{
-		ISPBuf[IF_ADDR_2244LT] = ISPBuf[IF_ADDR_2244LT] & 0xE0;
-	}
-
+	if (m_sata_speed)		isp_buf->SetConfig(FCONFIG_SATA_SPEED, m_sata_speed);
 	//TRIM
-	if(0 == m_trim_enable )		ISPBuf[TRIM_ADDR_2244LT] = ISPBuf[TRIM_ADDR_2244LT] & 0xF7;	// not support
-	else	ISPBuf[TRIM_ADDR_2244LT] = ISPBuf[TRIM_ADDR_2244LT] | 0x08;
-
+	if (m_trim_enable >=0)	isp_buf->SetConfig(FCONFIG_TRIM, m_trim_enable);
 	//DEVSLP
-	if (0 == m_devslp_enable)		ISPBuf[DEVSLP_ADDR_2244LT] = ISPBuf[DEVSLP_ADDR_2244LT] & 0xEF;	// not support
-	else					ISPBuf[DEVSLP_ADDR_2244LT] = ISPBuf[DEVSLP_ADDR_2244LT] | 0x10;
-
+	if (m_devslp_enable >= 0)	isp_buf->SetConfig(FCONFIG_DEVSLP, m_devslp_enable);
+	// CHS
+	if ( m_cap_c && m_cap_h && m_cap_s)
+	{
+		isp_buf->SetConfig(FCONFIG_CYLINDERS, m_cap_c);
+		isp_buf->SetConfig(FCONFIG_HEDERS, m_cap_h);
+		isp_buf->SetConfig(FCONFIG_SECTORS, m_cap_s);
+	}
+	if (m_udma_mode >= 0)		isp_buf->SetConfig(FCONFIG_UDMA_LEVEL, m_udma_mode);
 
 	//save sn to isp buffer
-	FillConvertString(m_input_sn, ISPBuf + SN_START_ADDR_2244LT, SN_LENGTH);
-
+	isp_buf->SetSerianNumber(m_input_sn, SN_LENGTH);
 	//save vendor specific to isp buffer
-	for(int ii = 0; ii < VENDOR_LENGTH; ii += 2)
-	{
-		ISPBuf[VENDOR_START_ADDR_2244LT+ii]= m_vendor_specific[ii+1];
-		ISPBuf[VENDOR_START_ADDR_2244LT+ii+1]= m_vendor_specific[ii];
-	}
-
+	isp_buf->SetVendorSpecific(m_vendor_specific, VENDOR_LENGTH);
 	//fix isp ic temperature offset
-	ISPBuf[0x9B0] = 0x0;
+	isp_buf->SetConfig(FCONFIG_TEMPERATURE, 0);
 	return success;
 }
 
-bool CSM224UpdatedSNToolMPDlg::UPSN_ReadISP2244LT(HANDLE device, const BYTE * isp_buf, DWORD isp_len)
+bool CUpdateSnToolDlg::UpsnReadIspFerri(JCSIZE data_len, IFerriDevice * dev, IIspBuffer * isp_ref)
 {
 	LOG_STACK_TRACE();
+	JCASSERT(dev);
+	JCASSERT(isp_ref);
 
 	bool success=true;	
 
-	stdext::auto_array<BYTE> ISPReadBuf1(ISP_LENGTH);
-	stdext::auto_array<BYTE> ISPReadBuf2(ISP_LENGTH);
-
-	memset(ISPReadBuf1, 0x0, ISP_LENGTH);
-	memset(ISPReadBuf2, 0x0, ISP_LENGTH);
+	stdext::auto_interface<IIspBuffer> isp_read_1;
+	stdext::auto_interface<IIspBuffer> isp_read_2;
 
 	CString ISPName;
 	CString file_name;
 
-	LOG_DEBUG(_T("read isp from Ferri"))
-	int api_ret = Read_ISP(FALSE, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, 
-		device, isp_len, ISPReadBuf1, ISPReadBuf2); //dll
-	if(0 == api_ret)	throw new CUpsnError(UPSN_ReadISP_FAIL);
+	LOG_DEBUG(_T("read isp from Ferri"));
+	bool br = dev->ReadIsp(data_len, isp_read_1, isp_read_2);
+	if(!br)	throw new CUpsnError(UPSN_ReadISP_FAIL);
 
 	//backup read isp
 	ISPName.Format(ISP_BACKUP_FILE_R, (m_model_index+1));
 	file_name = ISP_BACKUP_PATH;
 	file_name += ISPName;
 
-	FILE* stream = NULL;
 	LOG_DEBUG(_T("dump isp3 to %s"), file_name);
-	_tfopen_s(&stream, file_name, _T("wb+") );
-	if (NULL == stream)	throw new CUpsnError(UPSN_WRITEFILE_FAIL);
-	fwrite(ISPReadBuf1, sizeof(unsigned char), isp_len, stream );
-	fclose( stream );
+	br = isp_read_1->SaveToFile(file_name);
+	if ( !br )	throw new CUpsnError(UPSN_WRITEFILE_FAIL);
 	
 	// compare
-	if ( memcmp(isp_buf, ISPReadBuf1, isp_len) != 0 )
+	if ( !isp_ref->Compare(isp_read_1) )
 	{
 		LOG_ERROR(_T("isp 3 and source isp are different!"));
 		throw new CUpsnError(UPSN_WriteISP_Compare_FAIL);
 	}
 
-	if ( memcmp(isp_buf, ISPReadBuf2, isp_len) != 0 )
+	if ( !isp_ref->Compare(isp_read_2) )
 	{
 		LOG_ERROR(_T("isp 4 and source isp are different!"));
 		throw new CUpsnError(UPSN_WriteISP_Compare_FAIL);
 	}
-
 	return success;
 }
 
-bool CSM224UpdatedSNToolMPDlg::CheckFlashID(HANDLE device)
+bool CUpdateSnToolDlg::LoadGlobalConfig(LPCTSTR sec, LPCTSTR key, CString & val, bool mandatory)
 {
-	LOG_STACK_TRACE();
-	ASSERT(NULL != device && INVALID_HANDLE_VALUE != device);
-
-	bool success = true;
-	UCHAR FlashIDBuf[SECTOR_SIZE]={0};
-	int api_ret = 0;
-	memset(FlashIDBuf,0x0,SECTOR_SIZE);
-	api_ret = Read_FlashID(FALSE, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, 
-		device, FlashIDBuf);
-
-	success = false;
-	if( (1 == api_ret) &&
-		(0 == memcmp(FlashIDBuf+FLASH_ID_OFFSET, m_flash_id + FLASH_ID_OFFSET, FLASH_ID_SIZE) ) )
-	{
-		success = true;
-	}
-	else LOG_ERROR(_T("flash id do not match"));
-	return success;
-}
-
-bool CSM224UpdatedSNToolMPDlg::LoadGlobalConfig(LPCTSTR sec, LPCTSTR key, CString & val, bool mandatory)
-{
-	CSM224testBApp * app = dynamic_cast<CSM224testBApp *>(AfxGetApp());
+	CUpdateSnToolApp * app = dynamic_cast<CUpdateSnToolApp *>(AfxGetApp());
 	JCASSERT(app);
 	CString model_file = app->GetRunFolder() + FILE_MODEL_LIST;
 
@@ -1121,9 +961,9 @@ bool CSM224UpdatedSNToolMPDlg::LoadGlobalConfig(LPCTSTR sec, LPCTSTR key, CStrin
 	return true;
 }
 
-bool CSM224UpdatedSNToolMPDlg::LoadGlobalConfig(LPCTSTR sec, LPCTSTR key, int & val, int def_val)
+bool CUpdateSnToolDlg::LoadGlobalConfig(LPCTSTR sec, LPCTSTR key, int & val, int def_val)
 {
-	CSM224testBApp * app = dynamic_cast<CSM224testBApp *>(AfxGetApp());
+	CUpdateSnToolApp * app = dynamic_cast<CUpdateSnToolApp *>(AfxGetApp());
 	JCASSERT(app);
 	CString model_file = app->GetRunFolder() + FILE_MODEL_LIST;
 
@@ -1133,17 +973,21 @@ bool CSM224UpdatedSNToolMPDlg::LoadGlobalConfig(LPCTSTR sec, LPCTSTR key, int & 
 	return true;
 }
 
-bool CSM224UpdatedSNToolMPDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, CString & val)
+bool CUpdateSnToolDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, CString & val, bool mandatory)
 {
 	TCHAR str[MAX_STRING_LEN];
 	DWORD ir = GetPrivateProfileString(sec, key, NULL, str, MAX_STRING_LEN, m_config_file);
-	if (0 == ir) THROW_ERROR(ERR_PARAMETER, _T("failure on loading local config %s/%s"), sec, key);
+	if (0 == ir)
+	{
+		if ( mandatory ) THROW_ERROR(ERR_PARAMETER, _T("failure on loading local config %s/%s"), sec, key);
+		LOG_DEBUG(_T("no local config %s/%s"), sec, key);
+	}
 	val = str;
 	LOG_DEBUG(_T("local config %s/%s=%s"), sec, key, val);
 	return true;
 }
 
-bool CSM224UpdatedSNToolMPDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, BYTE * buf, DWORD &len, int checksum)
+bool CUpdateSnToolDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, BYTE * buf, DWORD &len, int checksum)
 {
 	TCHAR filename[MAX_STRING_LEN];
 	DWORD ir = GetPrivateProfileString(sec, key, NULL, filename, MAX_STRING_LEN, m_config_file);
@@ -1169,7 +1013,7 @@ bool CSM224UpdatedSNToolMPDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, BYTE * 
 	return true;
 }
 
-bool CSM224UpdatedSNToolMPDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, int & val, int def_val)
+bool CUpdateSnToolDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, int & val, int def_val)
 {
 	val = GetPrivateProfileInt(sec, key, def_val, m_config_file);
 	if (-1 == val) THROW_ERROR(ERR_PARAMETER, _T("failure on loading local config %s/%s"), sec, key);
@@ -1177,20 +1021,20 @@ bool CSM224UpdatedSNToolMPDlg::LoadLocalConfig(LPCTSTR sec, LPCTSTR key, int & v
 	return true;
 }
 
-DWORD CSM224UpdatedSNToolMPDlg::CheckSum(BYTE * buf, DWORD len)
+DWORD CUpdateSnToolDlg::CheckSum(BYTE * buf, DWORD len)
 {
 	DWORD check_sum=0;
 	for(DWORD ii=0; ii< len; ii++)	check_sum += buf[ii];
 	return check_sum;
 }
 
-bool CSM224UpdatedSNToolMPDlg::LoadConfig(void)
+bool CUpdateSnToolDlg::LoadConfig(void)
 {
 	TCHAR str[MAX_STRING_LEN];
 	DWORD ir = 0;
 	FILE *ffile = NULL;
 
-	CSM224testBApp * app = dynamic_cast<CSM224testBApp *>(AfxGetApp());
+	CUpdateSnToolApp * app = dynamic_cast<CUpdateSnToolApp *>(AfxGetApp());
 	JCASSERT(app);
 
 
@@ -1200,6 +1044,7 @@ bool CSM224UpdatedSNToolMPDlg::LoadConfig(void)
 	
 	// serial number prefix for global, ex: EMBZ
 	LoadGlobalConfig(MODLE_LIST_MODELS,		KEY_PREFIX,			m_global_prefix,	true);	
+	LoadGlobalConfig(MODLE_LIST_MODELS,		KEY_CONTROLLER,			m_controller,	true);	
 	LoadGlobalConfig(SEC_EXTPROC,			KEY_EXT_CMD,		m_external_cmd);	
 	if ( !m_external_cmd.IsEmpty() )
 	{
@@ -1226,8 +1071,35 @@ bool CSM224UpdatedSNToolMPDlg::LoadConfig(void)
 
 	LoadLocalConfig(SEC_SOURCE,		KEY_VENDOR,			m_vendor_specific,	vendor_len);
 
-	LoadLocalConfig(SEC_SOURCE,		KEY_FLASHID_CHECKSUM,flashid_checksum,	0);
-	LoadLocalConfig(SEC_SOURCE,		KEY_FLASHID,		m_flash_id,			fid_len,	flashid_checksum);
+	// load flash id, it is optional
+	if (m_flash_id) delete [] m_flash_id;
+	CString flash_id_fn;
+	LoadLocalConfig(SEC_SOURCE,		KEY_FLASHID,		flash_id_fn);
+	if ( !flash_id_fn.IsEmpty() )
+	{
+		m_flash_id = new BYTE[SECTOR_SIZE];
+		// load file
+		FILE * ffile = NULL;
+		_tfopen_s(&ffile, flash_id_fn, _T("rb"));
+		if ( NULL == ffile )	THROW_ERROR(ERR_PARAMETER, _T("failure on openning file %s"), flash_id_fn);
+		JCSIZE len = fread(m_flash_id, 1, SECTOR_SIZE, ffile);
+		fclose(ffile);
+		DWORD file_checksum = CheckSum(m_flash_id, len);
+		LOG_DEBUG(_T("load bin file %s, length=%d, checksum=0x%08X"), flash_id_fn, len, file_checksum);
+
+		LoadLocalConfig(SEC_SOURCE,		KEY_FLASHID_CHECKSUM,flashid_checksum,	0);
+		if (flashid_checksum && (flashid_checksum != file_checksum) )
+		{
+			LOG_ERROR(_T("checksum failed, input:0x%08X, file:0x%08X"), file_checksum, file_checksum);
+			THROW_ERROR(ERR_PARAMETER, _T("%s checksum do not match"), flash_id_fn);
+		}
+	}
+	else
+	{
+		LOG_WARNING(_T("flash id is not set."));
+	}
+	//LoadLocalConfig(SEC_SOURCE,		KEY_FLASHID,		m_flash_id,			fid_len,	flashid_checksum);
+
 	LoadLocalConfig(SEC_SOURCE,		KEY_MPISP_CHECKSUM,	mpisp_checksum,		0);
 	LoadLocalConfig(SEC_SOURCE,		KEY_MPISP,			m_mpisp,			m_mpisp_len, mpisp_checksum);
 	LoadLocalConfig(SEC_SOURCE,		KEY_ISP_CHECKSUM,	m_isp_check_sum);
@@ -1237,11 +1109,15 @@ bool CSM224UpdatedSNToolMPDlg::LoadConfig(void)
 	LoadLocalConfig(SEC_CONFIGURE,	KEY_SN_PREFIX,		m_sn_prefix);		// serial number prefix, ex. EMBZ1
 	LoadLocalConfig(SEC_CONFIGURE,	KEY_CAPACITY,		m_capacity);
 	LoadLocalConfig(SEC_CONFIGURE,	KEY_IF_SETTING,		m_sata_speed);
-	LoadLocalConfig(SEC_CONFIGURE,	KEY_TRIM,			m_trim_enable);
-	LoadLocalConfig(SEC_CONFIGURE,	KEY_DEVSLP,			m_devslp_enable);
+	LoadLocalConfig(SEC_CONFIGURE,	KEY_TRIM,			m_trim_enable,		-2);	// < 0没有设置
+	LoadLocalConfig(SEC_CONFIGURE,	KEY_DEVSLP,			m_devslp_enable,	-2);
 	LoadLocalConfig(SEC_CONFIGURE,	KEY_DIS_ISP_CHECK,	m_disable_isp_check_version);
 	LoadLocalConfig(SEC_CONFIGURE,	KEY_FW_VER,			m_fw_ver);
 
+	LoadLocalConfig(SEC_CONFIGURE,	KEY_CAP_CYLINDER,	m_cap_c);
+	LoadLocalConfig(SEC_CONFIGURE,	KEY_CAP_HEADER,		m_cap_h);
+	LoadLocalConfig(SEC_CONFIGURE,	KEY_CAP_SECTOR,		m_cap_s);
+	LoadLocalConfig(SEC_CONFIGURE,	KEY_UDMA_SETTING,	m_udma_mode,		-2);
 	// create direct for isp backup
 	if( GetFileAttributes(ISP_BACKUP_PATH) == -1)	CreateDirectory(ISP_BACKUP_PATH, NULL);
 
@@ -1251,8 +1127,12 @@ bool CSM224UpdatedSNToolMPDlg::LoadConfig(void)
 	ir = GetPrivateProfileString(SEC_PARAMETER, KEY_TEST_MACHINE, _T(""), str, MAX_STRING_LEN, app->GetRunFolder() + FILE_TEST_MACHINE_NO);
 	m_log_file.SetTestMachine(str);
 
-	ir = GetPrivateProfileInt(SEC_PARAMETER, KEY_PATA_SATA, 0, app->GetRunFolder() + FILE_DEVICE_TYPE);
-	if (ir ==0)	m_controller_ver = SM631GXx;		// (SATA) SM2244LT;
+	if (m_controller.IsEmpty() )
+	{
+		ir = GetPrivateProfileInt(SEC_PARAMETER, KEY_PATA_SATA, 0, app->GetRunFolder() + FILE_DEVICE_TYPE);
+		if (ir ==0)	m_controller = _T("LT2244"); //SM631GXx;		// (SATA) SM2244LT;
+		else		m_controller = _T("SM2236");
+	}
 
 	ir = GetPrivateProfileString(SEC_PARAMETER, KEY_DEVICE_TYPE, _T(""), str, MAX_STRING_LEN, app->GetRunFolder() + FILE_DEVICE_TYPE);
 	m_log_file.SetDeviceType(str);
@@ -1284,7 +1164,7 @@ bool CSM224UpdatedSNToolMPDlg::LoadConfig(void)
 }
 
 
-bool CSM224UpdatedSNToolMPDlg::ConvertStringCompare(const CString & src, BYTE * dst, DWORD len, char filler)
+bool CUpdateSnToolDlg::ConvertStringCompare(const CString & src, BYTE * dst, DWORD len, char filler)
 {
 	JCASSERT(len < MAX_STRING_LEN);
 	BYTE temp[MAX_STRING_LEN];
@@ -1293,12 +1173,12 @@ bool CSM224UpdatedSNToolMPDlg::ConvertStringCompare(const CString & src, BYTE * 
 	temp[len] = 0;
 
 	CStringA d((char*)dst, len);
-	LOG_DEBUG(_T("target=\"%S\", val=\"%S\""), temp, d);
+	LOG_DEBUG(_T("exp=\"%S\", val=\"%S\""), temp, d);
 
 	return ( memcmp(temp, dst, len)==0 );
 }
 
-void CSM224UpdatedSNToolMPDlg::FillConvertString(const CString & src, BYTE * dst, DWORD len, char filler)
+void CUpdateSnToolDlg::FillConvertString(const CString & src, BYTE * dst, DWORD len, char filler)
 {
 	memset(dst, filler, len);
 	DWORD src_len = src.GetLength();
@@ -1310,7 +1190,7 @@ void CSM224UpdatedSNToolMPDlg::FillConvertString(const CString & src, BYTE * dst
 	for (DWORD ii = 0; ii < len; ii += 2)		t=dst[ii], dst[ii]=dst[ii+1], dst[ii+1]=t ;
 }
 
-void CSM224UpdatedSNToolMPDlg::ReadConvertString(const BYTE * src, CString & dst, DWORD len)
+void CUpdateSnToolDlg::ReadConvertString(const BYTE * src, CString & dst, DWORD len)
 {
 	BYTE temp[MAX_STRING_LEN];
 	memset(temp, 0, MAX_STRING_LEN);
@@ -1320,7 +1200,7 @@ void CSM224UpdatedSNToolMPDlg::ReadConvertString(const BYTE * src, CString & dst
 	dst.TrimRight();
 }
 
-void CSM224UpdatedSNToolMPDlg::RetrieveController(void)
+void CUpdateSnToolDlg::RetrieveController(void)
 {
 	m_edit_input_sn = (CEdit*)(GetDlgItem(IDC_EDIT_InputSN) );
 	ASSERT(m_edit_input_sn);
