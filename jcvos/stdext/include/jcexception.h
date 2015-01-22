@@ -108,11 +108,12 @@ inline void _NOTSUPPORT(LPCTSTR msg = NULL)
 
 #ifdef WIN32
 #define THROW_WIN32_ERROR(msg, ...)   {									\
+		DWORD err_id = GetLastError();									\
 		LPTSTR __temp_str = new TCHAR[512];								\
-		stdext::jc_sprintf(__temp_str, 512, msg, __VA_ARGS__);					\
-        stdext::CWin32Exception err(GetLastError(), __temp_str);		\
+		stdext::jc_sprintf(__temp_str, 512, msg, __VA_ARGS__);			\
+        stdext::CWin32Exception err(err_id, __temp_str);				\
  		delete [] __temp_str;											\
-        LogException(__FUNCTION__, __LINE__, err);					\
+        LogException(__FUNCTION__, __LINE__, err);						\
         throw err;  \
     }
 
