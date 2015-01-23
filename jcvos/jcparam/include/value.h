@@ -72,7 +72,7 @@ namespace jcparam
 			JCASSERT(stream);
 			CJCStringT str;
 			GetValueText(str);
-			stream->Put(str.c_str(), str.length() );
+			stream->Put(str.c_str(), (JCSIZE)str.length() );
 		}
 
 		virtual void FromStream(IJCStream * str, VAL_FORMAT) { NOT_SUPPORT0; };

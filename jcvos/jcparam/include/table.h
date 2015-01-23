@@ -51,7 +51,7 @@ namespace jcparam
 		{
 			JCASSERT(stream);
 			CJCStringT * str = (reinterpret_cast<CJCStringT*>((BYTE*)row + m_offset));
-			stream->Put(str->c_str(), str->length() );
+			stream->Put(str->c_str(), (JCSIZE)str->length() );
 		}
 		virtual void CreateValue(BYTE * src, IValue * & val) const
 		{
