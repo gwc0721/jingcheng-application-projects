@@ -104,6 +104,7 @@ namespace jcapp
 
 	protected:
 		UINT	m_ver[4];
+		CJCStringT	m_product_name;
 
 	public:
 		static CJCAppBase * GetApp(void);
@@ -184,7 +185,7 @@ namespace jcapp
 				| CJCLogger::COL_FUNCTION_NAME
 				| CJCLogger::COL_REAL_TIME
 				);
-			LOGGER_CONFIG(_T("jclog.cfg"));
+			LOGGER_CONFIG(BASE::LOG_FONFIG_FN);
 		}
 		virtual ~CJCApp(void) {}
 

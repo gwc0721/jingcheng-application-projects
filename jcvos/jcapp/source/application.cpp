@@ -129,8 +129,8 @@ CJCAppBase * CJCAppBase::GetApp(void)
 bool CJCAppBase::LoadApplicationInfo(void)
 {
 #ifdef WIN32
-	//TCHAR app_path[MAX_PATH];
-	stdext::auto_array<TCHAR> str_temp(MAX_PATH);
+	stdext::auto_array<TCHAR> _str_temp(MAX_PATH);
+	TCHAR * str_temp = _str_temp;
 
 	GetModuleFileName(NULL, str_temp, MAX_PATH);
 	UINT ver_info_size = GetFileVersionInfoSize(str_temp, 0);
@@ -139,32 +139,24 @@ bool CJCAppBase::LoadApplicationInfo(void)
 
 	BOOL br = GetFileVersionInfo(str_temp, 0, ver_info_size, ver_buf);
 	if ( 0 == br )	return false;
-	
-	// Get language
-    struct VersionLanguage
-    {
-        WORD m_wLanguage;
-        WORD m_wCcodePage;
-    };
-	VersionLanguage * p_ver_lang = NULL;
-	UINT length = 0;
-	
-	br = VerQueryValue(ver_buf, _T("\\VarFileInfo\\Translation"), reinterpret_cast<LPVOID *>(&p_ver_lang), &length);
-	if ( 0==br) return false;
-    
-	// load application version
-	_stprintf_s(str_temp, MAX_PATH, _T("\\StringFileInfo\\%04x%04x\\FileVersion"),
-		p_ver_lang->m_wLanguage, p_ver_lang->m_wCcodePage);
 
-	LPVOID p_prod_ver = NULL;
-	length = 0;
-	br = VerQueryValue(ver_buf, str_temp, &p_prod_ver, &length);
-	if ( 0==br) return false;
-	
-	//LOG_RELEASE(_T("File Ver. %s"), reinterpret_cast<TCHAR *>(p_prod_ver) );
+	// English (USA)
+	static const TCHAR _KEY[] = _T("\\StringFileInfo\\040904B0\\%s");
+	//TCHAR sub_key[128];
+	LPVOID key_val = NULL;
+	JCSIZE length = 0;
 
-	_stscanf_s(reinterpret_cast<TCHAR *>(p_prod_ver), _T("%d, %d, %d, %d"), 
+	stdext::jc_sprintf(str_temp, MAX_PATH, _KEY, _T("FileVersion"));
+	br = VerQueryValue(ver_buf, str_temp, &key_val, &length);
+	if ( 0==br) return false;
+	//LOG_RELEASE(_T("File ver: %s"), reinterpret_cast<TCHAR *>(key_val) );
+	_stscanf_s(reinterpret_cast<TCHAR *>(key_val), _T("%d, %d, %d, %d"), 
 		m_ver+0, m_ver+1, m_ver+2, m_ver+3);
+
+	stdext::jc_sprintf(str_temp, MAX_PATH, _KEY, _T("ProductName"));
+	br = VerQueryValue(ver_buf, str_temp, &key_val, &length);
+	m_product_name = reinterpret_cast<TCHAR *>(key_val);
+
 #endif
 	return true;
 }
