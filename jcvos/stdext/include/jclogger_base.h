@@ -166,7 +166,7 @@ protected:
     CJCStringW m_category;
     int m_level;
     CJCLogger * m_logger;
-	static double		m_ts_cycle;		// Cycle for time stamp
+	//static double		m_ts_cycle;		// Cycle for time stamp
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -289,7 +289,7 @@ public:
 #define _LOGGER_TRACE( ... )
 #define LOG_STACK_TRACE( ... )
 #define LOG_STACK_PERFORM( ... )
-#define LOG_STACK_TRACE_P( ... )
+#define LOG_STACK_TRACE_EX( ... )
 #define LOG_STACK_TRACE_O( ... )
 #define LOG_SIMPLE_TRACE( ... )
 
@@ -359,17 +359,17 @@ public:
 
 
 #undef LOG_STACK_TRACE
-#define LOG_STACK_TRACE()   \
+#define LOG_STACK_TRACE(...)   \
     CJCStackTrace __stack_trace__(_local_logger, __FUNCTION__, _T("") );
 
 #undef LOG_STACK_PERFORM
 #define LOG_STACK_PERFORM(name)   \
     CJCStackPerformance __stack_perform__(_T(__FUNCTION__)name);
 
-#undef LOG_STACK_TRACE_P
-#define LOG_STACK_TRACE_P(...)   \
-	LPTSTR __temp_str = new TCHAR[512];		\
-	stdext::jc_sprintf(__temp_str, 512, __VA_ARGS__);	\
+#undef LOG_STACK_TRACE_EX
+#define LOG_STACK_TRACE_EX(fmt, ...)											\
+	LPTSTR __temp_str = new TCHAR[256];											\
+	stdext::jc_sprintf(__temp_str, 256, fmt, __VA_ARGS__);						\
     CJCStackTrace __stack_trace__(_local_logger, __FUNCTION__, __temp_str );	\
 	delete [] __temp_str;
 
