@@ -27,3 +27,16 @@ StdAfx.h, StdAfx.cpp
 应用程序向导使用“TODO:”注释来指示应添加或自定义的源代码部分。
 
 /////////////////////////////////////////////////////////////////////////////
+Release Note.
+v1.0.0.1 (2015/01/13)
+	initial version
+v1.0.0.2 (2015/01/14)
+	rename AtaTrace to ata_trace
+	move IBinaryBuffer declaration from ata_trace to jcparam
+v1.0.1.4 (2015/01/23)
+	1. Fix power cycle issue in CStorageDeviceComm::StartStopUnit()
+		- after power on, add retry for TEST UTILITY (cmd 0x00)
+		- otherwise, in some platform, power on failed whill happen.
+	2. Fix run duration calculation in jclogger.
+	3. In jcapp, add application should specify the log config file name.
+		- to avoid log config conflict when some jcapp based application run in same folder.
