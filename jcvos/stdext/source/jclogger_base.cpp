@@ -15,6 +15,8 @@
 const GUID CJCLoggerLocal::m_guid = 
 { 0x6106ece5, 0xcfb9, 0x4440, { 0xa3, 0x69, 0x5d, 0xf8, 0x55, 0x22, 0xc0, 0x70 } };
 
+static const double ts_cycle = CJCLogger::Instance()->GetTimeStampCycle();
+
 CJCLoggerLocal::CJCLoggerLocal(CJCLoggerAppender * appender)
     : m_appender(appender)
 	, m_ts_cycle(0)
@@ -278,7 +280,7 @@ void CJCLoggerLocal::OutputFunctionDuration(void)
 	for ( ; it!=endit; ++ it)
 	{
 		CJCFunctionDuration & dur = it->second;
-		double total= dur.m_duration / GetTimeStampCycle();
+		double total= dur.m_duration * m_ts_cycle;
 		stdext::jc_sprintf(str, LOGGER_MSG_BUF_SIZE, _T("<FUN=%s> [Duration] calls=%d, total duration=%.1f ms, avg=%.1f us\n")
 			, dur.m_func_name.c_str(), dur.m_calls, total / 1000.0, total / dur.m_calls);
 		WriteString(str, LOGGER_MSG_BUF_SIZE);
@@ -289,7 +291,7 @@ void CJCLoggerLocal::OutputFunctionDuration(void)
 ////////////////////////////////////////////////////////////////////////////////
 // --CJCLoggerNode
 
-double CJCLoggerNode::m_ts_cycle = CJCLogger::Instance()->GetTimeStampCycle();
+//double CJCLoggerNode::m_ts_cycle = CJCLogger::Instance()->GetTimeStampCycle();
 
 CJCLoggerNode::CJCLoggerNode(const CJCStringW & name, int level, CJCLogger * logger)
     : m_category(name)
@@ -337,7 +339,7 @@ void CJCLoggerNode::LogMessageFuncV(LPCSTR function, LPCTSTR format, va_list arg
 	{	// 单位: us
 		LARGE_INTEGER now;
 		QueryPerformanceCounter(&now);
-		double ts = now.QuadPart * m_ts_cycle;
+		double ts = now.QuadPart * ts_cycle;
 		unsigned int inow = (unsigned int)(ts);
 		ir = stdext::jc_sprintf(str, remain, _T("<TS=%u> "), inow);
 		if (ir >=0 )  str+=ir, remain-=ir;
@@ -436,7 +438,7 @@ CJCStackTrace::~CJCStackTrace(void)
 	LARGE_INTEGER now;
 	QueryPerformanceCounter(&now);
 	m_start_time = now.QuadPart - m_start_time;
-	double runtime = (m_start_time / CJCLogger::Instance()->GetTimeStampCycle());
+	double runtime = (m_start_time * ts_cycle);
 
 	if (m_log && m_log->GetLevel() >= LOGGER_LEVEL_TRACE)
 	{
@@ -471,12 +473,6 @@ double CJCStackPerformance::GetDeltaTime(void)
 	LARGE_INTEGER now;
 	QueryPerformanceCounter(&now);
 	LONGLONG delta = now.QuadPart - m_start_time;
-	return ( delta / CJCLogger::Instance()->GetTimeStampCycle() );
+	return ( delta * ts_cycle);
 }
 
-
-// for test
-//#pragma data_seg("Shared")
-//int g_test = 10;
-//#pragma data_seg()
-//#pragma comment(linker, "/SECTION:Shared,RWS")
