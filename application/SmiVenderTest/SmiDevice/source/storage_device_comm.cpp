@@ -60,9 +60,10 @@ void CStorageDeviceComm::Detach(HANDLE & dev)
 
 bool CStorageDeviceComm::ScsiCommand(READWRITE rd_wr, BYTE *buf, JCSIZE buf_len, BYTE *cb, JCSIZE cb_length, UINT timeout)
 {
-	JCASSERT(m_dev);
 	JCASSERT(buf);
 	JCASSERT(cb);
+	LOG_STACK_TRACE_EX(_T("cmd=0x%02X"), cb[0]);
+	JCASSERT(m_dev);
 
 	SCSI_PASS_THROUGH_DIRECT_WITH_BUFFER sptdwb;
     ZeroMemory(&sptdwb, sizeof(SCSI_PASS_THROUGH_DIRECT_WITH_BUFFER));
@@ -100,7 +101,9 @@ bool CStorageDeviceComm::ScsiCommand(READWRITE rd_wr, BYTE *buf, JCSIZE buf_len,
 	if (t0.QuadPart <= t1.QuadPart)		m_last_invoke_time = t1.QuadPart - t0.QuadPart;
 	else								m_last_invoke_time = 0;
 
-	if (!success) THROW_WIN32_ERROR( _T("send scsi command failed: ") );
+	if (!success) return false;
+
+	//if (!success) THROW_WIN32_ERROR( _T("send scsi command failed: ") );
     FlushFileBuffers(m_dev);
 	return true;
 }
@@ -231,8 +234,8 @@ bool CStorageDeviceComm::Inquiry(BYTE * buf, JCSIZE buf_len)
 	cb[4] = 0x24;
 
 	if (buf_len > 0x24) buf_len = 0x24;
-	ScsiCommand(read, buf, buf_len, cb, 16, 300);
-	return true;
+	bool br = ScsiCommand(read, buf, buf_len, cb, 16, 300);
+	return br;
 }
 
 
@@ -353,7 +356,8 @@ FILESIZE CStorageDeviceComm::GetCapacity(void)
 		memset(cb, 0, 16);
 		cb[0] = 0x25;
 
-		ScsiCommand(read, buf, 8, cb, 10, 600);
+		bool br = ScsiCommand(read, buf, 8, cb, 10, 600);
+		if (!br) return 0;
 		LOG_DEBUG(_T("%02X, %02X, %02X, %02X, "), buf[0], buf[1], buf[2], buf[3]);
 		m_capacity = MAKELONG(MAKEWORD(buf[3], buf[2]), MAKEWORD(buf[1], buf[0]));
 		++ m_capacity;
@@ -366,12 +370,15 @@ UINT CStorageDeviceComm::GetLastInvokeTime(void)
 	return ( (UINT)(m_last_invoke_time / CJCLogger::Instance()->GetTimeStampCycle()) ); 
 }
 
+#define TEST_UTILITY_RETRY	20
+
 bool CStorageDeviceComm::StartStopUnit(bool stop)
 {
+	LOG_STACK_TRACE_EX(_T("stop = %d"), stop);
 	BYTE cmd_block[CMD_BLOCK_SIZE];
 	stdext::auto_array<BYTE>	_buf(SECTOR_SIZE);
 
-	bool br;
+	bool br = false;
 	if (stop)
 	{	// power off
 		memset(cmd_block, 0, sizeof(BYTE) * CMD_BLOCK_SIZE);
@@ -387,7 +394,14 @@ bool CStorageDeviceComm::StartStopUnit(bool stop)
 
 		memset(cmd_block, 0, sizeof(BYTE) * CMD_BLOCK_SIZE);
 		cmd_block[0] = 0x0, cmd_block[1] = 0, cmd_block[4] = 0;
-		br = ScsiCommand(read, _buf, 0, cmd_block, CMD_BLOCK_SIZE, 60);
+		for (int ii = 0; ii < TEST_UTILITY_RETRY; ++ii)
+		{
+			LOG_DEBUG(_T("try %d for test utility"), ii);
+			br = ScsiCommand(read, _buf, 0, cmd_block, CMD_BLOCK_SIZE, 60);
+			if (br) break;
+			LOG_DEBUG(_T("test utility failed by %d"), GetLastError());
+			Sleep(500);
+		}
 	}
 	return br;
 }

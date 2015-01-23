@@ -345,7 +345,7 @@ void CLT2244::ReadSRAM(WORD ram_add, WORD bank, BYTE * buf)
 	cmd.add() = ram_add >> 8;
 	if ( (ram_add >= 0xC000) && (ram_add < 0xE000) && (bank != 0) )
 	{
-		cmd.bank(bank);
+		cmd.bank((BYTE)bank);
 	}
 	JCSIZE sec = 1;
 	VendorCommand(cmd, read, buf, sec);
