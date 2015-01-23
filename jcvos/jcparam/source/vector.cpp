@@ -39,7 +39,7 @@ void CVector::GetRow(JCSIZE index, IValue * & val)
 
 JCSIZE CVector::GetRowSize() const
 {
-	return m_vector.size();
+	return (JCSIZE)m_vector.size();
 }
 
 //void CVector::Format(FILE * file, LPCTSTR format)

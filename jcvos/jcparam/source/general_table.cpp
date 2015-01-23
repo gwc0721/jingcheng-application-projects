@@ -36,7 +36,7 @@ void CColInfoList::OutputHead(IJCStream * stream) const
 	for ( ; it!=endit; ++it)
 	{
 		const CJCStringT & name = it->first;
-		stream->Put(name.c_str(), name.length() );
+		stream->Put(name.c_str(), (JCSIZE)name.length() );
 		stream->Put(_T(','));
 	}
 }
