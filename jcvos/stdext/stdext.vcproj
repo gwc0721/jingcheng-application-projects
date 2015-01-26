@@ -21,7 +21,7 @@
 	<Configurations>
 		<Configuration
 			Name="RELEASE_STATIC_MFC|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)lib\"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
 			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
@@ -148,7 +148,7 @@
 		</Configuration>
 		<Configuration
 			Name="DEBUG_STATIC_MFC|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)lib\"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
 			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
@@ -194,6 +194,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
+				OutputFile="$(OutDir)\$(ProjectName)D.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"

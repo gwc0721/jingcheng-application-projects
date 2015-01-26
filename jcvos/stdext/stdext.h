@@ -8,3 +8,9 @@
 #include "include/autohandle.h"
 #include "include/jcinterface.h"
 #include "include/jchelptool.h"
+
+#ifdef _DEBUG
+#pragma comment (lib, "lib/stdextD.lib")
+#else
+#pragma comment (lib, "lib/stdext.lib")
+#endif
