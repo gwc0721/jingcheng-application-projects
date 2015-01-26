@@ -1,0 +1,1 @@
+cp -recurse SDK "FerriSdk.package\."
