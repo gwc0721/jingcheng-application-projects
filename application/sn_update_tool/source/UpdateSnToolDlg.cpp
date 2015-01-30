@@ -304,13 +304,14 @@ void CUpdateSnToolDlg::OnStartUpdatedSN()
 
 		SetStatus(COLOR_BLUE, _T("External test..."));
 		DWORD exit_code = ExcuseExternalProcess(info);
-		SetStatus(COLOR_BLUE, _T("Getting runtime bad..."));
+		SetStatus(COLOR_BLUE, _T("Reconnecting..."));
 		br = ferri_dev->Connect();
 		if ( !br )
 		{
 			MessageBox(_T("Failure on openning device"), _T("Error!"), MB_OK);
 			throw new CUpsnWarning();
 		}
+		SetStatus(COLOR_BLUE, _T("Getting runtime bad..."));
 		info.m_new_bad = GetRunTimeBad(ferri_dev);
 		if ( 0 != exit_code ) throw new CUpsnError(exit_code);
 		info.m_pass_fail = true;

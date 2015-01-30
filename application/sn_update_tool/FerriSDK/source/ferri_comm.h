@@ -108,13 +108,7 @@ public:
 		return (ir!=0);
 	}
 
-	virtual bool ReadSmart(LPVOID buf, JCSIZE buf_len)
-	{
-		CheckDevice(m_dev);
-		if (buf_len < SECTOR_SIZE) THROW_ERROR(ERR_APP, _T("buffer is not enough."));
-		int ir = m_apis->mf_get_smart(FALSE, NULL, NULL, m_dev, (UCHAR*)buf);
-		return (ir!=0);
-	}
+	virtual bool ReadSmart(LPVOID buf, JCSIZE buf_len);
 
 	virtual bool SetMpisp(LPVOID mpisp, JCSIZE mpisp_len)
 	{
@@ -131,11 +125,7 @@ public:
 		m_dev = NULL;
 		TestClose(dev);
 	}
-	virtual bool Connect(void)
-	{
-		if (m_dev) return true;
-		return TestOpen((CHAR)(m_drive_letter), &m_dev);
-	}
+	virtual bool Connect(void);
 	virtual bool ResetTester(void);
 	virtual TCHAR GetDriveLetter(void) {return m_drive_letter;}
 	virtual void GetDriveName(CJCStringT & str) {str = m_drive_name;}
