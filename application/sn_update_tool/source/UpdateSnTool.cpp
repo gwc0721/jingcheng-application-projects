@@ -35,7 +35,7 @@ CUpdateSnToolApp::CUpdateSnToolApp()
 		| CJCLogger::COL_FUNCTION_NAME
 		| CJCLogger::COL_REAL_TIME
 		);
-	LOGGER_CONFIG(_T("jclog.cfg"));
+	LOGGER_CONFIG(_T("upsn.cfg"));
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -174,6 +174,8 @@ bool CFerriFactory::LoadDll(LPCTSTR path)
 ///////////////////////////////////////////////////////////////////////////////
 //---- CFerriComm
 
+#define RETRY_COUNT		(40)
+
 CFerriComm::CFerriComm(
 				SMI_API_SET * apis, TCHAR drive_letter, LPCTSTR drive_name, 
 				SMI_TESTER_TYPE tester, UINT port, HANDLE dev)
@@ -225,17 +227,87 @@ bool CFerriComm::CheckIsFerriChip(void)
 	LOG_STACK_TRACE();
 	JCASSERT(m_apis);
 	CheckDevice(m_dev);
-	int ir = m_apis->mf_check_if_smi_chip(FALSE, NULL, NULL, m_dev);
-	LOG_DEBUG(_T("check smi chip = %d"), ir);
-	return  (ir != 0);
+	int ir = 0, retry = 1;
+	while ( (retry > 0) )
+	{
+		ir = m_apis->mf_check_if_smi_chip(FALSE, NULL, NULL, m_dev);
+		LOG_DEBUG(_T("check smi chip = %d, retry = %d"), ir, retry);
+		if (ir > 0) break;
+		Sleep(1000);
+		retry --;
+	}
+	return  (ir > 0);
 }
 
 void CFerriComm::CheckDevice(HANDLE dev)
 {
-	LOG_STACK_TRACE();
+	LOG_STACK_TRACE_EX(_T("dev=0x%08X"), dev);
 	if ( (NULL == dev) || (INVALID_HANDLE_VALUE == dev) )	
 		THROW_ERROR_EX(ERR_DEVICE, FERR_DEVICE_NOT_CONNECT,_T("no device connect"));
 }
+
+bool CFerriComm::Connect(void)
+{
+	LOG_STACK_TRACE();
+	JCASSERT(m_dev == NULL);
+
+	// retry
+	int retry = RETRY_COUNT;
+	bool br = false;
+
+	HANDLE hdev = INVALID_HANDLE_VALUE;
+	UCHAR Command[16];
+	memset(Command,0,16);
+
+	CHAR DiskName[64];
+	sprintf_s( DiskName, "\\\\.\\%c:", m_drive_letter );
+
+	while (retry > 0)
+	{
+		if (hdev != INVALID_HANDLE_VALUE) CloseHandle(hdev);
+
+		LOG_DEBUG(_T("retry: %d"), retry);
+		retry --;
+		Sleep(1500);
+
+		hdev = CreateFileA(DiskName, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, 
+							NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, NULL);
+		if (hdev == INVALID_HANDLE_VALUE) continue;
+		LOG_DEBUG(_T("open device: 0x%08X"), hdev);
+
+		br = SCSICommandReadTester(hdev, NULL, 0, Command);
+		LOG_DEBUG(_T("test utility: %d"), br);
+		if (!br) continue;
+		// connected OK
+		m_dev = hdev;
+		break;
+	}
+	if (!m_dev)
+	{
+		LOG_ERROR(_T("failure on re-connect to device"));
+		return false;
+	}
+
+	br = CheckIsFerriChip();
+	if (!br)
+	{
+		LOG_ERROR(_T("failure on check controller."));
+		Disconnect();
+		return false;
+	}
+	return true;
+}
+
+bool CFerriComm::ReadSmart(LPVOID buf, JCSIZE buf_len)
+{
+	LOG_STACK_TRACE();
+	CheckDevice(m_dev);
+	if (buf_len < SECTOR_SIZE) THROW_ERROR(ERR_APP, _T("buffer is not enough."));
+	int ir = m_apis->mf_get_smart(FALSE, NULL, NULL, m_dev, (UCHAR*)buf);
+	LOG_DEBUG(_T("result = %d"),ir);
+	return (ir!=0);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //---- CIspBufferComm
