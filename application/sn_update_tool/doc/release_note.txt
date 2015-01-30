@@ -1,0 +1,11 @@
+﻿rev. 2.3.0.2 (svn 194)
+#2015/01/21 (1) using Ferri SDK instead of SMISDK
+	(2) add support for PATA BA (CHS, UDMA)
+	(3) check flash id change to optional
+	
+rev. 2.3.0.4 (svn )
+#2015/01/30
+	(1) fix re-connect issue in ferri sdk
+		during external text, if SOLO TESTER is reset, ferri sdk cannot reconnect to device
+		add retry for open device and test utility
+	(2) change log config name to "upsn.cfg"

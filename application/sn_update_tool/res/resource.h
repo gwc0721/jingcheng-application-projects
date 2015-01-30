@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by sm224testB.rc
+// Used by UpdateSnTool.rc
 //
 #define IDS_FINDNEWDEVICE               1
 #define IDS_HARDWAREINSTALL             2

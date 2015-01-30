@@ -151,8 +151,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,3,0,2
- PRODUCTVERSION 2,3,0,2
+ FILEVERSION 2,3,0,4
+ PRODUCTVERSION 2,3,0,4
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -169,12 +169,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "SiliconMotion"
             VALUE "FileDescription", "Ferri S/N update tool"
-            VALUE "FileVersion", "2, 3, 0, 2"
+            VALUE "FileVersion", "2, 3, 0, 4"
             VALUE "InternalName", "sn update tool"
             VALUE "LegalCopyright", "Copyright (C) 2014"
             VALUE "OriginalFilename", "SM22XMP.EXE"
             VALUE "ProductName", "sn update tool"
-            VALUE "ProductVersion", "2, 3, 0, 2"
+            VALUE "ProductVersion", "2, 3, 0, 4"
         END
     END
     BLOCK "VarFileInfo"
