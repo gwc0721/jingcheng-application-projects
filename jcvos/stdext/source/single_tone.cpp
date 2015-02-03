@@ -104,7 +104,7 @@ public:
 bool CSingleToneManager::IsSingleToneManager(LPVOID ptr)
 {
 	CSingleToneManager * base = (CSingleToneManager *)(ptr);
-	return IsEqualGUID(base->m_signature, SINGLE_TONE_GUID);
+	return IsEqualGUID(base->m_signature, SINGLE_TONE_GUID) != 0;
 }
 
 void CSingleToneManager::Initialize(JCSIZE size, CSingleToneEntry * entry)
