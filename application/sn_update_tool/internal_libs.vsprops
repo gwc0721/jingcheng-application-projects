@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="shift_jis"?>
+<VisualStudioPropertySheet
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="internal_libs"
+	>
+	<Tool
+		Name="VCCLCompilerTool"
+		AdditionalIncludeDirectories="$(VLDDIR);$(STDEXT_DIR);$(FERRISDK_DIR)"
+	/>
+	<Tool
+		Name="VCLinkerTool"
+		AdditionalLibraryDirectories="$(STDEXT_DIR)\lib\$(ConfigurationName);$(FERRISDK_DIR)\lib\$(ConfigurationName)"
+	/>
+	<UserMacro
+		Name="STDEXT_DIR"
+		Value="..\..\jcvos\stdext"
+	/>
+	<UserMacro
+		Name="FERRISDK_DIR"
+		Value="FerriSdk"
+	/>
+</VisualStudioPropertySheet>

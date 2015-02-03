@@ -18,9 +18,9 @@
 	<Configurations>
 		<Configuration
 			Name="DEBUG_STATIC_MFC|Win32"
-			OutputDirectory="$(SolutionDir)lib\"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
+			InheritedPropertySheets="..\..\..\jcvos\lib_output.vsprops"
 			UseOfMFC="1"
 			CharacterSet="1"
 			>
@@ -62,7 +62,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(OutDir)\$(ProjectName)D.lib"
+				OutputFile="$(OutDir)\$(ProjectName).lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -82,9 +82,9 @@
 		</Configuration>
 		<Configuration
 			Name="RELEASE_STATIC_MFC|Win32"
-			OutputDirectory="$(SolutionDir)lib\"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
+			InheritedPropertySheets="..\..\..\jcvos\lib_output.vsprops"
 			UseOfMFC="1"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
