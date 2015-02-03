@@ -536,7 +536,7 @@
 		</Configuration>
 		<Configuration
 			Name="DEBUG_WINAPI|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			OutputDirectory="lib\$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
 			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
@@ -582,6 +582,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
+				OutputFile="$(OutDir)\$(ProjectName).lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
