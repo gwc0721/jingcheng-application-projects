@@ -4,7 +4,6 @@
 	Version="9.00"
 	Name="sn_update_tool"
 	ProjectGUID="{67056069-BC17-47A4-B427-3410C79C1F01}"
-	RootNamespace="sm224testB"
 	Keyword="MFCProj"
 	TargetFrameworkVersion="0"
 	>
@@ -21,7 +20,7 @@
 			OutputDirectory="$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops;..\external_libs.vsprops"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops;..\external_libs.vsprops;.\internal_libs.vsprops"
 			UseOfMFC="1"
 			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="1"
@@ -44,17 +43,14 @@
 				MkTypLibCompatible="true"
 				SuppressStartupBanner="true"
 				TargetEnvironment="1"
-				TypeLibraryName=".\Release/sm224testB.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="$(VLDDIR);..\..\jcvos\stdext;FerriSDK"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;NECI"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderThrough="stdafx.h"
-				PrecompiledHeaderFile="$(IntDir)\sm224testB.pch"
 				AssemblerListingLocation="$(IntDir)\"
 				ObjectFile="$(IntDir)\"
 				ProgramDataBaseFileName="$(IntDir)\vc90.pdb"
@@ -101,7 +97,6 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Release/sm224testB.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -118,7 +113,7 @@
 			OutputDirectory="$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops;..\external_libs.vsprops"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops;..\external_libs.vsprops;.\internal_libs.vsprops"
 			UseOfMFC="1"
 			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="1"
@@ -141,18 +136,15 @@
 				MkTypLibCompatible="true"
 				SuppressStartupBanner="true"
 				TargetEnvironment="1"
-				TypeLibraryName=".\Debug/sm224testB.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="$(VLDDIR);..\..\jcvos\stdext;FerriSDK"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;NECI"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderThrough="stdafx.h"
-				PrecompiledHeaderFile=".\Debug/sm224testB.pch"
 				AssemblerListingLocation="$(IntDir)\"
 				ObjectFile="$(IntDir)\"
 				ProgramDataBaseFileName="$(IntDir)\vc90.pdb"
@@ -179,7 +171,7 @@
 				OutputFile="$(OutDir)\UpdateSnTool.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;$(VLDDIR)&quot;"
+				AdditionalLibraryDirectories="$(VLDDIR)"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(TargetDir)$(TargetName).pdb"
 				SubSystem="2"
@@ -199,7 +191,6 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Debug/sm224testB.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -216,7 +207,7 @@
 			OutputDirectory="$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops;..\external_libs.vsprops"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops;..\external_libs.vsprops;.\internal_libs.vsprops"
 			UseOfMFC="2"
 			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="2"
@@ -239,7 +230,6 @@
 				MkTypLibCompatible="true"
 				SuppressStartupBanner="true"
 				TargetEnvironment="1"
-				TypeLibraryName=".\Release/sm224testB.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -249,7 +239,6 @@
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="stdafx.h"
-				PrecompiledHeaderFile=".\Release/sm224testB.pch"
 				AssemblerListingLocation=".\Release/"
 				ObjectFile=".\Release/"
 				ProgramDataBaseFileName=".\Release/"
@@ -296,7 +285,6 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Release/sm224testB.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -313,7 +301,7 @@
 			OutputDirectory="$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops;..\external_libs.vsprops"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops;..\external_libs.vsprops;.\internal_libs.vsprops"
 			UseOfMFC="2"
 			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="1"
@@ -336,18 +324,15 @@
 				MkTypLibCompatible="true"
 				SuppressStartupBanner="true"
 				TargetEnvironment="1"
-				TypeLibraryName=".\Debug/sm224testB.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(VLD_INC_DIR)&quot;;..\..\jcvos\stdext;FerriSDKLoader"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				RuntimeLibrary="3"
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="stdafx.h"
-				PrecompiledHeaderFile=".\Debug/sm224testB.pch"
 				AssemblerListingLocation=".\Debug/"
 				ObjectFile=".\Debug/"
 				ProgramDataBaseFileName=".\Debug/"
@@ -371,12 +356,10 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="setupapi.lib newdev.lib version.lib"
-				OutputFile=".\Debug/sm224testB.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="D:\WINDDK\3790\lib\wnet\i386"
+				AdditionalLibraryDirectories="$(VLDDIR)"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Debug/sm224testB.pdb"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -394,7 +377,6 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Debug/sm224testB.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -527,9 +509,5 @@
 		</File>
 	</Files>
 	<Globals>
-		<Global
-			Name="RESOURCE_FILE"
-			Value="res\sm224testB.rc"
-		/>
 	</Globals>
 </VisualStudioProject>

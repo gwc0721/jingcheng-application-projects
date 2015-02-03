@@ -6,6 +6,7 @@ if ( test-path -path $package_name )
 {
 	write-host "remove folder $tar_dir"
 	remove-item -force -recurse -path $package_name
+	remove-item -force sn_update_tool.rar
 }
 md $package_name > null
 
@@ -34,15 +35,15 @@ function PackLib($src_dir, $lib_name, $SRC="LIB")
 	pop-location
 }
 
-
 md "$tar_dir\$app_dir" > null
 
 # create package of FerriSdk.package
 PackLib "jcvos" "stdext" 
 PackLib "$app_dir" "FerriSdk" $SRC
 PackLib "extlib" "vld"
+cp $ws_dir\jcvos\lib_output.vsprops $tar_dir\jcvos\lib_output.vsprops
 
-cp -recurse lib $tar_dir\$app_dir
+#cp -recurse lib $tar_dir\$app_dir
 
 #packing tool
 push-location
@@ -52,6 +53,7 @@ mv ".\tool.package" "$tar_dir\tool\$lib_name"
 pop-location
 
 cp *.vcproj $tar_dir\$app_dir
+cp *.vsprops $tar_dir\$app_dir
 cp -recurse source $tar_dir\$app_dir
 cp -recurse res $tar_dir\$app_dir
 cp -recurse test_data $tar_dir\$app_dir

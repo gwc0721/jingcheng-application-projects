@@ -21,10 +21,9 @@
 	<Configurations>
 		<Configuration
 			Name="RELEASE_STATIC_MFC|Win32"
-			OutputDirectory="$(SolutionDir)lib\"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
+			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\lib_output.vsprops"
 			UseOfMFC="1"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -65,6 +64,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
+				OutputFile="$(OutDir)\$(ProjectName).lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -87,7 +87,7 @@
 			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
+			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\lib_output.vsprops"
 			UseOfMFC="1"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -129,6 +129,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
+				OutputFile="$(OutDir)\$(ProjectName).lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -148,10 +149,9 @@
 		</Configuration>
 		<Configuration
 			Name="DEBUG_STATIC_MFC|Win32"
-			OutputDirectory="$(SolutionDir)lib\"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
+			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\lib_output.vsprops"
 			UseOfMFC="1"
 			CharacterSet="1"
 			>
@@ -194,7 +194,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(OutDir)\$(ProjectName)D.lib"
+				OutputFile="$(OutDir)\$(ProjectName).lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -217,7 +217,7 @@
 			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
+			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\lib_output.vsprops"
 			UseOfMFC="1"
 			CharacterSet="1"
 			>
@@ -280,10 +280,9 @@
 		</Configuration>
 		<Configuration
 			Name="RELEASE_DYNAMIC_MFC|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
+			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\lib_output.vsprops"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
@@ -345,7 +344,7 @@
 			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
+			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\lib_output.vsprops"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
@@ -405,10 +404,9 @@
 		</Configuration>
 		<Configuration
 			Name="DEBUG_DYNAMIC_MFC|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
+			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\lib_output.vsprops"
 			UseOfMFC="2"
 			CharacterSet="1"
 			>
@@ -473,7 +471,7 @@
 			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
+			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\lib_output.vsprops"
 			UseOfMFC="2"
 			CharacterSet="1"
 			>
@@ -536,10 +534,9 @@
 		</Configuration>
 		<Configuration
 			Name="DEBUG_WINAPI|Win32"
-			OutputDirectory="lib\$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
+			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\lib_output.vsprops"
 			UseOfMFC="0"
 			CharacterSet="1"
 			>
@@ -605,7 +602,7 @@
 			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
+			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\lib_output.vsprops"
 			UseOfMFC="0"
 			CharacterSet="1"
 			>
@@ -668,10 +665,9 @@
 		</Configuration>
 		<Configuration
 			Name="RELEASE_WINAPI|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
+			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\lib_output.vsprops"
 			UseOfMFC="0"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -734,7 +730,7 @@
 			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="4"
-			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\..\application\global_config.vsprops"
+			InheritedPropertySheets="..\..\application\external_libs.vsprops;..\lib_output.vsprops"
 			UseOfMFC="0"
 			CharacterSet="1"
 			WholeProgramOptimization="1"

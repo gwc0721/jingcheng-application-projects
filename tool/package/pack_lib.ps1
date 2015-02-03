@@ -22,12 +22,12 @@ if (test-path -path "include")
 }
 if ($Output -eq "SRC")
 {
-	copy-item *.vcproj $target_dir
-	copy-item -recurse source $target_dir\.
+	cp *.vcproj $target_dir
+	cp -recurse source $target_dir\.
 }
 elseif ($Output -eq "LIB") 
 {
-#	md $target_dir\lib > null
+	cp -recurse lib $target_dir
 }
 else
 {
