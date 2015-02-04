@@ -127,8 +127,8 @@ BOOL CUpdateSnToolDlg::OnInitDialog()
 		ListView_SetExtendedListViewStyle(m_ListUpdatedSNTool, LVS_EX_GRIDLINES|LVS_EX_FULLROWSELECT);
 
 		m_ListUpdatedSNTool.InsertColumn(0, _T("Item"), LVCFMT_CENTER, 60, -1);
-		m_ListUpdatedSNTool.InsertColumn(1, _T("Status"), LVCFMT_CENTER, 120, -1);
-		m_ListUpdatedSNTool.InsertColumn(2, _T("Model Name"), LVCFMT_CENTER, 220, -1);
+		m_ListUpdatedSNTool.InsertColumn(1, _T("Status"), LVCFMT_CENTER, 160, -1);
+		m_ListUpdatedSNTool.InsertColumn(2, _T("Model Name"), LVCFMT_CENTER, 180, -1);
 		m_ListUpdatedSNTool.InsertColumn(3, _T("Current S/N"), LVCFMT_CENTER, 180, -1);
 		m_ListUpdatedSNTool.SetTextColor(RGB(0,0,255));
 
@@ -224,7 +224,12 @@ void CUpdateSnToolDlg::OnStartUpdatedSN()
 		
 		SetStatus(COLOR_BLUE, _T("Scanning.."));
 
-		m_ferri_factory->ScanDevice(ferri_dev);
+		br = m_ferri_factory->ScanDevice(ferri_dev);
+		if ( (!br) || (ferri_dev == NULL) ) 
+		{
+			SetStatus(COLOR_RED, _T("Scan Drive Failed") );
+			throw new CUpsnError(UPSN_SCANDRIVE_FAIL);
+		}
 		CString str_port;
 		str_port.Format(_T("Port%d"), ferri_dev->GetTesterPort() );
 		m_ListUpdatedSNTool.SetItemText(0,0, str_port);
@@ -245,7 +250,6 @@ void CUpdateSnToolDlg::OnStartUpdatedSN()
 
 		start_time = CTime::GetCurrentTime();
 		Sleep(500);
-
 
 		info.m_init_bad = ferri_dev->GetInitialiBadBlockCount();
 		stdext::auto_array<BYTE> identify_buf(SECTOR_SIZE);
@@ -268,7 +272,6 @@ void CUpdateSnToolDlg::OnStartUpdatedSN()
 		m_ListUpdatedSNTool.SetItemText(0, List_ModelName, current_model_name);
 
 		//--
-
 		bool verify_sn = true;
 		LOG_DEBUG(_T("input sn = %s"), m_input_sn);
 		if ( ( (MODE_VERIFY_ONLY == m_test_mode) && (m_input_sn == m_global_prefix) ) )	
@@ -317,7 +320,6 @@ void CUpdateSnToolDlg::OnStartUpdatedSN()
 		info.m_pass_fail = true;
 
 		SetStatus(COLOR_BLUE, _T("Complete"));
-
 		// log1
 		br = m_log_file.WriteLog1(info, start_time);
 		br = m_log_file.WriteLog2(info, start_time);
@@ -386,6 +388,13 @@ void CUpdateSnToolDlg::OnStartUpdatedSN()
 		pe->Delete();
 	}
 
+	if (ferri_dev)
+	{
+		ferri_dev->PowerOnOff(false);	// power off
+		ferri_dev->Release();
+	}
+	ferri_dev = NULL;
+
 	m_edit_input_sn->EnableWindow(TRUE);
 	m_btn_quit->EnableWindow(TRUE);
 
@@ -396,8 +405,6 @@ void CUpdateSnToolDlg::OnStartUpdatedSN()
 	Invalidate(TRUE);
 	PassAllMessage();
 
-	if (ferri_dev) ferri_dev->Release();
-	ferri_dev = NULL;
 	return;
 }
 
@@ -561,9 +568,12 @@ int CUpdateSnToolDlg::UpsnUpdateToDevice(IFerriDevice * dev, bool verify_sn)
 		// verify before reset
 		UpsnReadIspFerri(isp_data_len, dev, isp_buf);
 		//updated success and reset device!!										
-		SetStatus(COLOR_BLUE, _T("Card Power Off"));
-		success = dev->ResetTester();
-		SetStatus(COLOR_BLUE, _T("Card Power on"));
+		SetStatus(COLOR_BLUE, _T("Card Power Off..."));
+		success = dev->PowerOnOff(false);
+		Sleep(2000);
+		//success = dev->ResetTester();
+		SetStatus(COLOR_BLUE, _T("Card Power On..."));
+		success = dev->PowerOnOff(true);
 		if(!success)	throw new CUpsnError(UPSN_Reset_FAIL);
 		//read isp back to check again
 		success = UpsnReadIspFerri(isp_data_len, dev, isp_buf);
