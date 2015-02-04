@@ -9,3 +9,13 @@ rev. 2.3.0.4 (svn )
 		during external text, if SOLO TESTER is reset, ferri sdk cannot reconnect to device
 		add retry for open device and test utility
 	(2) change log config name to "upsn.cfg"
+	
+rev. 3.0.0.6 (svn )
+#2015/02/03
+	(1) change main revision to 3.0
+	(2) package: move lib files to ./$(lib_dir)/lib/$(config)
+	(3) using ./jcvos/lib_output.vsprops file to set lib output folder
+	(4) ferri_sdk: IFerriDevice::ResetTester() -> IFerriDevice::PowerOnOff(bool)
+	(5) sn_update_tool: power off after update / verify.
+	(6) add RELEASE_DYNAMIC_MFC and DEBUG_DYNAMIC_MFC
+	
