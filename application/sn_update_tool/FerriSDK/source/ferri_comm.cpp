@@ -42,20 +42,7 @@ bool CFerriFactory::CreateDevice(HANDLE dev, IFerriDevice * & ferri)
 {
 	JCASSERT(NULL == ferri);
 	JCASSERT(dev);
-
-	//if (m_ctrl_name == _T("LT2244") )
-	//{
-	//	CFerriLT2244 * _ferri = new CFerriLT2244(dev);
-	//	_ferri->LoadDll(dll_path);
-	//	ferri = static_cast<IFerriDevice*>(_ferri);
-	//}
-	//else if ( m_ctrl_name == _T("SM2236") )
-	//{
-	//	CFerriSM2236 * _ferri = new CFerriSM2236(dev);
-	//	_ferri->LoadDll(dll_path);
-	//	ferri = static_cast<IFerriDevice*>(_ferri);
-	//}
-	return true;
+	return false;
 }
 
 bool CFerriFactory::ScanDevice(IFerriDevice * & ferri)
@@ -98,6 +85,8 @@ bool CFerriFactory::ScanDevice(IFerriDevice * & ferri)
 				LOG_DEBUG(_T("Port %d is up"), port_num);
 				tester_connect = true;
 				if (inquiry_buf[0x0C])	hub_connect = true;
+				// <TODO> force power on here
+				SMITesterPowerOn(h_dev);
 				break;
 			}
 		}
@@ -192,15 +181,19 @@ CFerriComm::~CFerriComm(void)
 	delete [] m_mpisp;
 }
 
-bool CFerriComm::ResetTester(void)
+bool CFerriComm::PowerOnOff(bool on_off)
 {
-	LOG_STACK_TRACE();
+	LOG_STACK_TRACE_EX(_T("power on_off = %d"), on_off);
 	CheckDevice(m_dev);
-
-	bool br = false;
-	SMITesterPowerOff(m_dev, m_tester);
-	Sleep(2000);
-	br = SMITesterPowerOn(m_dev);
+	bool br = true;
+	if (on_off)
+	{	// power on
+		br = SMITesterPowerOn(m_dev);
+	}
+	else
+	{	// power off
+		SMITesterPowerOff(m_dev, m_tester);
+	}
 	return br;
 }
 
@@ -275,7 +268,7 @@ bool CFerriComm::Connect(void)
 		if (hdev == INVALID_HANDLE_VALUE) continue;
 		LOG_DEBUG(_T("open device: 0x%08X"), hdev);
 
-		br = SCSICommandReadTester(hdev, NULL, 0, Command);
+		br = (SCSICommandReadTester(hdev, NULL, 0, Command) != FALSE);
 		LOG_DEBUG(_T("test utility: %d"), br);
 		if (!br) continue;
 		// connected OK

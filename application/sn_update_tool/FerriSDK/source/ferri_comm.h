@@ -126,7 +126,9 @@ public:
 		TestClose(dev);
 	}
 	virtual bool Connect(void);
-	virtual bool ResetTester(void);
+	//virtual bool ResetTester(void);
+	// on_off == true: power on, on_off == false: power off
+	virtual bool PowerOnOff(bool power_on);
 	virtual TCHAR GetDriveLetter(void) {return m_drive_letter;}
 	virtual void GetDriveName(CJCStringT & str) {str = m_drive_name;}
 	virtual UINT GetTesterPort(void) {return m_tester_port;}

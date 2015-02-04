@@ -62,7 +62,8 @@ public:
 	virtual bool CheckFlashId(LPVOID fid, JCSIZE len) = 0;
 
 	virtual bool SetMpisp(LPVOID mpisp, JCSIZE mpisp_len) = 0;
-	virtual bool ResetTester(void) = 0;
+	// power_on == true: power on, power_on == false: power off
+	virtual bool PowerOnOff(bool power_on) = 0;
 	virtual void Disconnect(void) = 0;
 	virtual bool Connect(void) = 0;
 
