@@ -147,7 +147,7 @@ void CSmiDeviceComm::ReadSRAM(WORD ram_add, WORD bank, BYTE * buf)
 }
 
 #ifndef VENDER_RETRY
-#define VENDER_RETRY 3
+#define VENDER_RETRY 10
 #endif
 
 bool CSmiDeviceComm::VendorCommand(CSmiCommand & cmd, READWRITE rd_wr, BYTE* data_buf, JCSIZE secs, UINT timeout)
@@ -292,7 +292,7 @@ bool CSmiDeviceComm::GetCardInfo(CCardInfo & card_info)
 
 	// physical parameter
 	card_info.m_p_ppb = m_p_page_per_block;		// physical page per physical block
-	card_info.m_p_bpd = m_f_block_num / (m_ce_num / m_interleave);
+	card_info.m_p_bpd = m_f_block_num * m_interleave / m_ce_num;
 	// 总共NAND数
 	card_info.m_p_die = m_ce_num * m_channel_num;
 

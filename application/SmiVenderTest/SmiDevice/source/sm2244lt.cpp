@@ -134,8 +134,13 @@ bool CLT2244::Initialize(void)
 		if (0 == buf[ii]) break;
 
 	m_ce_num = 0;
-	for (int ii = 0x40; ii < 0x80; ii += 0x08, ++m_ce_num) 
+
+	BYTE ce_a = 0, ce_b = 0;
+	for (int ii = 0x40; ii < 0x80; ii += 0x08, ++ce_a) 
 		if (0 == buf[ii]) break;
+	for (int ii = 0x80; ii < 0xC0; ii += 0x08, ++ce_b) 
+		if (0 == buf[ii]) break;
+	m_ce_num = max(ce_a, ce_b);
 
 	m_info_index[0] = MAKEWORD(buf[0x143], buf[0x142]);
 	m_info_index[1] = MAKEWORD(buf[0x145], buf[0x144]);
@@ -169,6 +174,10 @@ bool CLT2244::Initialize(void)
 		if (bb & 0x04)		m_interleave = 4;
 		else if(bb & 0x02)	m_interleave = 2;
 		else				m_interleave = 1;
+
+		if (m_ce_num < m_interleave)	
+			THROW_ERROR(ERR_USER, _T("ce number (%d) < interleave (%d)"), m_ce_num, m_interleave);
+
 		
 		if ( buf[0x1C] & 0x80 )
 		{
@@ -306,7 +315,8 @@ bool CLT2244::GetProperty(LPCTSTR prop_name, UINT & val)
 
 void CLT2244::GetSpare(CSpareData & spare, BYTE * spare_buf)
 {
-	spare.m_id = spare_buf[0];
+	BYTE id = spare_buf[0];
+	spare.m_id = id;
 	spare.m_hblock = MAKEWORD(spare_buf[2], spare_buf[1]);
 	spare.m_hpage = MAKEWORD(spare_buf[4], spare_buf[3]);
 	spare.m_erase_count = spare_buf[5];
@@ -320,7 +330,19 @@ void CLT2244::GetSpare(CSpareData & spare, BYTE * spare_buf)
 	spare.m_ecc_code = spare_buf[0x40];
 
 	// serial number
-	if ( 0x40 == (spare_buf[0] & 0xF0) )	spare.m_serial_no = spare_buf[8];
+	if ( 0x40 == (id & 0xF0) )	
+	{	// cache block
+		spare.m_serial_no = spare_buf[8];
+//		spare.m_serial_no = spare_buf[7];
+		spare.m_index = spare_buf[7];
+	}
+	else if (0xE8 == id)
+	{	// cache info
+		spare.m_serial_no = spare_buf[1];
+	}
+
+	// save raw data of spare
+	memcpy_s(spare.m_raw, 16, spare_buf, 16);
 }
 
 JCSIZE CLT2244::GetSystemBlockId(JCSIZE id)
