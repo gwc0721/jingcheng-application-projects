@@ -2,7 +2,7 @@
 #include "storage_device_comm.h"
 #include <ntddscsi.h>
 
-LOCAL_LOGGER_ENABLE(_T("CStorageDeviceComm"), LOCAL_LOG_LEV); 
+LOCAL_LOGGER_ENABLE(_T("CStorageDeviceComm"), LOGGER_LEVEL_NOTICE); 
 
 #define CMD_BLOCK_SIZE	16
 

@@ -40,9 +40,11 @@ BEGIN_COLUMN_TABLE()
 	COLINFO_HEXL(WORD, 4,	3,	m_spare.m_hblock,	_T("hblock") )
 	COLINFO_HEXL(WORD, 4,	4,	m_spare.m_hpage,	_T("hpage") )
 	COLINFO_HEXL(BYTE, 2,	5,	m_spare.m_serial_no,_T("sn") )
-	COLINFO_HEXL(BYTE, 2,	6,	m_spare.m_ecc_code,	_T("ECC") )
-	(new CFBlockInfo::CBitErrColInfo(7, _T("BitError") ) )
-	(new CDataVector::CDataVectorInfo(8, _T("Data") ) )
+	COLINFO_HEXL(BYTE, 2,	6,	m_spare.m_index,	_T("index") )
+	COLINFO_HEXL(BYTE, 2,	7,	m_spare.m_ecc_code,	_T("ECC") )
+	(new CFBlockInfo::CBitErrColInfo(8, _T("BitError") ) )
+	(new CDataVector::CDataVectorInfo(9, _T("Data") ) )
+	(new CSpareRawInfo(10, _T("raw"), 16))
 END_COLUMN_TABLE()
 #undef __COL_CLASS_NAME
 
@@ -117,6 +119,28 @@ void CFBlockInfo::CBitErrColInfo::ToStream(void * row, jcparam::IJCStream * stre
 }
 
 void CFBlockInfo::CBitErrColInfo::CreateValue(BYTE * src, jcparam::IValue * & val) const
+{
+	CJCStringT str;
+	GetText(src, str);
+	val = jcparam::CTypedValue<CJCStringT>::Create(str);
+}
+
+void CSpareRawInfo::ToStream(void * row, jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt) const
+{
+	JCASSERT(stream);
+	CFBlockInfo * block = reinterpret_cast<CFBlockInfo*>(row);
+
+	BYTE * raw = block->m_spare.m_raw;
+
+	for (JCSIZE ii = 0; ii < m_width; ++ii)
+	{
+		stream->Put( stdext::hex2char(raw[ii] >> 4) );
+		stream->Put( stdext::hex2char(raw[ii] & 0x0F) );
+		stream->Put(_T(' '));
+	}
+}
+
+void CSpareRawInfo::CreateValue(BYTE * src, jcparam::IValue * & val) const
 {
 	CJCStringT str;
 	GetText(src, str);

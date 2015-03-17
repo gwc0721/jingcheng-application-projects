@@ -173,6 +173,22 @@ public:
 
 	// cache block / mother child / cache info 的序列号
 	BYTE	m_serial_no;		
+	// cache block index
+	BYTE	m_index;
+	BYTE	m_raw[16];
+};
+
+class CSpareRawInfo : public jcparam::COLUMN_INFO_BASE
+{
+public:
+	CSpareRawInfo(int id, LPCTSTR name, JCSIZE width)
+		: jcparam::COLUMN_INFO_BASE(id, jcparam::VT_OTHERS, 0, name) 
+		, m_width(width){}
+	virtual void ToStream(void * row, jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt) const;
+	virtual void CreateValue(BYTE * src, jcparam::IValue * & val) const;
+protected:
+	JCSIZE m_width;
+
 };
 
 extern const TCHAR __SPACE[128];
