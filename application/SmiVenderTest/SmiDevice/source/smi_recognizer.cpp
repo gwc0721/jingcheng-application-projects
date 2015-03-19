@@ -81,81 +81,11 @@ bool CSmiRecognizer::RecognizeDevice(
 	bool br = AutoStorageDevice(device_name, force_storage, storage_device);
 	if ( (!br) || (!storage_device.valid()) ) return false;
 
-/*
-	LOG_TRACE(_T("Recogizing driver %s"), device_name);
-
-	if ( 0  == m_storage_map.size() ) Register();
-	JCASSERT(smi_dev == NULL);
-	JCASSERT(device_name)
-
-	bool found = false;
-
-	LOG_DEBUG(_T("Opening driver %s"), device_name);
-	HANDLE hdev = CreateFile(device_name, 
-					GENERIC_READ|GENERIC_WRITE, 
-			  		FILE_SHARE_READ|FILE_SHARE_WRITE, 
-					NULL, 
-					OPEN_EXISTING, 
-					0 | FILE_FLAG_NO_BUFFERING, 
-					NULL );
-	if( INVALID_HANDLE_VALUE == hdev) return false;
-
-	DWORD junk = 0;
-
-	if ( !force_storage.empty() )
-	{
-		LOG_DEBUG(_T("Force storage %s"), force_storage.c_str() );
-		STORAGE_ITERATOR it = m_storage_map.find(force_storage);
-		if ( it == m_storage_map.end() )
-			THROW_ERROR(ERR_PARAMETER, _T("Unknow storage device %s"), force_storage.c_str() );
-		CStorageDeviceInfo & info = it->second;
-		if (NULL == info.m_creator) THROW_ERROR(
-			ERR_UNSUPPORT, _T("Storage device %s doesn't support force create"), force_storage.c_str() );
-		(*info.m_creator)(hdev, storage_device);
-		JCASSERT(storage_device);
-		bool br = storage_device->Recognize();
-		if (!br ) 
-		{
-			LOG_DEBUG(_T("Force storage %s failed"), force_storage.c_str() );
-			return false;
-		}
-	}
-	else
-	{
-		STORAGE_ITERATOR it = m_storage_map.begin();
-		STORAGE_ITERATOR endit = m_storage_map.end();
-		for ( ; it != endit; ++ it)
-		{
-			CStorageDeviceInfo & info = it->second;
-			LOG_DEBUG(_T("Trying storage %s"), info.m_name );
-			
-			JCASSERT(info.m_creator);
-			(*info.m_creator)(hdev, storage_device);
-			bool br = storage_device->Recognize();
-			if (br )
-			{
-				LOG_DEBUG(_T("Storage %s is match for %s"), info.m_name, device_name);
-				break;
-			}
-			storage_device->Detach(hdev);
-			storage_device->Release();
-		}
-	}
-
-	if (!storage_device) 
-	{
-		CloseHandle(hdev);
-		return false;
-	}
-	storage_device->SetDeviceName(device_name);
-*/
-	// Get Inquery buffer
 	stdext::auto_array<BYTE>	inquery_buf(4* SECTOR_SIZE);
 	memset((BYTE*)inquery_buf, 0, SECTOR_SIZE);
 	storage_device->Inquiry(inquery_buf, SECTOR_SIZE);
 
 	// Check if there is a tester
-
 	stdext::auto_interface<ISmiDevice>	smi_device;
 	CSmiDeviceCreator * creator = NULL;
 
@@ -197,7 +127,11 @@ bool CSmiRecognizer::RecognizeDevice(
 	if ( !creator )	return false;
 
 	// Do not unmount logical drive if using DUMMY controller
-	if ( _tcscmp(creator->m_name, _T("DUMMY")) != 0 )	storage_device->UnmountAllLogical();
+	if ( _tcscmp(creator->m_name, _T("DUMMY")) != 0 )
+	{
+		storage_device->UnmountAllLogical();
+		storage_device->DeviceLock();
+	}
 
 	JCASSERT(creator->m_creator);
 	br = (*creator->m_creator)(storage_device, smi_device);

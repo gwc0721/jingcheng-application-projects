@@ -109,6 +109,7 @@ public:
 	static LPCTSTR PROP_INFO_PAGE;		// UINT
 	static LPCTSTR PROP_ORG_BAD_INFO;		// UINT
 	static LPCTSTR PROP_ISP_MODE;		// UINT
+	static LPCTSTR PROP_HBLOCK_NUM;		// UINT
 
 	//// UINT, hi word: Combined Orphan Page, lo word: Block Index Page
 	//static LPCTSTR PROP_INFO_DIFFADD_PAGE;

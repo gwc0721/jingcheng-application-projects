@@ -69,5 +69,6 @@ protected:
 	static const CSmartAttrDefTab	m_smart_neci;
 	BYTE m_info_page, m_bitmap_page, m_orphan_page, m_blockindex_page;
 	WORD m_org_bad_info;
+	WORD m_h_block_num;
 };	
 

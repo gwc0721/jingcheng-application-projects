@@ -63,6 +63,7 @@ CLT2244::CLT2244(IStorageDevice * dev)
 	: CSM2242(dev)
 	, m_info_page(0xFF), m_bitmap_page(0xFF)
 	, m_orphan_page(0xFF), m_blockindex_page(0xFF)
+	, m_h_block_num(0)
 {
 }
 
@@ -235,6 +236,7 @@ bool CLT2244::Initialize(void)
 			if (strcmp((char*)(buf + 0xA0), ("SM2244LTAB")) == 0)
 			{
 				m_f_block_num = MAKEWORD(buf[0xB7], buf[0xB6]);
+				m_h_block_num = MAKEWORD(buf[0xB9], buf[0xB8]);
 				break;
 			}
 		}
@@ -310,6 +312,11 @@ bool CLT2244::GetProperty(LPCTSTR prop_name, UINT & val)
 		val = m_org_bad_info;
 		return true;
 	}
+	else if ( FastCmpT(prop_name, CSmiDeviceBase::PROP_HBLOCK_NUM) )
+	{
+		val = m_h_block_num;
+		return true;
+	}
 	else	return __super::GetProperty(prop_name, val);
 }
 
@@ -333,7 +340,6 @@ void CLT2244::GetSpare(CSpareData & spare, BYTE * spare_buf)
 	if ( 0x40 == (id & 0xF0) )	
 	{	// cache block
 		spare.m_serial_no = spare_buf[8];
-//		spare.m_serial_no = spare_buf[7];
 		spare.m_index = spare_buf[7];
 	}
 	else if (0xE8 == id)
