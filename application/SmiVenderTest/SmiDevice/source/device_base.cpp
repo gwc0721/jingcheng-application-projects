@@ -9,5 +9,6 @@ LPCTSTR CSmiDeviceBase::PROP_ISP_BLOCK =	_T("ISP_BLOCK");		// UINT, hi word: isp
 LPCTSTR CSmiDeviceBase::PROP_INFO_PAGE =	_T("INFO_PAGE");		// UINT
 LPCTSTR CSmiDeviceBase::PROP_ORG_BAD_INFO = _T("ORG_BAD_INFO");		// UINT
 LPCTSTR CSmiDeviceBase::PROP_ISP_MODE =		_T("ISP_MODE");			// UINT, hi word: info_valid; lo word: isp_mode
+LPCTSTR CSmiDeviceBase::PROP_HBLOCK_NUM =	_T("HBLOCK_NUM");			// UINT, hi word: info_valid; lo word: isp_mode
 
 
