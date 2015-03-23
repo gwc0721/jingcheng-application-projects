@@ -64,7 +64,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="setupapi.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="$(VLDDIR)"
+				AdditionalLibraryDirectories="$(VLDDIR); ..\..\..\jcvos\stdext\$(ConfigurationName)"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -92,7 +92,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release|Win32"
+			Name="RELEASE_WINAPI|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"

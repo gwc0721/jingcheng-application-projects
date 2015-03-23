@@ -4,6 +4,13 @@
 #include <jcparam.h>
 #include "../../Comm/virtual_disk.h"
 
+class ITestAuditPort : public IJCInterface
+{
+public:
+	virtual void SetStatus(const CJCStringT & status, jcparam::IValue * param_set) = 0;
+	virtual void SendEvent(void) = 0;
+};
+
 class IImage : public IJCInterface
 {
 public:
