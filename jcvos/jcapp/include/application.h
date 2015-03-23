@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "../local_config.h"
 #include "../../jcparam/jcparam.h"
@@ -185,12 +185,12 @@ namespace jcapp
 				| CJCLogger::COL_FUNCTION_NAME
 				| CJCLogger::COL_REAL_TIME
 				);
-			LOGGER_CONFIG(BASE::LOG_FONFIG_FN);
+			LOGGER_CONFIG(BASE::LOG_CONFIG_FN);
 		}
 		virtual ~CJCApp(void) {}
 
-		// for single tone
-		virtual void Release(void)	{delete this;};
+		// App作为静态变量存在，不需要delete
+		virtual void Release(void)	{};
 		virtual const GUID & GetGuid(void) const {return JCAPP_GUID;};
 		static CJCApp<BASE> * Instance(void)
 		{
