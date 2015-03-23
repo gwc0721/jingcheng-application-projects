@@ -14,7 +14,6 @@ const GUID jcapp::JCAPP_GUID =
 
 AppArguSupport::AppArguSupport(DWORD prop)
 	: m_src_file(NULL), m_dst_file(NULL), m_prop(prop)
-	//, m_show_help(false)
 {
 	
 }
@@ -111,15 +110,13 @@ void CJCAppBase::ShowAppInfo(FILE * out)
 
 CJCAppBase * CJCAppBase::GetApp(void)
 {
-	//static CJCAppBase * instance = NULL;
 	if (m_instance == NULL)	
 	{
 #if APP_GLOBAL_SINGLE_TONE > 0
-
 		CSingleToneEntry * entry = CSingleToneEntry::Instance();
 		CSingleToneBase * ptr = NULL;
 		entry->QueryStInstance(JCAPP_GUID, ptr);
-		instance = dynamic_cast<CJCAppBase*>(ptr);
+		m_instance = dynamic_cast<CJCAppBase*>(ptr);
 #endif
 	}
 	JCASSERT(m_instance);
