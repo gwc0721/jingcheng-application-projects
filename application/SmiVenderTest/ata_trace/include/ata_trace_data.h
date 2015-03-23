@@ -2,7 +2,6 @@
 
 #include <jcparam.h>
 #include "binary_buffer.h"
-//#include <SmiDevice.h>
 
 #define CMD_WRITE_DMA		(0xCA)
 #define CMD_READ_DMA		(0xC8)
@@ -50,25 +49,7 @@ public:
 	BYTE	m_status;
 	BYTE	m_error;
 	jcparam::IBinaryBuffer	* m_data;
-
-public:
-	//BYTE * CreateBuffer(JCSIZE size)
-	//{
-	//	CBinaryBuffer::Create(size, m_data);
-	//	return m_data->Lock();
-	//}
 };
-
-//class CTracePayload	: public jcparam::COLUMN_INFO_BASE
-//{
-//public:
-//	CTracePayload(int id, JCSIZE offset, LPCTSTR title) 
-//		: jcparam::COLUMN_INFO_BASE(id, jcparam::VT_OTHERS, offset, title) {};
-//
-//public:
-//	virtual void ToStream(void * row, jcparam::IJCStream * stream, jcparam::VAL_FORMAT fmt) const;
-//	virtual void CreateValue(BYTE * src, jcparam::IValue * & val) const;
-//};
 
 typedef jcparam::CTableRowBase<CAtaTrace>	CAtaTraceRow;
 typedef jcparam::CTypedTable<CAtaTrace>		CAtaTraceTable;
