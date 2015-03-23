@@ -4,7 +4,7 @@
 #include "config.h"
 #include "driver_factory.h"
 
-class CDriverImageFile : public IImage
+class CDriverImageFile : public IImage, public ITestAuditPort
 {
 public:
 	// create from configuration file
@@ -14,13 +14,27 @@ public:
 
 	IMPLEMENT_INTERFACE;
 
+// type definition
+protected:
+	enum VENDOR_CMD_STATUS
+	{	// standby
+		VDS0 = 0,	VDS1 = 1,	VDS2 = 2,	VDS3 = 3,
+		VDS4 = 4,	VDS_CMD = 5,VDS_DATA = 6,
+	};
+
+
+// interface of IImage
 public:
-	// interface
 	virtual ULONG32	Read(UCHAR * buf, ULONG64 lba, ULONG32 secs);
 	virtual ULONG32	Write(const UCHAR * buf, ULONG64 lba, ULONG32 secs);
 	virtual ULONG32	FlushCache(void);
 	virtual ULONG32	DeviceControl(ULONG code, READ_WRITE read_write, UCHAR * buf, ULONG32 & data_size, ULONG32 buf_size);
 	virtual ULONG64	GetSize(void) const {return m_file_secs;}
+
+// interface of ITestAuditPort
+public:
+	virtual void SetStatus(const CJCStringT & status, jcparam::IValue * param_set) {};
+	virtual void SendEvent(void) {};
 
 protected:
 	bool Initialize(void);
@@ -31,12 +45,6 @@ protected:
 
 	ULONG32 ScsiCommand(READ_WRITE rd_wr, UCHAR *buf, JCSIZE buf_len, UCHAR *cb, JCSIZE cb_length, UINT timeout);
 
-	enum VENDOR_CMD_STATUS
-	{	// standby
-		VDS0 = 0,	VDS1 = 1,	VDS2 = 2,	VDS3 = 3,
-		VDS4 = 4,	VDS_CMD = 5,VDS_DATA = 6,
-	};
-
 	// 返回true这数据有vendor command处理，不要读写实际数据
 	bool VendorCmdStatus(READ_WRITE rdwr, ULONG64 lba, ULONG32 secs, UCHAR * buf);
 	JCSIZE ProcessVendorCommand(const UCHAR * vcmd, JCSIZE vcmd_len, READ_WRITE rdwr, UCHAR * data, JCSIZE data_sec);
@@ -45,11 +53,16 @@ protected:
 	// secs：buffer大小
 	void ReadFlashData(WORD block, WORD page, BYTE chunk, BYTE mode, BYTE read_secs, UCHAR * buf, JCSIZE secs);
 	void WriteFlashData(WORD block, WORD page, BYTE read_secs, UCHAR * buf, JCSIZE secs);
+
+	// vendor command implement
+	JCSIZE ReadIDTable(UCHAR* buf, JCSIZE buf_size);
+
+
+protected:
 	VENDOR_CMD_STATUS	m_vendorcmd_st;
 	// 保存当前vendor command内容
 	UCHAR m_vendor_cmd[SECTOR_SIZE];
 
-protected:
 	HANDLE		m_file;
 	ULONG64		m_file_secs;
 

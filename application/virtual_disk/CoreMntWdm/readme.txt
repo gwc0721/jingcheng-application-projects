@@ -2,7 +2,7 @@
 
 1.0.0.1
 
-rev. 1.0.0.2
+rev. 1.0.0.2 (svn rev. 190)
 #20150115: 
 	问题：当User Mode Driver提供的缓存小于应用程序请求的读写大小是。Kernel Driver没有检查直接copy，导致blue screen panic。
 	解决：(1) 对于纯Read或者Write请求(例如Read(),或者Write())的大小超过User Mode Driver的缓存大小时，将应用程序的一个请求分解成多个请求发送给User Mode Driver。这种方法是模拟实际Device的传输限制。（LBA 24模式的128KB限制）

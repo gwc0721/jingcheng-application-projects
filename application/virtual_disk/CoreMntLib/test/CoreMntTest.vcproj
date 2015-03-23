@@ -228,7 +228,7 @@
 				AdditionalDependencies="setupapi.lib"
 				OutputFile="$(Solutiondir)\$(ConfigurationName)\$(ProjectName).exe"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="$(VLDDIR)"
+				AdditionalLibraryDirectories="$(VLDDIR);..\..\..\..\jcvos\stdext\lib\$(ConfigurationName)"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -336,10 +336,26 @@
 	<References>
 	</References>
 	<Files>
-		<File
-			RelativePath=".\source\main.cpp"
+		<Filter
+			Name="Header Files"
 			>
-		</File>
+			<File
+				RelativePath=".\source\CoreMntTest.h"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="Source Files"
+			>
+			<File
+				RelativePath=".\source\main.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\source\test_port.cpp"
+				>
+			</File>
+		</Filter>
 	</Files>
 	<Globals>
 	</Globals>

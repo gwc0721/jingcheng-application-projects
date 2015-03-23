@@ -21,7 +21,6 @@
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
-			InheritedPropertySheets="..\..\global_config.vsprops"
 			CharacterSet="1"
 			>
 			<Tool
@@ -59,10 +58,12 @@
 			/>
 			<Tool
 				Name="VCPreLinkEventTool"
+				CommandLine=""
 			/>
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="2"
+				AdditionalLibraryDirectories="..\..\..\jcvos\stdext\$(ConfigurationName)"
 				ModuleDefinitionFile="CoreMntDriverFile.def"
 				GenerateDebugInformation="true"
 				SubSystem="2"
@@ -91,11 +92,10 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release|Win32"
+			Name="RELEASE_WINAPI|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
-			InheritedPropertySheets="..\..\global_config.vsprops"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
@@ -118,10 +118,11 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
+				AdditionalIncludeDirectories="..\..\..\jcvos\stdext;..\..\..\jcvos\jcparam;..\..\..\jcvos\jcapp;$(BOOST_DIR)"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;COREMNTDRIVERFILE_EXPORTS"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
-				UsePrecompiledHeader="2"
+				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="3"
 			/>
@@ -215,6 +216,10 @@
 			</File>
 			<File
 				RelativePath=".\source\DriverImageFile.h"
+				>
+			</File>
+			<File
+				RelativePath=".\source\idtable_2244lt.h"
 				>
 			</File>
 			<File

@@ -40,3 +40,8 @@
 #define FIELD_BLOCK_NUM			_T("block_number")
 
 #define SEG_TESTER				__T("tester")
+
+#define SEG_CARD_DEBUG			_T("debug")
+#define FIELD_DUMWR_START		_T("dummy_write_start")
+#define FILED_DUMWR_SIZE		_T("dummy_write_size")
+

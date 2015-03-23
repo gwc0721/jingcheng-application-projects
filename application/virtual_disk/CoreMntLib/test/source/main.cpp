@@ -1,21 +1,10 @@
 ﻿
-#include <stdio.h>
-#include <tchar.h>
-
-#include <iostream>
-#include <conio.h>
-
-#define LOGGER_LEVEL LOGGER_LEVEL_DEBUGINFO
-#define LOG_OUT_CLASS_SIZE
-
+#include "CoreMntTest.h"
 #include <vld.h>
-#include <stdext.h>
-#include <jcapp.h>
 
 LOCAL_LOGGER_ENABLE(_T("CoreMntTest"), LOGGER_LEVEL_DEBUGINFO);
 
-#include "../../include/mntSyncMountmanager.h"
-#include "../../include/mntImage.h"
+
 
 #define _STATIC_CPPLIB
 #define BLOCK_LENGTH         0x1000
@@ -23,61 +12,9 @@ LOCAL_LOGGER_ENABLE(_T("CoreMntTest"), LOGGER_LEVEL_DEBUGINFO);
 LOG_CLASS_SIZE(CORE_MNT_EXCHANGE_REQUEST)
 LOG_CLASS_SIZE(CJCLoggerNode)
 
+const TCHAR CCoreMntTestApp::LOG_CONFIG_FN[] = _T("jclog.cfg");
 
-class CCoreMntTestApp : public jcapp::CJCAppSupport<jcapp::AppArguSupport>
-{
-public:
-	CCoreMntTestApp(void);
-
-public:
-	virtual int Initialize(void);
-	virtual int Run(void);
-	virtual void CleanUp(void);
-	virtual LPCTSTR AppDescription(void) const { return 
-		_T("CoreMnt Management Utility\n")
-		_T("\t by Jingcheng Yuan\n");
-	};
-
-protected:
-	void CreateParameter(jcparam::CParamSet * &param);
-	void InstallDriver(CSyncMountManager & mntmng,const CJCStringT & driver);
-	void LoadUserModeDriver(const CJCStringT & driver, IImage * & img);
-
-public:
-	// 挂载点，如果没有指定，则不挂载
-	TCHAR	m_mnt_point;
-	// 用于和驱动通信的device id，如果没有指定device id，则创建device
-	UINT	m_dev_id;
-	UINT	m_remove;	// remove dead device
-	// image文件大小，单位字节
-	FILESIZE	m_file_size;
-
-	CJCStringT	m_filename;
-	bool	m_connect;
-	HANDLE	m_exit_event;
-	CJCStringT	m_driver;
-	CJCStringT	m_device_name;
-	CJCStringT	m_config;		// file name of configuration.
-	bool	m_install_driver, m_uninstall_driver;
-
-protected:
-	enum DRIVER_STATUS
-	{	
-		ST_INIT	=0,	ST_DRV_INSTALLED =1, 
-		ST_DRV_LOADED=2, 
-		ST_DRV_CONNECTED=3,
-		ST_MOUNTED=4
-	};
-protected:
-	CSyncMountManager	m_mount_manager;
-	//HMODULE				m_driver_module;
-	CJCStringT			m_app_path;
-	DRIVER_STATUS				m_status;
-};
-
-typedef jcapp::CJCApp<CCoreMntTestApp>	CApplication;
 #define _class_name_	CApplication
-
 BEGIN_ARGU_DEF_TABLE()
 	ARGU_DEF_ITEM(_T("driver"),		_T('p'), CJCStringT,	m_driver,		_T("load user mode driver.") )
 	ARGU_DEF_ITEM(_T("mount"),		_T('m'), TCHAR,			m_mnt_point,	_T("mount point.") )
@@ -116,8 +53,8 @@ CCoreMntTestApp::CCoreMntTestApp(void)
 	: jcapp::CJCAppSupport<jcapp::AppArguSupport>(ARGU_SUPPORT_HELP | ARGU_SUPPORT_OUTFILE)
 	, m_dev_id(UINT_MAX), m_file_size(0x100000LL), m_mnt_point(0)
 	, m_exit_event(NULL), m_connect(false), m_remove(UINT_MAX)
-	//, m_driver_module(NULL) 
 	, m_install_driver(false), m_uninstall_driver(false)
+	, m_test_thread(NULL), m_test_port(NULL)
 {
 	m_status = ST_INIT;
 }
@@ -154,12 +91,19 @@ void CCoreMntTestApp::LoadUserModeDriver(const CJCStringT & driver, IImage * & i
 	// create parameters
 	stdext::auto_interface<jcparam::CParamSet> param;
 	CreateParameter(param);
-	m_mount_manager.LoadUserModeDriver(drv_path, _T("vendor_test"), static_cast<jcparam::IValue*>(param), img/*, m_driver_module*/);
+	m_mount_manager.LoadUserModeDriver(drv_path, _T("vendor_test"), static_cast<jcparam::IValue*>(param), img);
 
 	JCASSERT(img);
 	m_status = ST_DRV_LOADED;
 	_tprintf(_T("Succeded\n"));
 }
+
+//void CCoreMntTestApp::StartTestPort(ITestAuditPort * test_port)
+//{
+//	DWORD tid = 0;
+//	m_test_thread = CreateThread(NULL, 0, StaticStartTestPort, (LPVOID)(test_port), 0, &tid);
+//}
+
 
 
 int CCoreMntTestApp::Run(void)
@@ -196,6 +140,18 @@ int CCoreMntTestApp::Run(void)
 	LoadUserModeDriver(m_driver, img);
 	JCASSERT( img.valid() );
 	m_file_size = img->GetSize();
+
+	m_test_port = img.d_cast<ITestAuditPort*>();
+	if (m_test_port)
+	{
+		m_test_port->AddRef();
+		DWORD tid = 0;
+		m_test_thread = CreateThread(NULL, 0, StaticStartTestPort, (LPVOID)(this), 0, &tid);
+
+		//StartTestPort(test_port);
+		//test_port->SendEvent();
+		//test_port->Release();
+	}
 
 #ifndef LOCAL_DEBUG
 
@@ -277,6 +233,7 @@ void CCoreMntTestApp::CleanUp(void)
 		_tprintf(_T("Succeeded\n"));
 		m_status = ST_DRV_LOADED;
 	}
+	if (m_test_thread) CloseHandle(m_test_thread);
 
 	if ( (m_status >= ST_DRV_LOADED) /*&& m_driver_module*/)
 	{
@@ -291,6 +248,8 @@ void CCoreMntTestApp::CleanUp(void)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+	return jcapp::local_main(argc, argv);
+/*
 	int ret_code = 0;
 	CApplication * app = CApplication::Instance();
 	JCASSERT(app);
@@ -313,5 +272,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	stdext::jc_printf(_T("Press any key to continue..."));
 	getc(stdin);
 	return ret_code;
+*/
 }
 
