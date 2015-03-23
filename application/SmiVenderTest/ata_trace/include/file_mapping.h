@@ -37,12 +37,18 @@ public:
 	virtual FILESIZE GetSize(void) const {return m_file_size;}
 	virtual LPVOID Mapping(FILESIZE offset, JCSIZE len);
 	virtual void Unmapping(LPVOID ptr);
-	template <typename T>	T Aligne(T val)
+	// 向下对其
+	template <typename T>	T AligneLo(T val)
+	{
+		T aligned = (val & (T)m_grn_mask);
+		return aligned;
+	}
+	// 向上对其
+	template <typename T>	T AligneHi(T val)
 	{
 		T aligned = ((val -1) & (T)m_grn_mask) + (T)m_granularity;
 		return aligned;
 	}
-
 protected:
 	VIEW_NODE * FindView(FILESIZE start, JCSIZE len);
 	void InsertView(BYTE * ptr, FILESIZE start, JCSIZE len);

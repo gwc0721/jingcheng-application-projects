@@ -39,9 +39,13 @@ CFileMappingBuf::CFileMappingBuf(CFileMapping * mapping, JCSIZE offset_sec, JCSI
 	FILESIZE start = SECTOR_TO_BYTEL(offset_sec);
 	JCSIZE data_len = SECTOR_TO_BYTE(secs);
 
-	m_aligned_start = m_mapping->Aligne(start);		JCASSERT(m_aligned_start <= start);
+	m_aligned_start = m_mapping->AligneLo(start);		JCASSERT(m_aligned_start <= start);
 	m_offset = (JCSIZE)(start - m_aligned_start);
-	m_aligned_len = m_mapping->Aligne(data_len);
+
+	FILESIZE end = start + data_len;
+	FILESIZE aligned_end = m_mapping->AligneHi(end);	JCASSERT(aligned_end >= end);
+	m_aligned_len = (JCSIZE)(aligned_end - m_aligned_start);
+	//m_aligned_len = m_mapping->Aligne(data_len);
 
 }
 
@@ -62,6 +66,7 @@ BYTE * CFileMappingBuf::Lock(void)
 {
 	// 指针对齐
 	if (!m_ptr)		m_ptr = (BYTE*)(m_mapping->Mapping(m_aligned_start, m_aligned_len));
+	if (!m_ptr)		THROW_WIN32_ERROR(_T("mapping file failed."))
 	InterlockedIncrement(&m_locked);
 	return m_ptr + m_offset;
 }
