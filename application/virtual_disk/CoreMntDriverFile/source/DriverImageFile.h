@@ -4,6 +4,8 @@
 #include "config.h"
 #include "driver_factory.h"
 
+#include "../../DeviceConfig/DeviceConfig.h"
+
 class CDriverImageFile : public IImage, public ITestAuditPort
 {
 public:

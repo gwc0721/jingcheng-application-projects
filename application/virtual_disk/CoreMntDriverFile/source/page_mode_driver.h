@@ -2,6 +2,7 @@
 
 #include "../../CoreMntLib/include/mntImage.h"
 #include "driver_factory.h"
+#include "../../DeviceConfig/DeviceConfig.h"
 
 #define LODWORD(a)			((ULONG32)(a & 0xFFFFFFFF))
 #define HIDWORD(a)			((ULONG32)((a >> 32) & 0xFFFFFFFF))
