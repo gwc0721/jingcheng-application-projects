@@ -25,7 +25,8 @@ public:
 	void InstallDriver(const CJCStringT & driver_fn);
 	void UninstallDriver(void);
 
-	bool LoadUserModeDriver(const CJCStringT & drv_path, const CJCStringT & drv_name, jcparam::IValue * param, IImage *& obj/*, HMODULE & module*/);
+	//bool LoadUserModeDriver(const CJCStringT & drv_path, const CJCStringT & drv_name, jcparam::IValue * param, IImage *& obj/*, HMODULE & module*/);
+	bool LoadUserModeDriver(const CJCStringT & drv_path, const CJCStringT & drv_name, const CJCStringT & config, IImage *& obj/*, HMODULE & module*/);
 	void UnloadDriver(void);
 
 protected:

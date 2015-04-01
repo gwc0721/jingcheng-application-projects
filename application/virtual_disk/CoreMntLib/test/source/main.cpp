@@ -13,6 +13,7 @@ LOG_CLASS_SIZE(CORE_MNT_EXCHANGE_REQUEST)
 LOG_CLASS_SIZE(CJCLoggerNode)
 
 const TCHAR CCoreMntTestApp::LOG_CONFIG_FN[] = _T("jclog.cfg");
+CApplication _app;
 
 #define _class_name_	CApplication
 BEGIN_ARGU_DEF_TABLE()
@@ -89,9 +90,9 @@ void CCoreMntTestApp::LoadUserModeDriver(const CJCStringT & driver, IImage * & i
 	_tprintf(_T("Loading user driver %s ...\n"), drv_path.c_str() );
 
 	// create parameters
-	stdext::auto_interface<jcparam::CParamSet> param;
-	CreateParameter(param);
-	m_mount_manager.LoadUserModeDriver(drv_path, _T("vendor_test"), static_cast<jcparam::IValue*>(param), img);
+	//stdext::auto_interface<jcparam::CParamSet> param;
+	//CreateParameter(param);
+	m_mount_manager.LoadUserModeDriver(drv_path, _T("vendor_test"), m_config, img);
 
 	JCASSERT(img);
 	m_status = ST_DRV_LOADED;
@@ -249,29 +250,5 @@ void CCoreMntTestApp::CleanUp(void)
 int _tmain(int argc, _TCHAR* argv[])
 {
 	return jcapp::local_main(argc, argv);
-/*
-	int ret_code = 0;
-	CApplication * app = CApplication::Instance();
-	JCASSERT(app);
-	try
-	{
-		app->Initialize();
-		ret_code = app->Run();
-	}
-	catch (stdext::CJCException & err)
-	{
-		stdext::jc_fprintf(stderr, _T("error: %s\n"), err.WhatT() );
-		ret_code = err.GetErrorID();
-	}
-    catch(const std::exception & ex)
-    {
-        std::cout << ex.what();
-    }
-	app->CleanUp();
-
-	stdext::jc_printf(_T("Press any key to continue..."));
-	getc(stdin);
-	return ret_code;
-*/
 }
 

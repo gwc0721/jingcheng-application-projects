@@ -356,6 +356,14 @@
 				>
 			</File>
 		</Filter>
+		<File
+			RelativePath=".\CoreMntTest.rc"
+			>
+		</File>
+		<File
+			RelativePath=".\resource.h"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>

@@ -145,14 +145,11 @@ void CSyncMountManager::UninstallDriver(void)
 	if (!br) LOG_DEBUG(_T("delete service failed, code=%d"), GetLastError() );
 }
 
-bool CSyncMountManager::LoadUserModeDriver(const CJCStringT & drv_path, const CJCStringT & drv_name, jcparam::IValue * param, IImage * & img/*, HMODULE & module*/)
+//bool CSyncMountManager::LoadUserModeDriver(const CJCStringT & drv_path, const CJCStringT & drv_name, jcparam::IValue * param, IImage * & img/*, HMODULE & module*/)
+bool CSyncMountManager::LoadUserModeDriver(const CJCStringT & drv_path, const CJCStringT & drv_name, const CJCStringT & config, IImage * & img)
 {
 	JCASSERT(NULL == img);
 	JCASSERT(NULL == m_driver_module);
-
-	//CJCStringT drv_path;
-	//drv_path = m_app_path + _T("\\") + driver + _T(".dll");
-	//_tprintf(_T("Loading user driver %s ..."), drv_path.c_str() );
 
 	m_driver_module = LoadLibrary(drv_path.c_str());
 	if (m_driver_module == NULL) THROW_WIN32_ERROR(_T(" failure on loading driver %s "), drv_path.c_str() );
@@ -166,15 +163,8 @@ bool CSyncMountManager::LoadUserModeDriver(const CJCStringT & drv_path, const CJ
 	if (!br) THROW_ERROR(ERR_APP, _T("failure on getting factory."));
 	JCASSERT( factory.valid() );
 
-	// create parameters
-	//stdext::auto_interface<jcparam::CParamSet> param;
-	//CreateParameter(param);
-
-	factory->CreateDriver(drv_name, param, img);
+	factory->CreateDriver(drv_name, config, img);
 	JCASSERT(img);
-	//m_status = ST_DRV_LOADED;
-	//_tprintf(_T("Succeded\n"));
-
 	return true;
 }
 

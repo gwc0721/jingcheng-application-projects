@@ -25,7 +25,8 @@ public:
 class IDriverFactory : public IJCInterface
 {
 public:
-	virtual bool	CreateDriver(const CJCStringT & driver_name, jcparam::IValue * param, IImage * & driver) = 0;
+	//virtual bool	CreateDriver(const CJCStringT & driver_name, jcparam::IValue * param, IImage * & driver) = 0;
+	virtual bool	CreateDriver(const CJCStringT & driver_name, const CJCStringT & config, IImage * & driver) = 0;
 	virtual UINT	GetRevision(void) const = 0;
 };
 
