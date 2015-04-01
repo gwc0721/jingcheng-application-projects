@@ -1,0 +1,6 @@
+LIBRARY	"DriverImageForTrace"
+
+EXPORTS
+	GetDriverFactory	PRIVATE
+;	SECTIONS
+;	Shared READ WRITE SHARED
