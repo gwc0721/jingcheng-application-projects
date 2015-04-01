@@ -6,8 +6,11 @@ DWORD WINAPI CCoreMntTestApp::StaticStartTestPort(LPVOID param)
 {
 	JCASSERT(param);
 	CCoreMntTestApp* app = reinterpret_cast<CCoreMntTestApp*>(param);
-	app->RunTestPort(m_test_port);
+	//app->RunTestPort(m_test_port);
+	return 0;
 }
+
+#define MAX_LINE_BUF 1024
 
 void CCoreMntTestApp::RunTestPort(ITestAuditPort * test_port)
 {
