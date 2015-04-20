@@ -180,11 +180,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\source\hello_opencv.cpp"
+				RelativePath=".\source\imgproc_base.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\source\imgproc_base.cpp"
+				RelativePath=".\source\processor_box.cpp"
 				>
 			</File>
 		</Filter>
@@ -203,6 +203,10 @@
 			</File>
 			<File
 				RelativePath=".\source\imgproc_base.h"
+				>
+			</File>
+			<File
+				RelativePath=".\source\processor_factory.h"
 				>
 			</File>
 			<File
