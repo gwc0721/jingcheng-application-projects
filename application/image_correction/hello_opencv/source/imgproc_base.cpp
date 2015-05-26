@@ -8,6 +8,8 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <math.h>
 
+#include <fstream>
+
 LOCAL_LOGGER_ENABLE(_T("image_processor"), LOGGER_LEVEL_DEBUGINFO);
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -16,6 +18,7 @@ LOG_CLASS_SIZE(CImageProcessorBase);
 
 CImageProcessorBase::CImageProcessorBase(void)
 : m_ref(1), m_proc_box(NULL)
+, m_active_channel(0)
 {
 	memset(m_source, 0, sizeof(IImageProcessor*) * MAX_SOURCE);
 }
@@ -27,7 +30,9 @@ CImageProcessorBase::~CImageProcessorBase(void)
 
 void CImageProcessorBase::ConnectTo(int input_id, IImageProcessor * src)
 {
-	LOG_STACK_TRACE_EX(_T("input: %d, src: <%08X>"), input_id, (UINT)(src));
+	LOG_STACK_TRACE();
+	
+	LOG_DEBUG(_T("connect src: <%08X> to dst: <%08X>, port %d"), (UINT)(src), (UINT)(this), input_id);
 
 	JCASSERT(input_id < MAX_SOURCE);
 	if (m_source[input_id] != NULL)
@@ -49,14 +54,15 @@ void CImageProcessorBase::OnInitialize(void)
 {
 	const PARAMETER_DEFINE * param_tab = NULL;
 	JCSIZE param_num = GetParamDefineTab(param_tab);
-	if ( (param_num > 0) && (param_tab) )
+	if ( (param_num > 0) && (param_tab) && (m_proc_box) )
 	{
-		JCASSERT(m_proc_box);
+		// m_proc_box允许为空，为空时忽略GUI处理
+		//JCASSERT(m_proc_box);
 		for (JCSIZE ii=0; ii < param_num; ++ii)
 		{
-			int default_val = *((int*)((char *)(this) + param_tab[ii].offset));
+			*((int*)((char *)(this) + param_tab[ii].offset)) = param_tab[ii].default_val;
 			m_proc_box->RegistTrackBar(param_tab[ii].name, 
-				/*param_tab[ii].default_val,*/ default_val, param_tab[ii].max_val);
+				param_tab[ii].default_val, param_tab[ii].max_val);
 		}
 	}
 }
@@ -68,7 +74,6 @@ bool CImageProcessorBase::OnParameterUpdated(const char * name, int val)
 	JCSIZE param_num = GetParamDefineTab(param_tab);
 	if ( (param_num > 0) && (param_tab) )
 	{
-		JCASSERT(m_proc_box);
 		for (JCSIZE ii=0; ii < param_num; ++ii)
 		{
 			if (strcmp(name, param_tab[ii].name) == 0)
@@ -86,99 +91,140 @@ void CImageProcessorBase::write(cv::FileStorage & fs) const
 {
 	const PARAMETER_DEFINE * param_tab = NULL;
 	JCSIZE param_num = GetParamDefineTab(param_tab);
+	// make name
+	CJCStringA str_name;
+	if (m_proc_box)	str_name = m_proc_box->GetNameA();
+	else			str_name = GetProcTypeA();
+
 	if ( (param_num > 0) && (param_tab) )
 	{
-		fs << GetProcTypeA();
+		fs << str_name;
 		fs << "{";
-		JCASSERT(m_proc_box);
-		fs << "name" << m_proc_box->GetNameA();
-		JCASSERT(m_proc_box);
+		// <TODO> 目前忽略porc名称，目标：自动生成临时名称
+		fs << "proc_type" << GetProcTypeA();
 		for (JCSIZE ii=0; ii < param_num; ++ii)
 		{
 			fs << param_tab[ii].name;
-			fs << *((int*)((char *)(this) + param_tab[ii].offset));
-			m_proc_box->RegistTrackBar(param_tab[ii].name, 
-				param_tab[ii].default_val, param_tab[ii].max_val);
+			int param_val = *((int*)((char *)(this) + param_tab[ii].offset));
+			fs << param_val;
 		}
 		fs << "}";
 	}
+}
 
+void CImageProcessorBase::read(cv::FileNode & node)
+{
+	LOG_STACK_TRACE();
+	const PARAMETER_DEFINE * param_tab = NULL;
+	JCSIZE param_num = GetParamDefineTab(param_tab);
+	if ( (param_num > 0) && (param_tab) )
+	{
+		for (JCSIZE ii=0; ii < param_num; ++ii)
+		{
+			int &param_val = *((int*)((char *)(this) + param_tab[ii].offset));
+			param_val = node[ param_tab[ii].name ];
+			LOG_DEBUG(_T("read '%S' = %d"), param_tab[ii].name, param_val);
+			if (m_proc_box) m_proc_box->UpdateTrackBar(ii, param_val);
+		}
+	}
+	if (m_proc_box) m_proc_box->OnUpdateBox();
+}
+
+void CImageProcessorBase::GetSourceImage(int inport, int channel, cv::Mat & img)
+{
+	stdext::auto_interface<IImageProcessor> src_proc;
+	GetSource(inport, src_proc);
+	src_proc->GetOutputImage(img);
+}
+
+void CImageProcessorBase::SetActiveChannel(int ch) 
+{
+	int chs = GetChannelNum();
+	m_active_channel = ch % chs;
+}
+
+void CImageProcessorBase::SaveResult(const CJCStringA & fn)
+{
+	CJCStringA _fn = fn + ".jpg";
+	cv::Mat img;
+	GetOutputImage(img);
+	cv::imwrite(_fn, img);
+}
+
+void CImageProcessorBase::OnRactSelected(const cv::Rect & rect) 
+{
+	LOG_DEBUG(_T("ROI selected: (%d, %d) - (%d, %d)"), rect.x, rect.y, rect.width, rect.height);
+	m_roi = rect;
+}
+
+void CImageProcessorBase::GetOutputImage(cv::Mat & img) 
+{
+	cv::Mat tmp;
+	GetOutputImage(m_active_channel, tmp);
+	if ( (m_roi.height != 0) && (m_roi.width !=0))	img = tmp(m_roi);
+	else img = tmp;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //--
-#define SCALE 3
-LOG_CLASS_SIZE(CPreProcessor);
+LOG_CLASS_SIZE(CProcSource);
 
-bool CreatePreProcessor(const CJCStringT & src_fn, IImageProcessor * & proc)
+bool CProcSource::SetProperty(const CJCStringT & prop_name, const jcparam::IValue * val)
 {
-	JCASSERT(proc == NULL);
-	proc = static_cast<IImageProcessor*>(new CPreProcessor(src_fn));
+	if (prop_name == _T("file_name"))	val->GetValueText(m_file_name);
+	else return __super::SetProperty(prop_name, val);
+	return false;
+}
+
+bool CProcSource::OnCalculate(void)
+{
+	CJCStringA str_fn;
+	stdext::UnicodeToUtf8(str_fn, m_file_name.c_str());
+	m_dst_img = cv::imread(str_fn);
+	int width = m_dst_img.cols, hight = m_dst_img.rows;
+	LOG_DEBUG(_T("source image size: (%d, %d)"), width, hight);
 	return true;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+//--
+#define SCALE 4
+LOG_CLASS_SIZE(CPreProcessor);
 
 const PARAMETER_DEFINE CPreProcessor::m_param_def[] = {
 	{0, "blur", 1, 10, offsetof(CPreProcessor, m_blur_size) },
 };
 const JCSIZE CPreProcessor::m_param_table_size = sizeof(CPreProcessor::m_param_def) / sizeof(PARAMETER_DEFINE);
 
-CPreProcessor::CPreProcessor(const CJCStringT & file_name)
-	:m_file_name(file_name)
-	, m_blur_size(1)
-{
-}
-
-CPreProcessor::~CPreProcessor(void)
-{
-	LOG_STACK_TRACE();
-}
-
-void CPreProcessor::OnInitialize(void)
-{
-	// 打开文件
-	CJCStringA str_fn;
-	stdext::UnicodeToUtf8(str_fn, m_file_name.c_str());
-	cv::Mat tmp;
-	tmp = cv::imread(str_fn);
-	int width = tmp.cols, hight = tmp.rows;
-	LOG_DEBUG(_T("source image size: (%d, %d)"), width, hight)
-	cv::resize(tmp, m_src_img, cv::Size(width / SCALE, hight / SCALE) );
-	tmp = m_src_img;
-	cv::cvtColor(tmp, m_src_img, CV_BGR2GRAY);
-
-	// 注册滑动条
-	CImageProcessorBase::OnInitialize();
-	//JCASSERT(m_proc_box);
-	//m_proc_box->RegistTrackBar("blur", m_blur_size, 10);
-}
-
 bool CPreProcessor::OnCalculate(void)
 {
+	stdext::auto_interface<IImageProcessor> src;
+	GetSource(0, src);
+
+	cv::Mat tmp;
+	src->GetOutputImage(tmp);
+	int width = tmp.cols, hight = tmp.rows;
+	LOG_DEBUG(_T("source image size: (%d, %d)"), width, hight);
+
+	cv::Mat dst;
+	//cv::resize(tmp, dst, cv::Size(width / SCALE, hight / SCALE) );
+	//tmp = dst;
+	cv::cvtColor(tmp, dst, CV_BGR2GRAY);
+
 	// 降噪
-	// cv::blur(m_src_img, m_dst_img, cv::Size(m_blur_size, m_blur_size));
 	// kernel size 一定是单数
 	if (m_blur_size == 0)
 	{	// 不做降噪处理
 		std::cout << "ignore blur\n";
-		m_src_img.copyTo(m_dst_img);
+		dst.copyTo(m_dst_img);
 	}
 	else
 	{
 		int blur = (m_blur_size-1) * 2 + 1;
-		cv::GaussianBlur(m_src_img, m_dst_img, cv::Size(blur, blur), 0, 0);
+		cv::GaussianBlur(dst, m_dst_img, cv::Size(blur, blur), 0, 0);
 	}
 	return true;
 }
-
-//bool CPreProcessor::OnParameterUpdated(const char * name, int val)
-//{
-//	if (strcmp(name, "blur") == 0)
-//	{
-//		m_blur_size = val;
-//		return true;
-//	}
-//	return false;
-//}
 
 ///////////////////////////////////////////////////////////////////////////////
 //--
@@ -200,25 +246,6 @@ CProcCanny::CProcCanny(void)
 CProcCanny::~CProcCanny(void)
 {
 }
-
-//void CProcCanny::OnInitialize(void)
-//{
-//	JCASSERT(m_proc_box);
-//	m_proc_box->RegistTrackBar("kernel", m_kernel_size, 10);
-//	m_proc_box->RegistTrackBar("th_low", m_threshold_low, 300);
-//}
-
-//bool CProcCanny::OnParameterUpdated(const char * name, int val)
-//{
-//	bool updated = false;
-//	if (strcmp(name, "kernel") == 0)
-//	{
-//		if ( (val <= 1) ) return false;
-//		m_kernel_size = val, updated = true;
-//	}
-//	else if (strcmp(name, "th_low") == 0)	m_threshold_low = val, updated = true;
-//	return updated;
-//}
 
 bool CProcCanny::OnCalculate(void)
 {
@@ -251,14 +278,6 @@ CProcMophology::CProcMophology(void)
 CProcMophology::~CProcMophology(void)
 {
 }
-
-//void CProcMophology::OnInitialize(void)
-//{
-//	JCASSERT(m_proc_box);
-//	m_proc_box->RegistTrackBar("operator", m_operator, 6);
-//	m_proc_box->RegistTrackBar("element", m_element, 2);
-//	m_proc_box->RegistTrackBar("kernel", m_kernel_size, 50);
-//}
 
 bool CProcMophology::OnParameterUpdated(const char * name, int val)
 {
@@ -318,7 +337,7 @@ bool CProcMophology::OnCalculate(void)
 LOG_CLASS_SIZE(CProcHoughLine);
 
 const PARAMETER_DEFINE CProcHoughLine::m_param_def[] = {
-	{0, "threshold", 80, 500, offsetof(CProcHoughLine, m_threshold) },
+	{0, "thresh", 80, 500, offsetof(CProcHoughLine, m_threshold) },
 	{1, "length", 150, 500, offsetof(CProcHoughLine, m_length) },
 	{2, "gap", 10, 50, offsetof(CProcHoughLine, m_gap) },
 };
@@ -383,7 +402,7 @@ bool CProcHoughLine::OnCalculate(void)
 	return true;
 }
 
-bool CProcHoughLine::GetCalParam(const CJCStringT & param_name, jcparam::IValue * & val)
+bool CProcHoughLine::GetProperty(const CJCStringT & param_name, jcparam::IValue * & val)
 {
 	JCASSERT(val == NULL);
 	if (param_name == _T("theta"))
@@ -405,7 +424,7 @@ bool CProcRotation::OnCalculate(void)
 
 	jcparam::IValue * val = NULL;
 	GetSource(1, src_theta);		JCASSERT(src_theta.valid());
-	bool br = src_theta->GetCalParam(_T("theta"), val);
+	bool br = src_theta->GetProperty(_T("theta"), val);
 	jcparam::CTypedValue<double> * dval = dynamic_cast<jcparam::CTypedValue<double> *>(val);
 
 	if ( (!br) || (dval == NULL) )
@@ -441,11 +460,12 @@ bool CProcContour::OnCalculate(void)
 	src_canny->GetOutputImage(canny);
 
 	// 计算轮廓
-	std::vector<std::vector<cv::Point> > contours;
+	m_contours.clear();
 	std::vector<cv::Vec4i> hierarchy;
-	cv::findContours(canny, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
+	cv::findContours(canny, m_contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
 
 	// 画轮廓
+/*
 	stdext::auto_interface<IImageProcessor> src_img;
 	GetSource(1, src_img);		JCASSERT(src_img.valid());
 	cv::Mat img;
@@ -453,35 +473,563 @@ bool CProcContour::OnCalculate(void)
 	cv::cvtColor(img, m_dst_img, CV_GRAY2BGR);
 
 	std::vector<cv::RotatedRect> minRect;
-	for( JCSIZE ii = 0; ii< contours.size(); ii++ )
+	float max_area = 0;
+	int largest_contour = -1;
+	for( JCSIZE ii = 0; ii< m_contours.size(); ii++ )
 	{
 		cv::Scalar color = cv::Scalar(0, 255, 0);
-		cv::drawContours( m_dst_img, contours, ii, color, 1, 8, std::vector<cv::Vec4i>(), 0, cv::Point() );
-		cv::RotatedRect rect = cv::minAreaRect(cv::Mat(contours[ii]));
+		cv::drawContours( m_dst_img, m_contours, ii, color, 1, 8, std::vector<cv::Vec4i>(), 0, cv::Point() );
+		cv::RotatedRect rect = cv::minAreaRect(cv::Mat(m_contours[ii]));
 		cv::Point2f rect_points[4];
 		rect.points(rect_points);
+
+		cv::Point2f p0 = rect_points[0];
+		float len[4];
 		for (int jj = 0; jj < 4; ++jj)
 		{
-			cv::line(m_dst_img, rect_points[jj], rect_points[(jj+1)&0x3], cv::Scalar(0, 0, 255), 2, 8);
+			cv::Point2f p1 = rect_points[ (jj+1) & 0x03];
+			//计算线段长度
+			len[jj] = sqrt( (p0.x-p1.x)*(p0.x-p1.x) + (p0.y-p1.y)*(p0.y-p1.y));
+			cv::line(m_dst_img, p0, p1, cv::Scalar(0, 0, 255), 2, 8);
+			p0 = p1;
+		}
+		// 计算矩形面积
+		//float area = len[0] * len[1];
+		float area = rect.size.width * rect.size.height;
+		LOG_DEBUG(_T("contour: %d, length: %f, %f, %f, %f"), ii, len[0], len[1], len[2], len[3]);
+		LOG_DEBUG(_T("width: %f, height: %f, area: %f (%f)"), rect.size.width, rect.size.height, area, rect.size.area() );
+		if (max_area < area) max_area = area, largest_contour = ii, m_max_rect = rect;
+	}
+	LOG_DEBUG(_T("largest contour: %d, area: %f"), largest_contour, max_area);
+*/
+	return true;
+}
+
+void CProcContour::DrawContour(cv::Mat & img, int index, const cv::Scalar & c_contour, const cv::Scalar & c_rect)
+{
+	cv::drawContours( img, m_contours, index, c_contour, 1, 8, std::vector<cv::Vec4i>(), 0, cv::Point() );
+	cv::RotatedRect rect = cv::minAreaRect(cv::Mat(m_contours[index]));
+	cv::Point2f rect_points[4];
+	rect.points(rect_points);
+	
+	cv::Point2f p0 = rect_points[0];
+	for (int jj = 0; jj < 4; ++jj)
+	{
+		cv::Point2f p1 = rect_points[ (jj+1) & 0x03];
+		cv::line(img, p0, p1, c_rect, 2, 8);
+		p0 = p1;
+	}
+}
+
+bool CProcContour::GetReviewImage(cv::Mat & img)
+{
+	cv::Mat _img;
+	GetSourceImage(1, 0, _img);
+	if (_img.channels() < 3)	cv::cvtColor(_img, img, CV_GRAY2BGR);
+	else					_img.copyTo(img);
+
+	std::vector<cv::RotatedRect> minRect;
+	float max_area = 0;
+	int largest_contour = -1;
+	for( JCSIZE ii = 0; ii< m_contours.size(); ii++ )
+	{
+		DrawContour(img, ii, cv::Scalar(0, 255, 0), cv::Scalar(0, 0, 255));
+		//cv::Scalar color = cv::Scalar(0, 255, 0);
+		//cv::drawContours( img, m_contours, ii, color, 1, 8, std::vector<cv::Vec4i>(), 0, cv::Point() );
+		//cv::RotatedRect rect = cv::minAreaRect(cv::Mat(m_contours[ii]));
+		//cv::Point2f rect_points[4];
+		//rect.points(rect_points);
+
+		//cv::Point2f p0 = rect_points[0];
+		////float len[4];
+		//for (int jj = 0; jj < 4; ++jj)
+		//{
+		//	cv::Point2f p1 = rect_points[ (jj+1) & 0x03];
+		//	//计算线段长度
+		//	//len[jj] = sqrt( (p0.x-p1.x)*(p0.x-p1.x) + (p0.y-p1.y)*(p0.y-p1.y));
+		//	cv::line(img, p0, p1, cv::Scalar(0, 0, 255), 2, 8);
+		//	p0 = p1;
+		//}
+		//// 计算矩形面积
+		//float area = rect.size.area();
+		////LOG_DEBUG(_T("contour: %d, length: %f, %f, %f, %f"), ii, len[0], len[1], len[2], len[3]);
+		////LOG_DEBUG(_T("width: %f, height: %f, area: %f (%f)"), rect.size.width, rect.size.height, area, rect.size.area() );
+		//LOG_DEBUG(_T("contour: %d, area: %f"), ii, area);
+		//if (max_area < area) max_area = area, largest_contour = ii, m_max_rect = rect;
+	}
+	//LOG_DEBUG(_T("largest contour: %d, area: %f"), largest_contour, max_area);
+	return true;
+}
+
+bool CProcContour::GetProperty(const CJCStringT & param_name, jcparam::IValue * & val)
+{
+	JCASSERT(val == NULL);
+	if (param_name == _T("contour")) val = jcparam::CTypedValue<cv::RotatedRect >::Create(m_max_rect);
+	else return false;
+	return true;
+}
+
+void CProcContour::SaveResult(const CJCStringA & _fn)
+{
+	CJCStringA fn = _fn + ".xml";
+	cv::FileStorage fs(fn, cv::FileStorage::WRITE);
+	fs << "contours" << "[";
+	std::vector<CONTOUR>::iterator cit = m_contours.begin();
+	std::vector<CONTOUR>::iterator endcit = m_contours.end();
+	int cc = 0;
+	for (; cit!=endcit; ++cit, ++cc)
+	{
+		CONTOUR & contour = *cit;
+		CONTOUR::iterator pit = contour.begin();
+		CONTOUR::iterator end_pit = contour.end();
+		fs << "{" << "points" << "[";
+		for (; pit != end_pit; ++pit)
+		{
+			fs << "{";
+			fs << "x" << (*pit).x;
+			fs << "y" << (*pit).y;
+			fs << "}";
+		}
+		fs  << "]" << "}";
+	}
+	fs << "]";
+	//fs.release();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//--
+
+const PARAMETER_DEFINE CContourMatch::m_param_def[] = {
+	{0, "thresh", 5, 20, offsetof(CContourMatch, m_match_th) },
+};
+const JCSIZE CContourMatch::m_param_table_size = sizeof(CContourMatch::m_param_def) / sizeof(PARAMETER_DEFINE);
+
+CContourMatch::CContourMatch()
+{
+}
+
+void CContourMatch::OnInitialize(void)
+{
+	// load reference data
+	cv::FileStorage fs;
+	fs.open("testdata\\contours_smi_logo.xml", cv::FileStorage::READ);
+	cv::FileNode node = fs["contours"];
+	cv::FileNodeIterator cit = node.begin();
+	cv::FileNodeIterator end_cit = node.end();
+	for ( ; cit != end_cit; ++ cit)
+	{
+		cv::FileNode & cnode = (*cit)["points"];
+		cv::FileNodeIterator pit = cnode.begin();
+		cv::FileNodeIterator end_pit = cnode.end();
+
+		CONTOUR contour;
+		for (; pit != end_pit; ++pit)
+		{
+			cv::FileNode & pnode = (*pit);
+			cv::Point pp;
+			pp.x = pnode["x"];
+			pp.y = pnode["y"];
+			contour.push_back(pp);
+		}
+		m_ref_contour.push_back(contour);
+	}
+	__super::OnInitialize();
+}
+
+bool CContourMatch::OnCalculate(void)
+{
+	bool br = __super::OnCalculate();
+
+	double thresh = pow(10.0, -m_match_th);
+	LOG_DEBUG(_T("threshold = %g"), thresh);
+	m_matched_index.clear();
+
+	cv::Mat match(m_contours.size(), m_ref_contour.size(), CV_64FC1);
+	LOG_DEBUG(_T("created mat: row=%d, col=%d"), match.rows, match.cols);
+	
+	std::vector<CONTOUR>::iterator cit = m_contours.begin();
+	std::vector<CONTOUR>::iterator end_cit = m_contours.end();
+	for (int ii=0 ; cit != end_cit; ++cit, ++ii)
+	{
+		double m_val = 1;
+		CONTOUR & contour = (*cit);
+		std::vector<CONTOUR>::iterator rit = m_ref_contour.begin();
+		std::vector<CONTOUR>::iterator end_rit = m_ref_contour.end();
+		for (int jj=0 ; rit != end_rit; ++rit, ++jj)
+		{
+			CONTOUR & ref = (*rit);
+			double mm = cv::matchShapes(ref, contour, CV_CONTOURS_MATCH_I2, 0);
+			match.at<double>(ii, jj) = mm;
+			m_val *= mm;
+		}
+		if (m_val < thresh)
+		{
+			LOG_DEBUG(_T("contour %d matched by %g"), ii, m_val);
+			m_matched_index.push_back(ii);
 		}
 	}
+	std::ofstream match_result("testdata\\contour_match.txt", std::ios::out);
+	match_result << match;
+
+	return br;
+}
+
+bool CContourMatch::GetReviewImage(cv::Mat & img)
+{
+	cv::Mat _img;
+	GetSourceImage(1, 0, _img);
+	if (_img.channels() < 3)	cv::cvtColor(_img, img, CV_GRAY2BGR);
+	else					_img.copyTo(img);
+
+	std::vector<int>::iterator it = m_matched_index.begin();
+	std::vector<int>::iterator end_it = m_matched_index.end();
+	for ( ; it != end_it; ++it)
+	{
+		int index = (*it);
+		DrawContour(img, index, cv::Scalar(0, 255, 0), cv::Scalar(0, 0, 255) );
+	}
+	return true;
+}
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+//--
+const PARAMETER_DEFINE CProcThresh::m_param_def[] = {
+	{0, "thresh", 170, 500, offsetof(CProcThresh, m_thresh) },
+	{1, "type", 1, 4, offsetof(CProcThresh, m_type) },
+};
+
+const JCSIZE CProcThresh::m_param_table_size = sizeof(CProcThresh::m_param_def) / sizeof(PARAMETER_DEFINE);
+
+CProcThresh::CProcThresh(void)
+: m_thresh(170), m_type(1)
+{
+}
+
+bool CProcThresh::OnCalculate(void)
+{
+	stdext::auto_interface<IImageProcessor> src_proc;
+	cv::Mat src;
+	GetSource(0, src_proc);
+	src_proc->GetOutputImage(src);
+	cv::threshold(src, m_dst_img, m_thresh, 255, m_type);
 	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //--
-bool CreateProcessor(const CJCStringT & proc_name, IImageProcessor * & proc)
+//const PARAMETER_DEFINE CProcThresh::m_param_def[] = {
+//	{0, "thresh", 80, 500, offsetof(CProcThresh, m_thresh) },
+//	{1, "type", 0, 4, offsetof(CProcThresh, m_type) },
+//};
+//
+//const JCSIZE CProcThresh::m_param_table_size = sizeof(CProcThresh::m_param_def) / sizeof(PARAMETER_DEFINE);
+
+#define HIST_H	400
+
+CProcHist::CProcHist(void)
 {
-	JCASSERT(proc == NULL);
-	if (proc_name == _T("canny"))			proc = static_cast<IImageProcessor*>(new CProcCanny);
-	else if (proc_name == _T("mophology"))	proc = static_cast<IImageProcessor*>(new CProcMophology);
-	else if (proc_name == _T("houghline"))	proc = static_cast<IImageProcessor*>(new CProcHoughLine);
-	else if (proc_name == _T("rotation"))	proc = static_cast<IImageProcessor*>(new CProcRotation);
-	else if (proc_name == _T("countour"))	proc = static_cast<IImageProcessor*>(new CProcContour);
+}
+
+bool CProcHist::OnCalculate(void)
+{
+	stdext::auto_interface<IImageProcessor> src_proc;
+	cv::Mat src;
+	GetSource(0, src_proc);
+	src_proc->GetOutputImage(src);
+
+	m_hist_size = 255;
+	int channel = 0;
+	float range[] = {0, 255};
+	const float * hist_range = {range};
+	//cv::Mat m_hist;
+	cv::calcHist(&src, 1, &channel, cv::Mat(), m_hist, 1, &m_hist_size, & hist_range, true, false);
+	LOG_DEBUG(_T("hist size= %d"), m_hist_size);
+	cv::Mat normal_hist;
+	cv::normalize(m_hist, normal_hist, 0, HIST_H, cv::NORM_MINMAX, -1, cv::Mat());
+	// 画直方图
+	m_dst_img = cv::Mat(256, HIST_H, CV_8UC3, cv::Scalar(0, 0, 0));
+	for (int ii = 1; ii< m_hist_size; ++ii)
+	{
+		line(m_dst_img, cv::Point(ii-1, HIST_H - (int)(normal_hist.at<float>(ii-1))),
+			cv::Point(ii, HIST_H - (int)(normal_hist.at<float>(ii))), cv::Scalar(255, 255, 255), 2, 8, 0);
+	}
+
+	return true;
+}
+
+void CProcHist::write(cv::FileStorage & fs) const
+{
+	fs << GetProcTypeA();
+	fs << "{";
+	if (m_proc_box)		fs << "name" << m_proc_box->GetNameA();
+	fs << "hist" << m_hist;
+	fs << "}";
+
+	std::ofstream hist_file("testdata\\hist.txt", std::ios::out);
+	//JCSIZE hist_size = m_hist.size();
+	for (int ii = 0; ii < m_hist_size; ++ii)
+	{
+		hist_file << m_hist.at<float>(ii) << std::endl;
+	}
+	hist_file.close();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//--
+//const PARAMETER_DEFINE CProcRotateClip::m_param_def[] = {
+//	{0, "thresh", 170, 500, offsetof(CProcRotateClip, m_thresh) },
+//	{1, "type", 1, 4, offsetof(CProcRotateClip, m_type) },
+//};
+//
+//const JCSIZE CProcRotateClip::m_param_table_size = sizeof(CProcRotateClip::m_param_def) / sizeof(PARAMETER_DEFINE);
+
+CProcRotateClip::CProcRotateClip(void)
+{
+}
+
+bool CProcRotateClip::OnCalculate(void)
+{
+	stdext::auto_interface<IImageProcessor> src_img;
+	stdext::auto_interface<IImageProcessor> src_theta;
+
+	jcparam::IValue * val = NULL;
+	GetSource(1, src_theta);		JCASSERT(src_theta.valid());
+	bool br = src_theta->GetProperty(_T("contour"), val);
+	jcparam::CTypedValue<cv::RotatedRect> * dval = dynamic_cast<jcparam::CTypedValue<cv::RotatedRect> *>(val);
+	if ( (!br) || (dval == NULL) )
+		THROW_ERROR(ERR_PARAMETER, _T("parameter theta does not exist in parent"));
+	cv::RotatedRect & rect = (*dval);
+
+	// 计算中心点, 倾角
+	cv::Point2f center = rect.center;
+	float angle = rect.angle;
+	int left, right, top, bottom;
+	LOG_DEBUG(_T("rect: width=%f, height=%f, angle=%f"), rect.size.width, rect.size.height, angle);
+	// 计算旋转后的范围
+	if (angle < -45)
+	{
+		angle += 90;
+		left = (int)(center.x - rect.size.height / 2);
+		right = (int)(center.x + rect.size.height / 2);
+		top = (int)(center.y - rect.size.width / 2);
+		bottom = (int)(center.y + rect.size.width / 2);
+	}
 	else
 	{
-		THROW_ERROR(ERR_PARAMETER, _T("processor: %s does not exist"), proc_name.c_str() );
-		return false;
+		left = (int)(center.x - rect.size.width / 2);
+		right = (int)(center.x + rect.size.width / 2);
+		top = (int)(center.y - rect.size.height / 2);
+		bottom = (int)(center.y + rect.size.height / 2);
+	}
+
+	// 计算旋转矩阵
+	cv::Mat rot_mat(2, 3, CV_32FC1);
+	rot_mat = cv::getRotationMatrix2D(center, angle, 1);
+
+	cv::Mat src;
+	GetSource(0, src_img);
+	src_img->GetOutputImage(src);
+
+	cv::Mat img(src.cols, src.rows, CV_8UC1);
+	cv::warpAffine(src, img, rot_mat, src.size());
+	cv::cvtColor(img, m_dst_img, CV_GRAY2BGR);
+	cv::line(m_dst_img, cv::Point(left, top), cv::Point(right, top), cv::Scalar(0, 0, 255), 3, CV_AA);
+	cv::line(m_dst_img, cv::Point(right, top), cv::Point(right, bottom), cv::Scalar(0, 0, 255), 3, CV_AA);
+	cv::line(m_dst_img, cv::Point(right, bottom), cv::Point(left, bottom), cv::Scalar(0, 0, 255), 3, CV_AA);
+	cv::line(m_dst_img, cv::Point(left, bottom), cv::Point(left, top), cv::Scalar(0, 0, 255), 3, CV_AA);
+
+	return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//--
+
+CProcBarCode::CProcBarCode(void)
+{
+}
+
+bool CProcBarCode::OnCalculate(void)
+{
+	stdext::auto_interface<IImageProcessor> src;
+	GetSource(0, src);
+	cv::Mat img;
+	src->GetOutputImage(img);
+
+	cv::Mat tmp;
+	cv::cvtColor(img, tmp, CV_BGR2GRAY);		img = tmp;
+
+	zbar::ImageScanner scanner;
+	scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 1);
+	zbar::Image zimg(img.cols, img.rows, "Y800", img.data, img.cols * img.rows);
+	int n = scanner.scan(zimg);
+
+	cv::cvtColor(img, tmp, CV_GRAY2BGR);		img = tmp;
+	for (zbar::Image::SymbolIterator symbol = zimg.symbol_begin(); symbol != zimg.symbol_end(); ++ symbol)
+	{
+		std::cout << "decoded" << symbol->get_type_name()
+			<< ". symbol \"" << symbol->get_data() << "\"" << std::endl;
+		zbar::Symbol::PointIterator pit = symbol->point_begin();
+		//zbar::Symbol::PointIterator endpit = symbol->point_end();
+		cv::Point p0((*pit).x, (*pit).y);
+		cv::Point p00 = p0;
+		int location_size = symbol->get_location_size();
+		for (int ii=0; ii<location_size-1; ii++, ++pit)
+		{
+			cv::Point p0(symbol->get_location_x(ii), symbol->get_location_y(ii));
+			cv::Point p1(symbol->get_location_x(ii+1), symbol->get_location_y(ii+1));
+			cv::line(img, p0, p1, cv::Scalar(0, 255, 0), 2);
+		}
+	}
+	cv::resize(img, m_dst_img, cv::Size(img.cols / 4, img.rows / 4) );
+	return true;
+}
+///////////////////////////////////////////////////////////////////////////////
+//-- Split, 用于将原始图分成不同颜色空间
+const PARAMETER_DEFINE CProcSplit::m_param_def[] = {
+	{0, "type", 0, 4, offsetof(CProcSplit, m_type) },
+};
+const JCSIZE CProcSplit::m_param_table_size = sizeof(CProcSplit::m_param_def) / sizeof(PARAMETER_DEFINE);
+
+CProcSplit::CProcSplit(void)
+{
+}
+
+bool CProcSplit::OnCalculate(void)
+{
+	m_channels.clear();
+	cv::Mat src, tmp;
+	GetSourceImage(0, 0, src);
+
+	int cvt_type;
+	switch (m_type)
+	{
+	case 0:	/*cvt_type = CV_BRG2GRAY;*/	break;	// Gray
+	case 1:	cvt_type = CV_BGR2XYZ;	break;	// XYZ
+	case 2:	cvt_type = CV_BGR2YCrCb;break;	// YCrCb
+	case 3:	cvt_type = CV_BGR2HSV;	break;	// HSV
+	case 4:	cvt_type = CV_BGR2HLS;	break;	// HLS
+	}
+
+	if (m_type != 0) cv::cvtColor(src, tmp, cvt_type);
+	else				tmp = src;
+	cv::split(tmp, m_channels);
+	return true;
+}
+
+bool CProcSplit::GetReviewImage(cv::Mat & img)
+{
+	JCSIZE chs = m_channels.size();
+	if (m_active_channel >= chs)	m_active_channel %= chs;
+	return	GetOutputImage(m_active_channel, img);
+}
+
+bool CProcSplit::GetOutputImage(int img_id, cv::Mat & img)
+{
+	if (img_id >= m_channels.size() ) return false;
+	img = m_channels.at(img_id);
+	return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//-- 调节亮度和对比度
+const PARAMETER_DEFINE CProcBrightness::m_param_def[] = {
+	{0, "alpha", 20, 200, offsetof(CProcBrightness, m_alpha) },
+	{0, "beta", 100, 200, offsetof(CProcBrightness, m_beta) },
+};
+const JCSIZE CProcBrightness::m_param_table_size = sizeof(CProcBrightness::m_param_def) / sizeof(PARAMETER_DEFINE);
+
+CProcBrightness::CProcBrightness(void)
+{
+}
+
+bool CProcBrightness::OnCalculate(void)
+{
+	cv::Mat src;
+	GetSourceImage(0, 0, src);
+	src.convertTo(m_dst_img, -1, ((float)m_alpha) / 20.0, m_beta-100);
+	return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//-- 通过鼠标提取感兴趣的区域
+bool CProcRoi::OnCalculate(void)
+{
+	LOG_DEBUG(_T("ROI = (%d, %d) - %d x %d"), m_roi.x, m_roi.y, m_roi.width, m_roi.height);
+	GetSourceImage(0, 0, m_dst_img);
+	return true;
+}
+
+bool CProcRoi::GetOutputImage(int img_id, cv::Mat & img)
+{
+	if ( (m_roi.height != 0) && (m_roi.width !=0))	img = m_dst_img(m_roi);
+	else img = m_dst_img;
+	return true;	
+}
+
+bool CProcRoi::GetReviewImage(cv::Mat & img)
+{
+	if (m_dst_img.channels() >= 3)	m_dst_img.copyTo(img);
+	else							cv::cvtColor(m_dst_img, img, CV_GRAY2BGR);
+	if ( (m_roi.height != 0) && (m_roi.width !=0))
+	{
+		cv::rectangle(img, m_roi, cv::Scalar(255, 0, 0), 3);
 	}
 	return true;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+//-- 图形匹配
+
+const PARAMETER_DEFINE CProcMatch::m_param_def[] = {
+	{0, "method", 2, 5, offsetof(CProcMatch, m_method) },
+};
+const JCSIZE CProcMatch::m_param_table_size = sizeof(CProcMatch::m_param_def) / sizeof(PARAMETER_DEFINE);
+
+void CProcMatch::OnInitialize(void)
+{
+	cv::Mat img = cv::imread("testdata\\smi_logo.jpg");
+	cv::cvtColor(img, m_ref_img, CV_BGR2GRAY);
+	__super::OnInitialize();
+}
+
+bool CProcMatch::OnCalculate(void)
+{
+	//std::ofstream f_out("testdata\\match.txt", std::ios::out);
+	LOG_DEBUG(_T("matching method (%d)"), m_method);
+	cv::Mat src_img;
+	GetSourceImage(0, 0, src_img);
+	if (src_img.channels() >=3) cv::cvtColor(src_img, src_img, CV_BGR2GRAY);
+	cv::Mat tmp;
+	{
+		LOG_STACK_TRACE();
+		cv::matchTemplate(src_img, m_ref_img, tmp, m_method);
+	}
+	double min_val = 0, max_val = 0;
+	cv::Point min_loc, max_loc;
+	cv::minMaxLoc(tmp, &min_val, &max_val, &min_loc, &max_loc);
+	LOG_DEBUG(_T("found min: val=%f, (%d,%d)"), min_val, min_loc.x, min_loc.y);
+	LOG_DEBUG(_T("found max: val=%f, (%d,%d)"), max_val, max_loc.x, max_loc.y);
+	//f_out << "mached" << std::endl << tmp << std::endl;
+	cv::normalize(tmp, tmp, 0, 255, cv::NORM_MINMAX);
+	//f_out << "normalized" << std::endl << tmp << std::endl;
+	tmp.convertTo(m_dst_img, CV_8UC1);
+	return true;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+//--
+template <>	jcparam::VALUE_TYPE jcparam::type_id<cv::RotatedRect>::id(void)		{return jcparam::VT_UNKNOW;}
+
+template <> void jcparam::CConvertor<cv::RotatedRect>::S2T(LPCTSTR str, cv::RotatedRect & typ)
+{
+}
+
+template <> void jcparam::CConvertor<cv::RotatedRect>::T2S(const cv::RotatedRect & typ, CJCStringT & str)
+{
+}
+	
