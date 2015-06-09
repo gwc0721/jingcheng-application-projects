@@ -1,14 +1,8 @@
 # parameters:
 # 	%1: SRC | LIB, select pack source or lib only
 param($SRC="LIB")
+
 $package_name = "sn_update_tool.source"
-if ( test-path -path $package_name )
-{
-	write-host "remove folder $tar_dir"
-	remove-item -force -recurse -path $package_name
-	remove-item -force sn_update_tool.rar
-}
-md $package_name > null
 
 $ws_dir = resolve-path "..\.."
 "ws dir = $ws_dir" #<DEBUG>
@@ -17,6 +11,18 @@ $tar_dir = resolve-path $package_name
 $tool_dir = resolve-path "..\..\tool"
 "tool dir = $tool_dir"		#<DEBUG>
 $app_dir = "application\sn_update_tool"
+
+# clean
+write-host "clean $tar_dir"
+if ( test-path -path $package_name )
+{
+	remove-item -force -recurse -path $package_name
+}
+if ( test-path -path sn_update_tool.rar)
+{
+	remove-item -force sn_update_tool.rar
+}
+md $package_name | out-null
 
 #src_dir使用相对于workspace的目录
 function PackLib($src_dir, $lib_name, $SRC="LIB")
@@ -27,7 +33,7 @@ function PackLib($src_dir, $lib_name, $SRC="LIB")
 	"src = $src_abs"		#<DEBUG>
 	$dst_abs = "$tar_dir\$src_dir"
 	"dst = $dst_abs"		#<DEBUG>
-	if ( !(test-path -path $dst_abs) )	{ md $dst_abs > null }
+	if ( !(test-path -path $dst_abs) )	{ md $dst_abs | out-null }
 	push-location 
 	cd $src_abs"\"$lib_name
 	& "$tool_dir\package\pack_lib.ps1" $SRC $lib_name
@@ -35,7 +41,7 @@ function PackLib($src_dir, $lib_name, $SRC="LIB")
 	pop-location
 }
 
-md "$tar_dir\$app_dir" > null
+md "$tar_dir\$app_dir" | out-null
 
 # create package of FerriSdk.package
 PackLib "jcvos" "stdext" 
