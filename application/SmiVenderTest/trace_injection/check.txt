@@ -1,0 +1,4 @@
+write: 5269740 = 0x5068EC
+
+SectorWrite(), no buffer alignment: 0x5068EC, no error
+ScsiWrite(), no buffer alignment: 0x0009EFFC, write error
