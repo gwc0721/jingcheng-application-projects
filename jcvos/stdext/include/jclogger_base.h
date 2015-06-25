@@ -32,8 +32,9 @@ class CJCLoggerAppender
 public:
 	enum PROPERTY
 	{
-		PROP_APPEND = 0x00000001,
-		PROP_ASYNC	= 0x00000002,
+		PROP_NOT_APPEND =	0x00000001,		// 考虑到多进程支持，缺省为追加log方式
+		PROP_SYNC	=		0x00000002,		// 按同步方式输出log，缺省为异步
+		PROP_MULTI_PROC =	0x00000004,
 	};
 
 	// len: legnth of str, in BYTE
@@ -282,11 +283,13 @@ public:
 #define _LOGGER_CRITICAL( ... )
 #define _LOGGER_RELEASE( ... )
 #define _LOGGER_ERROR( ... )
+#define _LOGGER_WIN32_ERROR( ... )	{}
 #define _LOGGER_WARNING( ... )
 #define _LOGGER_NOTICE( ... )
 #define _LOGGER_TRACE( ... )
 #define _LOGGER_DEBUG( ... )	{}
 #define _LOGGER_TRACE( ... )
+
 #define LOG_STACK_TRACE( ... )
 #define LOG_STACK_PERFORM( ... )
 #define LOG_STACK_TRACE_EX( ... )
@@ -337,6 +340,21 @@ public:
     if (_logger && _logger->GetLevel()>= LOGGER_LEVEL_ERROR)    \
         _logger->LogMessageFunc(__FUNCTION__, __VA_ARGS__);   \
     }
+
+#ifdef WIN32
+#undef _LOGGER_WIN32_ERROR
+#define _LOGGER_WIN32_ERROR( _logger, ... ) {							\
+		DWORD err_id = GetLastError();									\
+		LPTSTR strSysMsg;												\
+		FormatMessage(													\
+			FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,\
+			NULL, err_id, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), \
+			(LPTSTR) &strSysMsg, 0, NULL );								\
+	    if (_logger && _logger->GetLevel()>= LOGGER_LEVEL_ERROR)		\
+		    _logger->LogMessageFunc(__FUNCTION__, _T("[WiN32 ERR] %d, %s"), err_id, strSysMsg);	\
+		LocalFree(strSysMsg);											\
+	}
+#endif
 
 #if LOGGER_LEVEL >= LOGGER_LEVEL_WARNING
 
@@ -421,6 +439,7 @@ public:
 #define LOG_CRITICAL(...)				_LOGGER_CRITICAL(_local_logger, __VA_ARGS__);
 #define LOG_RELEASE(...)				_LOGGER_RELEASE(_local_logger, __VA_ARGS__);
 #define LOG_ERROR(...)					_LOGGER_ERROR(_local_logger, __VA_ARGS__);
+#define LOG_WIN32_ERROR(...)			_LOGGER_WIN32_ERROR(_local_logger, __VA_ARGS__)
 #define LOG_WARNING(...)				_LOGGER_WARNING(_local_logger, __VA_ARGS__);
 #define LOG_NOTICE(...)					_LOGGER_NOTICE(_local_logger, __VA_ARGS__);
 #define LOG_TRACE(...)					_LOGGER_TRACE(_local_logger, __VA_ARGS__);
