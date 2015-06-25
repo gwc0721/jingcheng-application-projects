@@ -38,6 +38,12 @@ namespace stdext
 			m_handle=NULL;
 		};
 
+		void attach(HANDLE_TYPE hdl)
+		{
+			JCASSERT(m_handle == NULL);
+			m_handle = hdl;
+		}
+
 		void close(void)
 		{
 			CLOSE_HANDLE_FUNCS::DoCloseHandle(m_handle);
