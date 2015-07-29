@@ -159,6 +159,30 @@ namespace stdext
 	protected:
 		PTR_TYPE * m_ptr;
 	};
+#ifdef WIN32
+	class auto_buf
+	{
+	public:
+		explicit auto_buf(JCSIZE size, LPVOID ptr = NULL)		
+			: m_ptr( (BYTE*)VirtualAlloc(ptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE) )
+			, m_size(size)
+		{};
+		~auto_buf(void)					
+		{
+			VirtualFree(m_ptr, m_size, MEM_RELEASE | MEM_DECOMMIT);
+		};
+
+		operator BYTE* () const	{ return m_ptr; };
+		BYTE* operator + (int offset)	{ return m_ptr + offset; };
+		operator void * ()					{ return (void*)m_ptr;};
+
+		BYTE & operator [] (int ii)			{ return m_ptr[ii]; };
+
+	protected:
+		BYTE * m_ptr;
+		JCSIZE m_size;
+	};
+#endif
 
 	template <JCSIZE ALIGNE, typename PTR_TYPE = BYTE>
 	class auto_aligne_buf

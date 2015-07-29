@@ -155,6 +155,7 @@ CDebugAppender::~CDebugAppender(void)
 
 void CDebugAppender::WriteString(LPCTSTR str, JCSIZE)
 {
+
 	OutputDebugString(str);
 }
 
