@@ -463,7 +463,12 @@ CJCStackPerformance::~CJCStackPerformance(void)
 {
 	LARGE_INTEGER now;
 	QueryPerformanceCounter(&now);
-	m_start_time = now.QuadPart - m_start_time;
+	if (now.QuadPart < m_start_time)	
+	{
+		OutputDebugString(_T("time stamp overflow\n"));
+		m_start_time = (_I64_MAX - m_start_time) + now.QuadPart;
+	}
+	else m_start_time = now.QuadPart - m_start_time;
 
 	if ( !m_func_name.empty() )	CJCLogger::Instance()->RegistFunction(m_func_name, m_start_time);
 }
