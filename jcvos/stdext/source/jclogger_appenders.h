@@ -23,7 +23,6 @@ namespace jclogger
 		HANDLE		m_file;
 		OVERLAPPED	m_overlap;
 		TCHAR	* m_str_buf;
-		//HANDLE		m_mutex;
 #else	// WIN32
 		FILE * m_file;
 #endif	// WIN32

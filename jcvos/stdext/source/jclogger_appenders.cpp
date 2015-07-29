@@ -14,7 +14,6 @@ using namespace jclogger;
 FileAppender::FileAppender(LPCTSTR file_name, DWORD prop)
     : m_file(NULL)
 	, m_str_buf(NULL)
-	//, m_mutex(NULL)
 	, m_mode_sync(false)
 {
 	DWORD flag = FILE_ATTRIBUTE_NORMAL;
@@ -29,7 +28,6 @@ FileAppender::FileAppender(LPCTSTR file_name, DWORD prop)
 	m_overlap.hEvent = CreateEvent(NULL, FALSE, TRUE, event_name.c_str());
 	if (NULL == m_overlap.hEvent) throw 0;
 
-	//DWORD disp = (prop & CJCLoggerAppender::PROP_APPEND)? OPEN_ALWAYS: CREATE_ALWAYS;
 	DWORD disp = OPEN_ALWAYS;
 	if (prop & CJCLoggerAppender::PROP_SYNC)
 	{	// 同步输出log：thread等待log输出完毕才返回
@@ -43,11 +41,6 @@ FileAppender::FileAppender(LPCTSTR file_name, DWORD prop)
 		flag |= FILE_FLAG_OVERLAPPED;
 	}
 
-	//if (prop & CJCLoggerAppender::PROP_MULTI_PROC)
-	//{
-	//	m_mutex = CreateMutex(NULL, FALSE, _T("jclogger"));
-	//}
-
 	m_file = CreateFile(file_name, 
 				GENERIC_READ|GENERIC_WRITE, 
 				FILE_SHARE_READ | FILE_SHARE_WRITE, 
@@ -57,10 +50,6 @@ FileAppender::FileAppender(LPCTSTR file_name, DWORD prop)
 				NULL );
 
 	if (m_file == INVALID_HANDLE_VALUE) throw 0; 
-	//if (prop & CJCLoggerAppender::PROP_APPEND)
-	//{	// 追加模式，移动文件指针到尾部。
-	//	SetFilePointer(m_file, 0, 0, FILE_END);
-	//}
 }
 
 FileAppender::~FileAppender(void)
