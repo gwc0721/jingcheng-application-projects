@@ -9,7 +9,6 @@
 #include <opencv2/highgui/highgui.hpp>
 
 #include <stdext.h>
-//#include <string>
 
 #define BRN_SYMBOL_DETECT	0x101
 
@@ -50,19 +49,19 @@ protected:
 	void ShowFrame(cv::Mat & frame, CDC * dc);
 	void FillBitmapInfo( BITMAPINFO* bmi, int width, int height, int bpp, int origin );
 	void OnSymbolDetected(const std::string & symbol);
+	void MakeAffineMatrix(int rotation, bool mirror_h, bool mirror_v);
 
 protected:
 	cv::VideoCapture m_capture;
-	cv::Mat m_map_x, m_map_y;	// 用于反转，缩放等操作
-	cv::Mat m_rotation_90, m_rotation_180, m_rotation_270;
 	cv::Mat m_frame_show;		// 用于显示的当前frame
+	cv::Mat m_affine;
 	int m_show_width, m_show_height;
 	int m_video_width, m_video_height;
-	int m_show_scale;
 
 	std::string m_cur_symbol;	// 当前监测到的符号
 	int m_detect_hold;
 // configurations
+	int m_show_scale;
 	bool m_mirror;
 	int m_hold_time;	// 识别到bar code以后的保持时间。在保持时间内，即使识别不到，也不会更新结果。
 	int m_frame_interval;		// frame rate的倒数，单位ms
