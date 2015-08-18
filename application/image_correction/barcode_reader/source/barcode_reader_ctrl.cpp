@@ -5,9 +5,17 @@
 #include <dshow.h>
 
 #define VIDEO_TIMER	300
-//#define HOLD_TIME	6
 
-LOCAL_LOGGER_ENABLE(_T("barcodectrl"), LOGGER_LEVEL_DEBUGINFO);
+LOCAL_LOGGER_ENABLE(_T("barcodectrl"), LOGGER_LEVEL_NOTICE);
+
+#ifdef _DEBUG
+#define LOG_OUTPUT_MAT(mat_name, mat)		{		\
+	std::stringstream	_str_mat_;	\
+	_str_mat_ << mat;				\
+	LOG_DEBUG(_T("%s=\n%S"), mat_name, _str_mat_.str().c_str());	}
+#else
+#define LOG_OUTPUT_MAT(...)
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // -- 
@@ -109,36 +117,7 @@ bool CBarCodeReaderCtrl::Open(int dev_id)
 	frame_rate = m_capture.get(CV_CAP_PROP_FPS);
 	LOG_DEBUG(_T("new frame rate = %f"), frame_rate);
 
-
-	int size = (m_video_width>m_video_height)?(m_video_width):(m_video_height);
-	//m_rotation_90 = cv::getRotationMatrix2D(cv::Point(m_video_width /2, m_video_height/2), 90, 1);
-	m_rotation_90 = cv::getRotationMatrix2D(cv::Point(size /2, size/2), 90, 1);
-	m_rotation_180 = cv::getRotationMatrix2D(cv::Point(m_video_width /2, m_video_height/2), 180, 1);
-	//m_rotation_270 = cv::getRotationMatrix2D(cv::Point(m_video_width /2, m_video_height/2), 270, 1);
-	m_rotation_270 = cv::getRotationMatrix2D(cv::Point(size /2, size/2), 270, 1);
-	double * ptr = m_rotation_270.ptr<double>(0);
-	ptr[2] -= (m_video_width - m_video_height);
-	
-	if ( (m_rotation == 1) || (m_rotation==3))
-	{
-		m_show_height = m_video_width / m_show_scale, m_show_width = m_video_height / m_show_scale;
-	}
-	else
-	{
-		m_show_width = m_video_width / m_show_scale, m_show_height = m_video_height / m_show_scale;
-	}
-
-	m_map_x.create(cv::Size(m_show_width, m_show_height), CV_32FC1);
-	m_map_y.create(cv::Size(m_show_width, m_show_height), CV_32FC1);
-	
-	for (int yy=0; yy<m_show_height; ++yy)
-	{
-		for (int xx=0; xx<m_show_width; ++xx)
-		{
-			m_map_x.at<float>(yy,xx) = (float)(m_show_width - xx);
-			m_map_y.at<float>(yy,xx) = (float)(yy);
-		}
-	}
+	MakeAffineMatrix(m_rotation, m_mirror, false);
 
 	// auto size mode
 	SetWindowPos(NULL, 0, 0, m_show_width, m_show_height, 
@@ -185,7 +164,6 @@ size_t CBarCodeReaderCtrl::EnumerateCameras(StringArray & cameras)
 		hr = pBag->Read(L"FriendlyName", &var, NULL);
 		if (hr != NOERROR)	continue;
 		id++;
-		//listCamera.Add(var.bstrVal);
 		UINT str_len = ::SysStringLen(var.bstrVal);
 		CJCStringT str((wchar_t*)(var.bstrVal), str_len);
 		cameras.push_back(str);
@@ -194,11 +172,83 @@ size_t CBarCodeReaderCtrl::EnumerateCameras(StringArray & cameras)
 	return id;
 }
 
+void CBarCodeReaderCtrl::MakeAffineMatrix(int rotation, bool mirror_h, bool mirror_v)
+{
+	int width_for_mirror = 0;
+
+	cv::Mat rotate_mat(3,3, CV_32FC1);
+	cv::Mat aff;
+	switch (rotation & 0x3)
+	{
+	case 0:
+		rotate_mat = (cv::Mat_<double>(3,3) <<
+			1, 0, 0,
+			0, 1, 0,
+			0, 0, 1);
+		width_for_mirror = m_video_width;
+		m_show_width = m_video_width / m_show_scale;
+		m_show_height = m_video_height / m_show_scale;
+		break;
+
+	case 1:		// 90 deg
+		rotate_mat = (cv::Mat_<double>(3,3) << 
+			0, 1, 0, 
+			-1, 0, m_video_width, 
+			0, 0, 1);
+		width_for_mirror = m_video_height;
+		m_show_height = m_video_width / m_show_scale;
+		m_show_width = m_video_height / m_show_scale;
+		break;
+
+	case 2:		// 180 deg
+		rotate_mat = (cv::Mat_<double>(3,3) <<
+			-1, 0, m_video_width,
+			0, -1, m_video_height,
+			0, 0, 1);
+		width_for_mirror = m_video_width;
+		m_show_width = m_video_width / m_show_scale;
+		m_show_height = m_video_height / m_show_scale;
+		break;
+
+	case 3:		// 270 deg
+		rotate_mat = (cv::Mat_<double>(3,3) <<
+			0, -1, m_video_height,
+			1, 0, 0,
+			0, 0, 1);
+		width_for_mirror = m_video_height;
+		m_show_height = m_video_width / m_show_scale;
+		m_show_width = m_video_height / m_show_scale;
+		break;
+
+	default:	// for test
+		break;
+	}
+	LOG_OUTPUT_MAT(_T("rotate mat"), rotate_mat); 
+
+	if (mirror_h)
+	{
+		cv::Mat mirror=(cv::Mat_<double>(3,3) <<
+			-1, 0, width_for_mirror,
+			0, 1, 0,
+			0, 0, 1);
+		aff = (mirror * rotate_mat) / m_show_scale;
+	}
+	else aff = rotate_mat / m_show_scale;
+	LOG_OUTPUT_MAT(_T("mirroed "), aff); 
+
+	m_affine = cv::Mat(aff, cv::Rect(0, 0, 3, 2)).clone();
+	LOG_OUTPUT_MAT(_T("affine "), m_affine); 
+}
+
+
 void CBarCodeReaderCtrl::SetBCRProperty(UINT prop, double val)
 {
 	switch (prop)
 	{
-	case BCR_MIRROR: m_mirror = (val>=1); break;
+	case BCR_MIRROR: 
+		m_mirror = (val>=1); 
+		MakeAffineMatrix(m_rotation, m_mirror, false);
+		break;
 	// 保持时间，单位ms。转换为frame
 	case BCR_HOLD_TIME: m_hold_time = (int)(val) / m_frame_interval; break;
 	case BCR_FRAME_RATE: 
@@ -212,14 +262,7 @@ void CBarCodeReaderCtrl::SetBCRProperty(UINT prop, double val)
 		break;
 	case BCR_ROTATION:
 		m_rotation = (int)(val);
-		if (m_rotation ==1 || m_rotation==3)
-		{
-			m_show_height = m_video_width / m_show_scale, m_show_width = m_video_height / m_show_scale;
-		}
-		else
-		{
-			m_show_width = m_video_width / m_show_scale, m_show_height = m_video_height / m_show_scale;
-		}
+		MakeAffineMatrix(m_rotation, m_mirror, false);
 		if (m_show_width !=0 && m_show_height!=0)
 		{
 			SetWindowPos(NULL, 0, 0, m_show_width, m_show_height, 
@@ -244,41 +287,33 @@ void CBarCodeReaderCtrl::OnSymbolDetected(const std::string & symbol)
 		dlg_id, (LPARAM)(&symbol_msg) );
 }
 
+void PointAffine(cv::Point & out, int x, int y, const cv::Mat & tran)
+{
+	cv::Mat pp = (cv::Mat_<double>(3, 1) << x, y, 1);
+	//LOG_OUTPUT_MAT(_T("point"), pp);
+	cv::Mat p1 = tran * pp;
+	//LOG_OUTPUT_MAT(_T("new point"), p1);
+	out.x = (int)(p1.at<double>(0, 0));
+	out.y = (int)(p1.at<double>(1, 0));
+}
+
 void CBarCodeReaderCtrl::UpdateFrame(cv::Mat & img)
 {
 	LOG_STACK_TRACE();
 	// convert to gray
 	cv::cvtColor(img, img, CV_BGR2GRAY);
-	// rotate
-	cv::Mat /*rr,*/ rotate;
-	int size=(img.rows > img.cols)?(img.rows):(img.cols);
-	switch (m_rotation)
-	{
-	case 0: rotate = img;	break;
-	case 1:	
-		cv::warpAffine(img, rotate, m_rotation_90, cv::Size(img.rows, img.cols));
-		break;
-
-	case 2:	
-		cv::warpAffine(img, rotate, m_rotation_180, img.size()); 
-		break;
-
-	case 3: 
-		cv::warpAffine(img, rotate, m_rotation_270, cv::Size(img.rows, img.cols));
-		break;
-	}
 	// zbar decode
 	zbar::ImageScanner scanner;
 	scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 1);
-	zbar::Image zimg(rotate.cols, rotate.rows, "Y800", rotate.data, rotate.cols * rotate.rows);
+	zbar::Image zimg(img.cols, img.rows, "Y800", img.data, img.cols * img.rows);
 	int n = scanner.scan(zimg);
 
 	m_frame_show.release();
 
 	// create image for show
-	cv::Mat tmp, dst;
-	cv::resize(rotate, tmp, cv::Size(m_show_width, m_show_height) );
-	cv::cvtColor(tmp, dst, CV_GRAY2BGR);	tmp = dst;
+	cv::Mat tmp;
+	cv::warpAffine(img, tmp, m_affine, cv::Size(m_show_width, m_show_height) );
+	cv::cvtColor(tmp, m_frame_show, CV_GRAY2BGR);
 
 	if (n>0)
 	{
@@ -290,12 +325,16 @@ void CBarCodeReaderCtrl::UpdateFrame(cv::Mat & img)
 			m_detect_hold = m_hold_time;
 			OnSymbolDetected(m_cur_symbol);
 		}
+		// 画出识别区域
 		int location_size = symbol->get_location_size();
-		cv::Point p0(symbol->get_location_x(location_size-1) / m_show_scale, symbol->get_location_y(location_size-1) / m_show_scale);
+
+		cv::Point p0;
+		PointAffine(p0, symbol->get_location_x(location_size-1), symbol->get_location_y(location_size-1), m_affine);
 		for (int ii=0; ii<location_size; ii++)
 		{
-			cv::Point p1(symbol->get_location_x(ii) / m_show_scale, symbol->get_location_y(ii) / m_show_scale);
-			cv::line(tmp, p0, p1, cv::Scalar(0, 255, 0), 1);
+			cv::Point p1;
+			PointAffine(p1, symbol->get_location_x(ii), symbol->get_location_y(ii), m_affine);
+			cv::line(m_frame_show, p0, p1, cv::Scalar(0, 255, 0), 1);
 			p0 = p1;
 		}
 	}
@@ -307,8 +346,5 @@ void CBarCodeReaderCtrl::UpdateFrame(cv::Mat & img)
 			else	m_cur_symbol.clear();
 		}
 	}
-	if (m_mirror)	cv::remap(tmp, m_frame_show, m_map_x, m_map_y, 
-		CV_INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
-	else			m_frame_show = tmp;
 	RedrawWindow();
 }	
