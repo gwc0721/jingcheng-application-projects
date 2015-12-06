@@ -1,0 +1,15 @@
+What is HardLinkExt.
+
+# Introduction #
+
+A windows shell ext for using hard link.
+
+# Details #
+
+Features:
+
+1. Overlay Icon on files which are hard link.
+
+2. Show all the file names who connect to the hard-linked file.
+
+3. De-link. Make a duplicate from the hard-linked file. Isolate it from other linked files and avoid changing other file when modifying.
